@@ -23,17 +23,23 @@ import {
   Volume2,
   RefreshCw,
   MapPin,
-  Calendar
+  Calendar,
+  PlusCircle,
+  UserPlus,
+  Ticket
 } from 'lucide-react';
-import { getSeats, getEventDetails, checkInTicket, formatArabicSeatCode, saveSeats, bookSeat } from '../utils/storage';
+import confetti from 'canvas-confetti';
+import { getSeats, getEventDetails, checkInTicket, formatArabicSeatCode, saveSeats, bookSeat, cancelBooking } from '../utils/storage';
 import { playSuccessSound, playWarningSound } from '../utils/audio';
 import { MinistryOfEducationLogo } from './ModernAttendanceCard';
 import TheaterMap from './TheaterMap';
+import BookingModal from './BookingModal';
+import InvitationCard from './InvitationCard';
 
 export default function StaffPortal() {
   const [seats, setSeats] = useState([]);
   const [eventDetails, setEventDetails] = useState(getEventDetails());
-  const [activeTab, setActiveTab] = useState('scanner'); // 'scanner', 'lookup', 'map', 'log'
+  const [activeTab, setActiveTab] = useState('scanner'); // 'scanner', 'booking', 'lookup', 'map', 'log'
   
   // Scanner state
   const [inputCode, setInputCode] = useState('');
@@ -44,6 +50,12 @@ export default function StaffPortal() {
   // Lookup state
   const [searchQuery, setSearchQuery] = useState('');
   const [lookupFilter, setLookupFilter] = useState('all'); // 'all', 'waiting', 'checked_in', 'vip'
+
+  // Booking state
+  const [selectedSeatForBooking, setSelectedSeatForBooking] = useState(null);
+  const [bookingLevelFilter, setBookingLevelFilter] = useState('all'); // 'all', 'G', 'B'
+  const [bookingVipFilter, setBookingVipFilter] = useState('all');   // 'all', 'vip', 'regular'
+  const [bookedTicketSeat, setBookedTicketSeat] = useState(null);
 
   // Selected seat for guide modal
   const [guidedSeat, setGuidedSeat] = useState(null);
@@ -126,11 +138,36 @@ export default function StaffPortal() {
     handleProcessScan(code);
   };
 
+  // Handle Confirm New Booking
+  const handleConfirmBooking = (seatId, guestData) => {
+    const result = bookSeat(seatId, guestData);
+    if (result.success) {
+      refreshData();
+      setSelectedSeatForBooking(null);
+      setBookedTicketSeat(result.seat);
+      playSuccessSound();
+      try {
+        confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
+      } catch (e) {}
+    }
+  };
+
   // Stats calculation
+  const totalAvailable = seats.filter(s => s.status === 'available').length;
   const bookedSeats = seats.filter(s => s.status !== 'available' && s.guest);
   const checkedInSeats = seats.filter(s => s.status === 'checked_in');
   const waitingSeats = seats.filter(s => s.status === 'reserved');
   const attendanceRate = bookedSeats.length > 0 ? Math.round((checkedInSeats.length / bookedSeats.length) * 100) : 0;
+
+  // Available seats for Quick Booking Tab
+  const availableSeatsList = seats.filter(s => {
+    if (s.status !== 'available') return false;
+    if (bookingLevelFilter === 'G' && s.level === 'B') return false;
+    if (bookingLevelFilter === 'B' && s.level !== 'B') return false;
+    if (bookingVipFilter === 'vip' && !s.isVip) return false;
+    if (bookingVipFilter === 'regular' && s.isVip) return false;
+    return true;
+  });
 
   // Filtered lookup guests
   const filteredLookup = bookedSeats.filter(seat => {
@@ -200,72 +237,89 @@ export default function StaffPortal() {
       <main className="w-full max-w-4xl px-3 sm:px-6 py-4 space-y-4">
         
         {/* Live Counters Banner */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-4 bg-gradient-to-r from-[#0d1f3d] via-[#0a1830] to-[#071124] border border-cyan-500/30 p-3 sm:p-4 rounded-2xl shadow-xl text-center">
+        <div className="grid grid-cols-4 gap-2 sm:gap-3 bg-gradient-to-r from-[#0d1f3d] via-[#0a1830] to-[#071124] border border-cyan-500/30 p-3 sm:p-4 rounded-2xl shadow-xl text-center">
           <div className="space-y-0.5">
             <span className="text-[10px] text-slate-400 block font-bold">حاضر بالقاعة</span>
-            <span className="text-lg sm:text-2xl font-black text-emerald-300">{checkedInSeats.length}</span>
-            <span className="text-[9px] text-emerald-400/80 block">تم الدخول</span>
+            <span className="text-base sm:text-xl font-black text-emerald-300">{checkedInSeats.length}</span>
+            <span className="text-[8px] sm:text-[9px] text-emerald-400/80 block">تم الدخول</span>
           </div>
           <div className="border-x border-white/10 space-y-0.5">
             <span className="text-[10px] text-slate-400 block font-bold">بانتظار الدخول</span>
-            <span className="text-lg sm:text-2xl font-black text-amber-300">{waitingSeats.length}</span>
-            <span className="text-[9px] text-amber-400/80 block">متبقي</span>
+            <span className="text-base sm:text-xl font-black text-amber-300">{waitingSeats.length}</span>
+            <span className="text-[8px] sm:text-[9px] text-amber-400/80 block">متبقي</span>
+          </div>
+          <div className="border-l border-white/10 space-y-0.5">
+            <span className="text-[10px] text-slate-400 block font-bold">مقاعد شاغرة</span>
+            <span className="text-base sm:text-xl font-black text-blue-300">{totalAvailable}</span>
+            <span className="text-[8px] sm:text-[9px] text-blue-400/80 block">متاح للحجز</span>
           </div>
           <div className="space-y-0.5">
             <span className="text-[10px] text-slate-400 block font-bold">نسبة الحضور</span>
-            <span className="text-lg sm:text-2xl font-black text-cyan-300">{attendanceRate}%</span>
-            <span className="text-[9px] text-cyan-400/80 block">من {bookedSeats.length}</span>
+            <span className="text-base sm:text-xl font-black text-cyan-300">{attendanceRate}%</span>
+            <span className="text-[8px] sm:text-[9px] text-cyan-400/80 block">من {bookedSeats.length}</span>
           </div>
         </div>
 
-        {/* 4 Navigation Tabs */}
-        <div className="grid grid-cols-4 gap-1.5 bg-white/5 p-1.5 rounded-2xl border border-white/10">
+        {/* 5 Navigation Tabs (including Book Seat) */}
+        <div className="grid grid-cols-5 gap-1 sm:gap-1.5 bg-white/5 p-1.5 rounded-2xl border border-white/10">
           <button
             onClick={() => setActiveTab('scanner')}
-            className={`py-2.5 rounded-xl font-bold text-xs flex flex-col sm:flex-row items-center justify-center gap-1.5 transition-all ${
+            className={`py-2 rounded-xl font-bold text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-all ${
               activeTab === 'scanner'
                 ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-black shadow-lg shadow-cyan-500/20'
                 : 'text-slate-300 hover:text-white hover:bg-white/5'
             }`}
           >
-            <QrCode className="w-4 h-4" />
+            <QrCode className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             <span>ماسح الباب</span>
           </button>
 
           <button
+            onClick={() => setActiveTab('booking')}
+            className={`py-2 rounded-xl font-bold text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-all ${
+              activeTab === 'booking'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-black shadow-lg shadow-cyan-500/20'
+                : 'text-slate-300 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <PlusCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-300" />
+            <span className="text-amber-200">حجز مقعد</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('lookup')}
-            className={`py-2.5 rounded-xl font-bold text-xs flex flex-col sm:flex-row items-center justify-center gap-1.5 transition-all ${
+            className={`py-2 rounded-xl font-bold text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-all ${
               activeTab === 'lookup'
                 ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-black shadow-lg shadow-cyan-500/20'
                 : 'text-slate-300 hover:text-white hover:bg-white/5'
             }`}
           >
-            <Search className="w-4 h-4" />
+            <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             <span>بحث وتحضير</span>
           </button>
 
           <button
             onClick={() => setActiveTab('map')}
-            className={`py-2.5 rounded-xl font-bold text-xs flex flex-col sm:flex-row items-center justify-center gap-1.5 transition-all ${
+            className={`py-2 rounded-xl font-bold text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-all ${
               activeTab === 'map'
                 ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-black shadow-lg shadow-cyan-500/20'
                 : 'text-slate-300 hover:text-white hover:bg-white/5'
             }`}
           >
-            <Armchair className="w-4 h-4" />
-            <span>خريطة المسرح</span>
+            <Armchair className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span>الخريطة</span>
           </button>
 
           <button
             onClick={() => setActiveTab('log')}
-            className={`py-2.5 rounded-xl font-bold text-xs flex flex-col sm:flex-row items-center justify-center gap-1.5 transition-all ${
+            className={`py-2 rounded-xl font-bold text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-all ${
               activeTab === 'log'
                 ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-black shadow-lg shadow-cyan-500/20'
                 : 'text-slate-300 hover:text-white hover:bg-white/5'
             }`}
           >
-            <Clock className="w-4 h-4" />
-            <span>سجل الدخول</span>
+            <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span>السجل</span>
           </button>
         </div>
 
@@ -380,7 +434,6 @@ export default function StaffPortal() {
                       </div>
                     </div>
 
-                    {/* Guide guest button */}
                     <button
                       onClick={() => setGuidedSeat(scanResult.seat)}
                       className="w-full py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-200 text-xs font-bold transition-all flex items-center justify-center gap-1.5"
@@ -429,22 +482,138 @@ export default function StaffPortal() {
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 2: GUEST LOOKUP & MANUAL CHECK-IN */}
+        {/* TAB 2: QUICK SEAT BOOKING FOR STAFF */}
+        {/* ========================================================================= */}
+        {activeTab === 'booking' && (
+          <div className="space-y-4 animate-fade-in">
+            
+            {/* Filter Bar */}
+            <div className="bg-[#0b162b] border border-white/10 p-4 rounded-3xl shadow-xl space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center">
+                    <UserPlus className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs sm:text-sm font-black text-white">حجز مقعد جديد لضيف أو زائر طارئ</h3>
+                    <p className="text-[10px] text-slate-400">اختر مقعداً شاغراً وأدخل بيانات الضيف لإصدار التذكرة فوراً</p>
+                  </div>
+                </div>
+                <span className="text-xs font-bold text-emerald-300 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/30">
+                  {availableSeatsList.length} مقعد متاح
+                </span>
+              </div>
+
+              {/* Filters */}
+              <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-white/10">
+                <span className="text-[10px] text-slate-400 font-bold">الدور:</span>
+                <button
+                  onClick={() => setBookingLevelFilter('all')}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                    bookingLevelFilter === 'all' ? 'bg-cyan-500 text-slate-950' : 'bg-white/5 text-slate-300'
+                  }`}
+                >
+                  الكل
+                </button>
+                <button
+                  onClick={() => setBookingLevelFilter('G')}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                    bookingLevelFilter === 'G' ? 'bg-cyan-500 text-slate-950' : 'bg-white/5 text-slate-300'
+                  }`}
+                >
+                  الدور الأرضي
+                </button>
+                <button
+                  onClick={() => setBookingLevelFilter('B')}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                    bookingLevelFilter === 'B' ? 'bg-cyan-500 text-slate-950' : 'bg-white/5 text-slate-300'
+                  }`}
+                >
+                  البلكونة
+                </button>
+
+                <span className="text-[10px] text-slate-400 font-bold mr-2">الفئة:</span>
+                <button
+                  onClick={() => setBookingVipFilter('all')}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                    bookingVipFilter === 'all' ? 'bg-purple-500 text-white' : 'bg-white/5 text-slate-300'
+                  }`}
+                >
+                  الجميع
+                </button>
+                <button
+                  onClick={() => setBookingVipFilter('vip')}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                    bookingVipFilter === 'vip' ? 'bg-amber-500 text-slate-950' : 'bg-white/5 text-slate-300'
+                  }`}
+                >
+                  VIP كبار الشخصيات
+                </button>
+              </div>
+            </div>
+
+            {/* Available Seats Grid */}
+            <div className="bg-[#0b162b] border border-white/10 p-4 rounded-3xl shadow-xl space-y-3">
+              <h4 className="text-xs font-bold text-slate-300 flex items-center justify-between">
+                <span>انقر على أي مقعد شاغر لحجزه مباشرة:</span>
+                <span className="text-[10px] text-cyan-300 font-normal">أو استخدم الخريطة لاختيار الموقع بصرياً</span>
+              </h4>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 max-h-96 overflow-y-auto pr-1">
+                {availableSeatsList.map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => setSelectedSeatForBooking(s)}
+                    className="p-3 rounded-2xl bg-white/5 hover:bg-cyan-500/20 border border-white/10 hover:border-cyan-400/50 transition-all text-right group flex flex-col justify-between h-20 shadow-sm active:scale-95"
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span className="text-xs font-black text-cyan-300 group-hover:text-cyan-200">
+                        {s.row}-{String(s.number).padStart(2,'0')}
+                      </span>
+                      {s.isVip ? (
+                        <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded font-bold">VIP</span>
+                      ) : (
+                        <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded font-bold">متاح</span>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-slate-400">
+                      {s.level === 'B' ? 'البلكونة' : 'الأرضي'} • {s.sector || 'الوسط'}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB 3: GUEST LOOKUP & MANUAL CHECK-IN */}
         {/* ========================================================================= */}
         {activeTab === 'lookup' && (
           <div className="space-y-4 animate-fade-in">
             
             {/* Search Input & Filter Tabs */}
             <div className="bg-[#0b162b] border border-white/10 p-4 rounded-3xl shadow-xl space-y-3">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="ابحث باسم الضيف، رقم الجوال، أو رقم المقعد..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-white/5 border border-white/15 focus:border-cyan-400 focus:bg-white/10 rounded-2xl px-4 py-3 text-xs text-white placeholder-slate-400 outline-none transition-all pr-10"
-                />
-                <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5" />
+              <div className="flex items-center justify-between gap-2">
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    placeholder="ابحث باسم الضيف، رقم الجوال، أو رقم المقعد..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-white/5 border border-white/15 focus:border-cyan-400 focus:bg-white/10 rounded-2xl px-4 py-3 text-xs text-white placeholder-slate-400 outline-none transition-all pr-10"
+                  />
+                  <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5" />
+                </div>
+
+                <button
+                  onClick={() => setActiveTab('booking')}
+                  className="px-3.5 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all shadow-md active:scale-95 flex items-center gap-1.5 shrink-0"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span className="hidden sm:inline">حجز مقعد جديد</span>
+                </button>
               </div>
 
               <div className="flex items-center gap-1.5 flex-wrap">
@@ -572,7 +741,7 @@ export default function StaffPortal() {
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 3: THEATER MAP & SEAT GUIDE */}
+        {/* TAB 4: THEATER MAP & SEAT GUIDE & INTERACTIVE BOOKING */}
         {/* ========================================================================= */}
         {activeTab === 'map' && (
           <div className="space-y-4 animate-fade-in">
@@ -580,19 +749,25 @@ export default function StaffPortal() {
               <div className="flex items-center justify-between border-b border-white/10 pb-3">
                 <h3 className="text-xs sm:text-sm font-black text-white flex items-center gap-2">
                   <Armchair className="w-4 h-4 text-cyan-400" />
-                  <span>خريطة مقاعد المسرح وإرشاد الضيوف</span>
+                  <span>خريطة مقاعد المسرح التفاعلية</span>
                 </h3>
-                <span className="text-[10px] text-cyan-300 bg-cyan-500/10 px-2.5 py-1 rounded-full border border-cyan-500/20">
-                  اضغط على أي مقعد لعرض بيانات الضيف
+                <span className="text-[10px] text-emerald-300 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+                  اضغط على أي مقعد متاح لحجزه أو محجوز لعرض بياناته
                 </span>
               </div>
 
               <div className="w-full bg-[#050b18] rounded-2xl border border-white/10 p-2 overflow-hidden">
                 <TheaterMap
                   seats={seats}
-                  onSelectSeat={(seat) => setGuidedSeat(seat)}
+                  onSelectSeat={(seat) => {
+                    if (seat.status === 'available') {
+                      setSelectedSeatForBooking(seat);
+                    } else {
+                      setGuidedSeat(seat);
+                    }
+                  }}
                   onSeatsUpdated={(updated) => setSeats(updated)}
-                  selectedSeatId={guidedSeat?.id}
+                  selectedSeatId={guidedSeat?.id || selectedSeatForBooking?.id}
                 />
               </div>
             </div>
@@ -600,7 +775,7 @@ export default function StaffPortal() {
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 4: LIVE CHECK-IN LOG */}
+        {/* TAB 5: LIVE CHECK-IN LOG */}
         {/* ========================================================================= */}
         {activeTab === 'log' && (
           <div className="bg-[#0b162b] border border-white/10 p-5 rounded-3xl shadow-xl space-y-4 animate-fade-in">
@@ -649,6 +824,37 @@ export default function StaffPortal() {
         )}
 
       </main>
+
+      {/* Booking Form Modal for Staff */}
+      {selectedSeatForBooking && (
+        <BookingModal
+          seat={selectedSeatForBooking}
+          onClose={() => setSelectedSeatForBooking(null)}
+          onConfirmBooking={handleConfirmBooking}
+          onCancelBooking={(seatId) => {
+            cancelBooking(seatId);
+            refreshData();
+            setSelectedSeatForBooking(null);
+          }}
+          onDeleteSeat={() => {}}
+          onOpenCard={(seat) => {
+            setSelectedSeatForBooking(null);
+            setBookedTicketSeat(seat);
+          }}
+          onOpenInvitation={() => {}}
+          onOpenSeatCard={() => {}}
+        />
+      )}
+
+      {/* Ticket Modal after instant booking */}
+      {bookedTicketSeat && (
+        <InvitationCard
+          seat={bookedTicketSeat}
+          eventDetails={eventDetails}
+          onClose={() => setBookedTicketSeat(null)}
+          onPreviewGuestView={() => {}}
+        />
+      )}
 
       {/* Guided Seat Location Modal */}
       {guidedSeat && (
