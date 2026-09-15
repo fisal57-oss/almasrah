@@ -688,65 +688,93 @@ export default function ModernAttendanceCard({
         </div>
 
         {/* ========================================================================= */}
-        {/* 6-COLUMN SPECS ROW WITH VERTICAL DIVIDERS */}
+        {/* LUXURY 2-ROW SPECS GRID (بيانات المقعد والفعالية كاملة وواضحة بدون أي اقتطاع) */}
         {/* ========================================================================= */}
-        <div className="relative z-10 px-2.5 my-0.5">
-          <div className="bg-white/95 rounded-2xl border border-slate-200/90 shadow-sm grid grid-cols-6 divide-x divide-x-reverse divide-slate-200/90 py-1.5 px-0.5 text-center">
-            {/* Col 1: رقم الصف */}
-            <div className="flex flex-col items-center justify-center px-0.5">
-              <Armchair className="w-3.5 h-3.5 text-blue-600 mb-0.5" />
-              <span className="text-[8px] font-bold text-slate-700 leading-none">رقم الصف</span>
-              <span className="font-mono text-base sm:text-lg font-black text-[#162a5c] leading-tight mt-0.5">{rowLetter}</span>
-              <span className="text-[6.5px] text-slate-500 font-sans leading-none">Row</span>
+        <div className="relative z-10 px-2.5 my-1">
+          <div className="bg-white/98 rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden divide-y divide-slate-100">
+            
+            {/* الصف الأول: بيانات المقعد وبوابة الدخول (3 أعمدة مريحة وواسعة) */}
+            <div className="grid grid-cols-3 divide-x divide-x-reverse divide-slate-100 py-1.5 px-1 text-center bg-slate-50/60">
+              
+              {/* رقم الصف */}
+              <div className="flex flex-col items-center justify-center px-1">
+                <div className="flex items-center justify-center gap-1 mb-0.5 text-blue-600">
+                  <Armchair className="w-3.5 h-3.5" />
+                  <span className="text-[9px] font-bold text-slate-700">رقم الصف</span>
+                </div>
+                <span className="font-mono text-base sm:text-lg font-black text-[#162a5c] leading-none">
+                  {rowLetter}
+                </span>
+                <span className="text-[7px] text-slate-400 font-sans mt-0.5">Row</span>
+              </div>
+
+              {/* رقم المقعد */}
+              <div className="flex flex-col items-center justify-center px-1">
+                <div className="flex items-center justify-center gap-1 mb-0.5 text-blue-600">
+                  <Ticket className="w-3.5 h-3.5" />
+                  <span className="text-[9px] font-bold text-slate-700">رقم المقعد</span>
+                </div>
+                <span className="font-mono text-sm sm:text-base font-black text-[#162a5c] leading-none">
+                  {pillSeatCode}
+                </span>
+                <span className="text-[7px] text-slate-400 font-sans mt-0.5">Seat No</span>
+              </div>
+
+              {/* بوابة الدخول */}
+              <div className="flex flex-col items-center justify-center px-1">
+                <div className="flex items-center justify-center gap-1 mb-0.5 text-blue-600">
+                  <DoorClosed className="w-3.5 h-3.5" />
+                  <span className="text-[9px] font-bold text-slate-700">المدخل</span>
+                </div>
+                <span className="text-[9.5px] sm:text-[10px] font-black text-[#162a5c] leading-tight text-center">
+                  {eventEntrance}
+                </span>
+                <span className="text-[7px] text-slate-400 font-sans mt-0.5">Main Entrance</span>
+              </div>
+
             </div>
 
-            {/* Col 2: رقم المقعد */}
-            <div className="flex flex-col items-center justify-center px-0.5">
-              <Ticket className="w-3.5 h-3.5 text-blue-600 mb-0.5" />
-              <span className="text-[8px] font-bold text-slate-700 leading-none">رقم المقعد</span>
-              <span className="font-mono text-sm sm:text-base font-black text-[#162a5c] leading-tight mt-0.5">{pillSeatCode}</span>
-              <span className="text-[6.5px] text-slate-500 font-sans leading-none">Seat No.</span>
+            {/* الصف الثاني: بيانات الموعد والموقع (3 أعمدة مريحة وواسعة بدون اختصار) */}
+            <div className="grid grid-cols-3 divide-x divide-x-reverse divide-slate-100 py-1.5 px-1 text-center bg-white">
+              
+              {/* الموقع والقاعة */}
+              <div className="flex flex-col items-center justify-center px-1">
+                <div className="flex items-center justify-center gap-1 mb-0.5 text-blue-600">
+                  <MapPin className="w-3.5 h-3.5" />
+                  <span className="text-[9px] font-bold text-slate-700">الموقع</span>
+                </div>
+                <span className="text-[9px] sm:text-[9.5px] font-black text-[#162a5c] leading-tight text-center">
+                  {eventVenue}
+                </span>
+                <span className="text-[7px] text-slate-400 font-sans mt-0.5">Theater Hall</span>
+              </div>
+
+              {/* الوقت */}
+              <div className="flex flex-col items-center justify-center px-1">
+                <div className="flex items-center justify-center gap-1 mb-0.5 text-blue-600">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span className="text-[9px] font-bold text-slate-700">الوقت</span>
+                </div>
+                <span className="text-[9.5px] sm:text-[10px] font-black text-[#162a5c] leading-tight text-center">
+                  {eventTime}
+                </span>
+                <span className="text-[7px] text-slate-400 font-sans mt-0.5">Time</span>
+              </div>
+
+              {/* التاريخ */}
+              <div className="flex flex-col items-center justify-center px-1">
+                <div className="flex items-center justify-center gap-1 mb-0.5 text-blue-600">
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span className="text-[9px] font-bold text-slate-700">التاريخ</span>
+                </div>
+                <span className="text-[9px] sm:text-[9.5px] font-black text-[#162a5c] leading-tight text-center">
+                  {eventDate}
+                </span>
+                <span className="text-[7px] text-slate-400 font-sans mt-0.5">Date</span>
+              </div>
+
             </div>
 
-            {/* Col 3: المدخل */}
-            <div className="flex flex-col items-center justify-center px-0.5 overflow-visible">
-              <DoorClosed className="w-3.5 h-3.5 text-blue-600 mb-0.5" />
-              <span className="text-[8px] font-bold text-slate-700 leading-none">المدخل</span>
-              <span className="text-[8.5px] font-black text-[#162a5c] leading-normal mt-0.5 truncate max-w-full tracking-normal">
-                {eventEntrance}
-              </span>
-              <span className="text-[6px] text-slate-500 font-sans leading-none mt-0.5">Main Entrance</span>
-            </div>
-
-            {/* Col 4: الموقع */}
-            <div className="flex flex-col items-center justify-center px-0.5 overflow-visible">
-              <MapPin className="w-3.5 h-3.5 text-blue-600 mb-0.5" />
-              <span className="text-[8px] font-bold text-slate-700 leading-none">الموقع</span>
-              <span className="text-[8.5px] font-black text-[#162a5c] leading-normal mt-0.5 line-clamp-1 tracking-normal">
-                {eventVenue.replace('مسرح ', '').replace('الإدارة العامة للتعليم بمنطقة عسير', 'مسرح التعليم')}
-              </span>
-              <span className="text-[6px] text-slate-500 font-sans leading-none mt-0.5">Theater</span>
-            </div>
-
-            {/* Col 5: الوقت */}
-            <div className="flex flex-col items-center justify-center px-0.5">
-              <Clock className="w-3.5 h-3.5 text-blue-600 mb-0.5" />
-              <span className="text-[8px] font-bold text-slate-700 leading-none">الوقت</span>
-              <span className="font-mono text-[10px] font-black text-[#162a5c] leading-tight mt-0.5">
-                {eventTime}
-              </span>
-              <span className="text-[6.5px] text-slate-500 font-sans leading-none mt-0.5">07:00 PM</span>
-            </div>
-
-            {/* Col 6: التاريخ */}
-            <div className="flex flex-col items-center justify-center px-0.5">
-              <Calendar className="w-3.5 h-3.5 text-blue-600 mb-0.5" />
-              <span className="text-[8px] font-bold text-slate-700 leading-none">التاريخ</span>
-              <span className="font-mono text-[8.5px] font-black text-[#162a5c] leading-tight mt-0.5">
-                {eventDate}
-              </span>
-              <span className="text-[6.5px] text-slate-500 font-sans leading-none mt-0.5">Wednesday</span>
-            </div>
           </div>
         </div>
 

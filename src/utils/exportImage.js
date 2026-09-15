@@ -20,7 +20,7 @@ export async function exportElementToPng(element, fileName = 'ticket.png', optio
   }
 
   const {
-    pixelRatio = 3,
+    pixelRatio = 4,
     backgroundColor = null,
     onSuccess,
     onError
