@@ -26,20 +26,43 @@ import {
   Calendar,
   PlusCircle,
   UserPlus,
-  Ticket
+  Ticket,
+  Printer,
+  Share2,
+  Send,
+  Download,
+  Copy,
+  FileSpreadsheet,
+  Mail,
+  Trash2,
+  Eye
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { getSeats, getEventDetails, checkInTicket, formatArabicSeatCode, saveSeats, bookSeat, cancelBooking } from '../utils/storage';
+import { 
+  getSeats, 
+  getEventDetails, 
+  checkInTicket, 
+  formatArabicSeatCode, 
+  saveSeats, 
+  bookSeat, 
+  cancelBooking 
+} from '../utils/storage';
 import { playSuccessSound, playWarningSound } from '../utils/audio';
+import { exportSeatsToExcel } from '../utils/excelUtils';
 import { MinistryOfEducationLogo } from './ModernAttendanceCard';
 import TheaterMap from './TheaterMap';
 import BookingModal from './BookingModal';
 import InvitationCard from './InvitationCard';
+import AllTicketsPrintModal from './AllTicketsPrintModal';
+import BatchSeatCardsPrintModal from './BatchSeatCardsPrintModal';
+import SeatLabelsPrintModal from './SeatLabelsPrintModal';
+import ElectronicInvitationModal from './ElectronicInvitationModal';
+import SeatCardModal from './SeatCardModal';
 
 export default function StaffPortal() {
   const [seats, setSeats] = useState([]);
   const [eventDetails, setEventDetails] = useState(getEventDetails());
-  const [activeTab, setActiveTab] = useState('scanner'); // 'scanner', 'booking', 'lookup', 'map', 'log'
+  const [activeTab, setActiveTab] = useState('checkin'); // 'checkin', 'bookings', 'print', 'share', 'map'
   
   // Scanner state
   const [inputCode, setInputCode] = useState('');
@@ -47,23 +70,24 @@ export default function StaffPortal() {
   const [recentCheckIns, setRecentCheckIns] = useState([]);
   const scannerInputRef = useRef(null);
 
-  // Lookup state
+  // Bookings list state
   const [searchQuery, setSearchQuery] = useState('');
-  const [lookupFilter, setLookupFilter] = useState('all'); // 'all', 'waiting', 'checked_in', 'vip'
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'reserved', 'checked_in', 'vip'
+  const [levelFilter, setLevelFilter] = useState('all');   // 'all', 'G', 'B'
 
-  // Booking state
+  // Modals
   const [selectedSeatForBooking, setSelectedSeatForBooking] = useState(null);
-  const [bookingLevelFilter, setBookingLevelFilter] = useState('all'); // 'all', 'G', 'B'
-  const [bookingVipFilter, setBookingVipFilter] = useState('all');   // 'all', 'vip', 'regular'
-  const [bookedTicketSeat, setBookedTicketSeat] = useState(null);
-
-  // Selected seat for guide modal
+  const [selectedSeatForCard, setSelectedSeatForCard] = useState(null);
+  const [selectedSeatForInvitation, setSelectedSeatForInvitation] = useState(null);
+  const [selectedSeatForSeatCard, setSelectedSeatForSeatCard] = useState(null);
+  const [showAllTicketsPrintModal, setShowAllTicketsPrintModal] = useState(false);
+  const [showBatchSeatCardsModal, setShowBatchSeatCardsModal] = useState(false);
+  const [showPrintLabelsModal, setShowPrintLabelsModal] = useState(false);
   const [guidedSeat, setGuidedSeat] = useState(null);
+  const [copiedId, setCopiedId] = useState(null);
 
   useEffect(() => {
-    const loadedSeats = getSeats();
-    setSeats(loadedSeats);
-    setEventDetails(getEventDetails());
+    refreshData();
   }, []);
 
   const refreshData = () => {
@@ -71,9 +95,9 @@ export default function StaffPortal() {
     setEventDetails(getEventDetails());
   };
 
-  // Focus scanner input on tab change
+  // Focus scanner on checkin tab
   useEffect(() => {
-    if (activeTab === 'scanner') {
+    if (activeTab === 'checkin') {
       setTimeout(() => scannerInputRef.current?.focus(), 100);
     }
   }, [activeTab]);
@@ -132,24 +156,75 @@ export default function StaffPortal() {
     scannerInputRef.current?.focus();
   };
 
-  // Manual Check-in from Lookup
-  const handleManualCheckIn = (seat) => {
-    const code = seat.guest?.token || seat.id;
-    handleProcessScan(code);
-  };
-
-  // Handle Confirm New Booking
+  // Handle New Booking Confirmation
   const handleConfirmBooking = (seatId, guestData) => {
     const result = bookSeat(seatId, guestData);
     if (result.success) {
       refreshData();
       setSelectedSeatForBooking(null);
-      setBookedTicketSeat(result.seat);
+      setSelectedSeatForCard(result.seat);
       playSuccessSound();
       try {
         confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
       } catch (e) {}
     }
+  };
+
+  // Handle Cancel Booking
+  const handleCancelBooking = (seatId) => {
+    cancelBooking(seatId);
+    refreshData();
+    setSelectedSeatForBooking(null);
+    setSelectedSeatForCard(null);
+  };
+
+  // WhatsApp Sender
+  const handleSendWhatsApp = (seat) => {
+    if (!seat.guest) return;
+    const baseUrl = window.location.origin + window.location.pathname.replace('staff.html', '').replace('beneficiary.html', '');
+    const invitationUrl = `${baseUrl}?invitation=${seat.guest.token}`;
+    const seatDisplay = `${seat.row}${String(seat.number).padStart(2, '0')}`;
+    
+    const text = 
+      `يسر الإدارة العامة للتعليم بمنطقة عسير دعوتكم لحضور:\n` +
+      `✨ *${eventDetails.title || 'مسرح الإدارة العامة للتعليم بمنطقة عسير'}* ✨\n\n` +
+      `👤 *اسم الضيف:* ${seat.guest.name}\n` +
+      (seat.guest.jobTitle ? `💼 *المنصب:* ${seat.guest.jobTitle}\n` : '') +
+      `🏷️ *الفئة:* ${seat.guest.category || 'عام'}\n` +
+      `💺 *المقعد المخصص:* الصف (${seat.row}) - مقعد (${seatDisplay})\n` +
+      `📍 *المكان:* ${eventDetails.venue || 'المسرح الرئيسي'}\n` +
+      `⏰ *الوقت:* ${eventDetails.time || '07:00 م'}\n` +
+      `📅 *التاريخ:* ${eventDetails.date || '2026/10/07'}\n\n` +
+      `📲 *رابط بطاقة الحضور والباركود الذكي وموقع المقعد:*\n` +
+      `${invitationUrl}\n\n` +
+      `أهلاً وسهلاً بحضوركم الكريم ✨`;
+
+    const phone = (seat.guest.phone || '').replace(/[^0-9]/g, '');
+    const cleanPhone = phone.startsWith('05') ? '966' + phone.substring(1) : phone;
+    const whatsappUrl = cleanPhone 
+      ? `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(text)}`
+      : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    
+    window.open(whatsappUrl, '_blank');
+  };
+
+  // Copy invitation link & message
+  const handleCopyInvitation = (seat) => {
+    if (!seat.guest) return;
+    const baseUrl = window.location.origin + window.location.pathname.replace('staff.html', '').replace('beneficiary.html', '');
+    const invitationUrl = `${baseUrl}?invitation=${seat.guest.token}`;
+    const seatDisplay = `${seat.row}${String(seat.number).padStart(2, '0')}`;
+    
+    const text = 
+      `دعوة حضور:\n` +
+      `✨ ${eventDetails.title || 'مسرح تعليم عسير'} ✨\n` +
+      `👤 الضيف: ${seat.guest.name}\n` +
+      `💺 المقعد: الصف (${seat.row}) - رقم (${seatDisplay})\n` +
+      `📲 الرابط: ${invitationUrl}`;
+
+    navigator.clipboard.writeText(text);
+    setCopiedId(seat.id);
+    setTimeout(() => setCopiedId(null), 2500);
   };
 
   // Stats calculation
@@ -159,21 +234,14 @@ export default function StaffPortal() {
   const waitingSeats = seats.filter(s => s.status === 'reserved');
   const attendanceRate = bookedSeats.length > 0 ? Math.round((checkedInSeats.length / bookedSeats.length) * 100) : 0;
 
-  // Available seats for Quick Booking Tab
-  const availableSeatsList = seats.filter(s => {
-    if (s.status !== 'available') return false;
-    if (bookingLevelFilter === 'G' && s.level === 'B') return false;
-    if (bookingLevelFilter === 'B' && s.level !== 'B') return false;
-    if (bookingVipFilter === 'vip' && !s.isVip) return false;
-    if (bookingVipFilter === 'regular' && s.isVip) return false;
-    return true;
-  });
+  // Filtered Bookings list
+  const filteredBookings = bookedSeats.filter(seat => {
+    if (statusFilter === 'reserved' && seat.status !== 'reserved') return false;
+    if (statusFilter === 'checked_in' && seat.status !== 'checked_in') return false;
+    if (statusFilter === 'vip' && !seat.isVip) return false;
 
-  // Filtered lookup guests
-  const filteredLookup = bookedSeats.filter(seat => {
-    if (lookupFilter === 'waiting' && seat.status !== 'reserved') return false;
-    if (lookupFilter === 'checked_in' && seat.status !== 'checked_in') return false;
-    if (lookupFilter === 'vip' && !seat.isVip) return false;
+    if (levelFilter === 'G' && seat.level === 'B') return false;
+    if (levelFilter === 'B' && seat.level !== 'B') return false;
 
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
@@ -193,7 +261,7 @@ export default function StaffPortal() {
       
       {/* Top Header Bar */}
       <header className="w-full bg-[#09152b] border-b border-cyan-500/20 px-4 py-3 sticky top-0 z-30 shadow-xl backdrop-blur-md">
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
           
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 flex items-center justify-center font-bold">
@@ -201,9 +269,9 @@ export default function StaffPortal() {
             </div>
             <div>
               <h1 className="text-xs sm:text-sm font-black text-white flex items-center gap-1.5">
-                <span>بوابة المنظم وموظف الباب</span>
+                <span>بوابة الموظف والمنظمين</span>
                 <span className="text-[9px] bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded-full font-bold">
-                  Staff Gate
+                  Staff Control
                 </span>
               </h1>
               <p className="text-[10px] text-slate-400 truncate max-w-[200px] sm:max-w-none">
@@ -223,8 +291,8 @@ export default function StaffPortal() {
             </button>
             <a
               href="index.html"
-              title="لوحة الإدارة"
-              className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 text-xs font-bold transition-all border border-white/15"
+              title="لوحة تحكم الإدارة الكاملة"
+              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-cyan-300 text-xs font-bold transition-all border border-cyan-400/30"
             >
               لوحة الإدارة
             </a>
@@ -234,14 +302,14 @@ export default function StaffPortal() {
       </header>
 
       {/* Main Container */}
-      <main className="w-full max-w-4xl px-3 sm:px-6 py-4 space-y-4">
+      <main className="w-full max-w-5xl px-3 sm:px-6 py-4 space-y-4">
         
         {/* Live Counters Banner */}
         <div className="grid grid-cols-4 gap-2 sm:gap-3 bg-gradient-to-r from-[#0d1f3d] via-[#0a1830] to-[#071124] border border-cyan-500/30 p-3 sm:p-4 rounded-2xl shadow-xl text-center">
           <div className="space-y-0.5">
             <span className="text-[10px] text-slate-400 block font-bold">حاضر بالقاعة</span>
             <span className="text-base sm:text-xl font-black text-emerald-300">{checkedInSeats.length}</span>
-            <span className="text-[8px] sm:text-[9px] text-emerald-400/80 block">تم الدخول</span>
+            <span className="text-[8px] sm:text-[9px] text-emerald-400/80 block">تم التحضير</span>
           </div>
           <div className="border-x border-white/10 space-y-0.5">
             <span className="text-[10px] text-slate-400 block font-bold">بانتظار الدخول</span>
@@ -260,83 +328,90 @@ export default function StaffPortal() {
           </div>
         </div>
 
-        {/* 5 Navigation Tabs (including Book Seat) */}
-        <div className="grid grid-cols-5 gap-1 sm:gap-1.5 bg-white/5 p-1.5 rounded-2xl border border-white/10">
+        {/* 5 Main Navigation Tabs */}
+        <div className="grid grid-cols-5 gap-1.5 bg-white/5 p-1.5 rounded-2xl border border-white/10">
+          
+          {/* Tab 1: Check-in / Gate Scanner */}
           <button
-            onClick={() => setActiveTab('scanner')}
-            className={`py-2 rounded-xl font-bold text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-all ${
-              activeTab === 'scanner'
+            onClick={() => setActiveTab('checkin')}
+            className={`py-2.5 rounded-xl font-bold text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-all ${
+              activeTab === 'checkin'
                 ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-black shadow-lg shadow-cyan-500/20'
                 : 'text-slate-300 hover:text-white hover:bg-white/5'
             }`}
           >
-            <QrCode className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            <span>ماسح الباب</span>
+            <QrCode className="w-4 h-4" />
+            <span>التحضير والماسح</span>
           </button>
 
+          {/* Tab 2: Bookings & Guest Roster */}
           <button
-            onClick={() => setActiveTab('booking')}
-            className={`py-2 rounded-xl font-bold text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-all ${
-              activeTab === 'booking'
+            onClick={() => setActiveTab('bookings')}
+            className={`py-2.5 rounded-xl font-bold text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-all ${
+              activeTab === 'bookings'
                 ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-black shadow-lg shadow-cyan-500/20'
                 : 'text-slate-300 hover:text-white hover:bg-white/5'
             }`}
           >
-            <PlusCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-300" />
-            <span className="text-amber-200">حجز مقعد</span>
+            <Users className="w-4 h-4" />
+            <span>الحجوزات والضيوف</span>
           </button>
 
+          {/* Tab 3: Print Center */}
           <button
-            onClick={() => setActiveTab('lookup')}
-            className={`py-2 rounded-xl font-bold text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-all ${
-              activeTab === 'lookup'
+            onClick={() => setActiveTab('print')}
+            className={`py-2.5 rounded-xl font-bold text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-all ${
+              activeTab === 'print'
                 ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-black shadow-lg shadow-cyan-500/20'
                 : 'text-slate-300 hover:text-white hover:bg-white/5'
             }`}
           >
-            <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            <span>بحث وتحضير</span>
+            <Printer className="w-4 h-4 text-cyan-300" />
+            <span>مركز الطباعة</span>
           </button>
 
+          {/* Tab 4: Send & WhatsApp Hub */}
+          <button
+            onClick={() => setActiveTab('share')}
+            className={`py-2.5 rounded-xl font-bold text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-all ${
+              activeTab === 'share'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-black shadow-lg shadow-cyan-500/20'
+                : 'text-slate-300 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <Send className="w-4 h-4 text-emerald-300" />
+            <span>الإرسال والواتساب</span>
+          </button>
+
+          {/* Tab 5: Theater Map */}
           <button
             onClick={() => setActiveTab('map')}
-            className={`py-2 rounded-xl font-bold text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-all ${
+            className={`py-2.5 rounded-xl font-bold text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-all ${
               activeTab === 'map'
                 ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-black shadow-lg shadow-cyan-500/20'
                 : 'text-slate-300 hover:text-white hover:bg-white/5'
             }`}
           >
-            <Armchair className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <Armchair className="w-4 h-4 text-purple-300" />
             <span>الخريطة</span>
           </button>
 
-          <button
-            onClick={() => setActiveTab('log')}
-            className={`py-2 rounded-xl font-bold text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-all ${
-              activeTab === 'log'
-                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-black shadow-lg shadow-cyan-500/20'
-                : 'text-slate-300 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            <span>السجل</span>
-          </button>
         </div>
 
         {/* ========================================================================= */}
-        {/* TAB 1: SCANNER */}
+        {/* TAB 1: CHECK-IN & SCANNER */}
         {/* ========================================================================= */}
-        {activeTab === 'scanner' && (
+        {activeTab === 'checkin' && (
           <div className="space-y-4 animate-fade-in">
             
-            {/* Scan Input Box */}
+            {/* Barcode Scanner Box */}
             <div className="bg-[#0b162b] border border-cyan-500/30 p-5 sm:p-6 rounded-3xl shadow-xl space-y-4">
               <form onSubmit={handleScannerSubmit} className="space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-slate-200 block">
-                    مسح باركود التذكرة أو إدخال رقم المقعد:
+                    مسح باركود التذكرة أو كتابة رقم المقعد:
                   </label>
-                  <span className="text-[10px] text-cyan-300 font-bold bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/20">
+                  <span className="text-[10px] text-cyan-300 font-bold bg-cyan-500/10 px-2.5 py-0.5 rounded-full border border-cyan-500/20">
                     القارئ اللاسلكي / USB مدعوم
                   </span>
                 </div>
@@ -346,7 +421,7 @@ export default function StaffPortal() {
                     <input
                       ref={scannerInputRef}
                       type="text"
-                      placeholder="امسح الـ QR أو اكتب رمز المقعد مثل A04 أو التوكن..."
+                      placeholder="امسح الـ QR أو اكتب كود المقعد مثل A04 أو التوكن..."
                       value={inputCode}
                       onChange={(e) => setInputCode(e.target.value)}
                       className="w-full bg-white/5 border-2 border-cyan-500/40 focus:border-cyan-400 focus:bg-white/10 rounded-2xl px-4 py-3.5 text-sm text-white placeholder-slate-400 outline-none transition-all pr-11 font-mono tracking-wider shadow-inner"
@@ -356,7 +431,7 @@ export default function StaffPortal() {
 
                   <button
                     type="submit"
-                    className="px-5 sm:px-7 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-xs transition-all shadow-lg shadow-cyan-500/20 active:scale-95 flex items-center justify-center gap-1.5 shrink-0"
+                    className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-xs transition-all shadow-lg shadow-cyan-500/20 active:scale-95 flex items-center justify-center gap-1.5 shrink-0"
                   >
                     <Check className="w-4 h-4" />
                     <span>تحضير</span>
@@ -446,18 +521,20 @@ export default function StaffPortal() {
               </div>
             )}
 
-            {/* Quick Demo Scan list for staff */}
+            {/* Quick 1-Tap Check-in List for waiting attendees */}
             {waitingSeats.length > 0 && (
-              <div className="bg-[#0b162b] border border-white/10 p-4 rounded-3xl space-y-2.5">
-                <h4 className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                  <span>ضيوف بانتظار الدخول (تحضير سريع بنقرة واحدة):</span>
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
-                  {waitingSeats.slice(0, 8).map(s => (
+              <div className="bg-[#0b162b] border border-white/10 p-5 rounded-3xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-amber-400" />
+                    <span>ضيوف بانتظار التحضير والدخول ({waitingSeats.length}):</span>
+                  </h4>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
+                  {waitingSeats.slice(0, 10).map(s => (
                     <div 
                       key={s.id}
-                      className="p-2.5 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between hover:border-cyan-400/30 transition-all text-xs"
+                      className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between hover:border-cyan-400/30 transition-all text-xs"
                     >
                       <div className="space-y-0.5">
                         <span className="font-bold text-white block">{s.guest?.name}</span>
@@ -467,7 +544,7 @@ export default function StaffPortal() {
                       </div>
                       <button
                         onClick={() => handleProcessScan(s.guest?.token || s.id)}
-                        className="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/40 text-emerald-300 font-bold text-[11px] transition-all active:scale-95 flex items-center gap-1 shrink-0"
+                        className="px-3.5 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/40 text-emerald-300 font-bold text-[11px] transition-all active:scale-95 flex items-center gap-1 shrink-0"
                       >
                         <Check className="w-3 h-3" />
                         <span>تحضير</span>
@@ -482,124 +559,18 @@ export default function StaffPortal() {
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 2: QUICK SEAT BOOKING FOR STAFF */}
+        {/* TAB 2: BOOKINGS & GUEST ROSTER */}
         {/* ========================================================================= */}
-        {activeTab === 'booking' && (
+        {activeTab === 'bookings' && (
           <div className="space-y-4 animate-fade-in">
             
-            {/* Filter Bar */}
-            <div className="bg-[#0b162b] border border-white/10 p-4 rounded-3xl shadow-xl space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center">
-                    <UserPlus className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-xs sm:text-sm font-black text-white">حجز مقعد جديد لضيف أو زائر طارئ</h3>
-                    <p className="text-[10px] text-slate-400">اختر مقعداً شاغراً وأدخل بيانات الضيف لإصدار التذكرة فوراً</p>
-                  </div>
-                </div>
-                <span className="text-xs font-bold text-emerald-300 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/30">
-                  {availableSeatsList.length} مقعد متاح
-                </span>
-              </div>
-
-              {/* Filters */}
-              <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-white/10">
-                <span className="text-[10px] text-slate-400 font-bold">الدور:</span>
-                <button
-                  onClick={() => setBookingLevelFilter('all')}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
-                    bookingLevelFilter === 'all' ? 'bg-cyan-500 text-slate-950' : 'bg-white/5 text-slate-300'
-                  }`}
-                >
-                  الكل
-                </button>
-                <button
-                  onClick={() => setBookingLevelFilter('G')}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
-                    bookingLevelFilter === 'G' ? 'bg-cyan-500 text-slate-950' : 'bg-white/5 text-slate-300'
-                  }`}
-                >
-                  الدور الأرضي
-                </button>
-                <button
-                  onClick={() => setBookingLevelFilter('B')}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
-                    bookingLevelFilter === 'B' ? 'bg-cyan-500 text-slate-950' : 'bg-white/5 text-slate-300'
-                  }`}
-                >
-                  البلكونة
-                </button>
-
-                <span className="text-[10px] text-slate-400 font-bold mr-2">الفئة:</span>
-                <button
-                  onClick={() => setBookingVipFilter('all')}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
-                    bookingVipFilter === 'all' ? 'bg-purple-500 text-white' : 'bg-white/5 text-slate-300'
-                  }`}
-                >
-                  الجميع
-                </button>
-                <button
-                  onClick={() => setBookingVipFilter('vip')}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
-                    bookingVipFilter === 'vip' ? 'bg-amber-500 text-slate-950' : 'bg-white/5 text-slate-300'
-                  }`}
-                >
-                  VIP كبار الشخصيات
-                </button>
-              </div>
-            </div>
-
-            {/* Available Seats Grid */}
-            <div className="bg-[#0b162b] border border-white/10 p-4 rounded-3xl shadow-xl space-y-3">
-              <h4 className="text-xs font-bold text-slate-300 flex items-center justify-between">
-                <span>انقر على أي مقعد شاغر لحجزه مباشرة:</span>
-                <span className="text-[10px] text-cyan-300 font-normal">أو استخدم الخريطة لاختيار الموقع بصرياً</span>
-              </h4>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 max-h-96 overflow-y-auto pr-1">
-                {availableSeatsList.map(s => (
-                  <button
-                    key={s.id}
-                    onClick={() => setSelectedSeatForBooking(s)}
-                    className="p-3 rounded-2xl bg-white/5 hover:bg-cyan-500/20 border border-white/10 hover:border-cyan-400/50 transition-all text-right group flex flex-col justify-between h-20 shadow-sm active:scale-95"
-                  >
-                    <div className="flex items-center justify-between w-full">
-                      <span className="text-xs font-black text-cyan-300 group-hover:text-cyan-200">
-                        {s.row}-{String(s.number).padStart(2,'0')}
-                      </span>
-                      {s.isVip ? (
-                        <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded font-bold">VIP</span>
-                      ) : (
-                        <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded font-bold">متاح</span>
-                      )}
-                    </div>
-                    <div className="text-[10px] text-slate-400">
-                      {s.level === 'B' ? 'البلكونة' : 'الأرضي'} • {s.sector || 'الوسط'}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* TAB 3: GUEST LOOKUP & MANUAL CHECK-IN */}
-        {/* ========================================================================= */}
-        {activeTab === 'lookup' && (
-          <div className="space-y-4 animate-fade-in">
-            
-            {/* Search Input & Filter Tabs */}
-            <div className="bg-[#0b162b] border border-white/10 p-4 rounded-3xl shadow-xl space-y-3">
-              <div className="flex items-center justify-between gap-2">
+            {/* Top Toolbar: Search + Filters + New Booking */}
+            <div className="bg-[#0b162b] border border-white/10 p-4 sm:p-5 rounded-3xl shadow-xl space-y-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 <div className="relative flex-1">
                   <input
                     type="text"
-                    placeholder="ابحث باسم الضيف، رقم الجوال، أو رقم المقعد..."
+                    placeholder="ابحث باسم الضيف، رقم الجوال، المنصب، أو رقم المقعد..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full bg-white/5 border border-white/15 focus:border-cyan-400 focus:bg-white/10 rounded-2xl px-4 py-3 text-xs text-white placeholder-slate-400 outline-none transition-all pr-10"
@@ -608,75 +579,72 @@ export default function StaffPortal() {
                 </div>
 
                 <button
-                  onClick={() => setActiveTab('booking')}
-                  className="px-3.5 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all shadow-md active:scale-95 flex items-center gap-1.5 shrink-0"
+                  onClick={() => {
+                    const firstAvail = seats.find(s => s.status === 'available');
+                    if (firstAvail) setSelectedSeatForBooking(firstAvail);
+                    else alert('لا توجد مقاعد شاغرة متاحة');
+                  }}
+                  className="px-4 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5 shrink-0"
                 >
                   <PlusCircle className="w-4 h-4" />
-                  <span className="hidden sm:inline">حجز مقعد جديد</span>
+                  <span>+ حجز مقعد جديد</span>
                 </button>
               </div>
 
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <button
-                  onClick={() => setLookupFilter('all')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                    lookupFilter === 'all' ? 'bg-cyan-500 text-slate-950' : 'bg-white/5 text-slate-300'
-                  }`}
+              {/* Filters */}
+              <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-white/10">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="bg-white/5 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-slate-200 outline-none focus:border-cyan-400"
                 >
-                  الكل ({bookedSeats.length})
-                </button>
-                <button
-                  onClick={() => setLookupFilter('waiting')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                    lookupFilter === 'waiting' ? 'bg-amber-500 text-slate-950' : 'bg-white/5 text-slate-300'
-                  }`}
+                  <option value="all" className="bg-[#0b162b]">جميع الحالات ({bookedSeats.length})</option>
+                  <option value="reserved" className="bg-[#0b162b]">بانتظار الحضور ({waitingSeats.length})</option>
+                  <option value="checked_in" className="bg-[#0b162b]">تم التحضير ({checkedInSeats.length})</option>
+                  <option value="vip" className="bg-[#0b162b]">VIP ({bookedSeats.filter(s => s.isVip).length})</option>
+                </select>
+
+                <select
+                  value={levelFilter}
+                  onChange={(e) => setLevelFilter(e.target.value)}
+                  className="bg-white/5 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-slate-200 outline-none focus:border-cyan-400"
                 >
-                  لم يحضر ({waitingSeats.length})
-                </button>
-                <button
-                  onClick={() => setLookupFilter('checked_in')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                    lookupFilter === 'checked_in' ? 'bg-emerald-500 text-slate-950' : 'bg-white/5 text-slate-300'
-                  }`}
-                >
-                  حاضر ({checkedInSeats.length})
-                </button>
-                <button
-                  onClick={() => setLookupFilter('vip')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                    lookupFilter === 'vip' ? 'bg-purple-500 text-white' : 'bg-white/5 text-slate-300'
-                  }`}
-                >
-                  VIP ({bookedSeats.filter(s => s.isVip).length})
-                </button>
+                  <option value="all" className="bg-[#0b162b]">جميع الأدوار</option>
+                  <option value="G" className="bg-[#0b162b]">الدور الأرضي</option>
+                  <option value="B" className="bg-[#0b162b]">البلكونة</option>
+                </select>
+
+                <span className="text-[11px] text-slate-400 mr-auto">
+                  معروض: <strong className="text-cyan-300 font-bold">{filteredBookings.length}</strong> ضيف
+                </span>
               </div>
             </div>
 
-            {/* Results List */}
-            <div className="space-y-2">
-              {filteredLookup.length === 0 ? (
-                <div className="bg-[#0b162b] border border-white/10 p-8 rounded-3xl text-center text-slate-400 text-xs">
-                  لا توجد نتائج مطابقة للبحث
+            {/* Bookings List Cards */}
+            <div className="space-y-2.5">
+              {filteredBookings.length === 0 ? (
+                <div className="bg-[#0b162b] border border-white/10 p-12 rounded-3xl text-center text-slate-400 text-xs">
+                  لا توجد حجوزات مطابقة للبحث
                 </div>
               ) : (
-                filteredLookup.map(seat => {
+                filteredBookings.map(seat => {
                   const isCheckedIn = seat.status === 'checked_in';
                   return (
                     <div 
                       key={seat.id}
-                      className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
+                      className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                         isCheckedIn 
                           ? 'bg-emerald-950/20 border-emerald-500/30' 
                           : 'bg-[#0b162b] border-white/10 hover:border-cyan-400/40'
                       }`}
                     >
                       <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-white text-xs sm:text-sm">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-white text-sm">
                             {seat.guest?.name}
                           </span>
                           {seat.isVip && (
-                            <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded font-bold">
+                            <span className="text-[9px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full font-bold border border-amber-500/30">
                               VIP
                             </span>
                           )}
@@ -686,12 +654,12 @@ export default function StaffPortal() {
                             </span>
                           ) : (
                             <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full font-bold">
-                              بانتظار الحضور
+                              مؤكد الحجز
                             </span>
                           )}
                         </div>
 
-                        <div className="text-[11px] text-cyan-300 flex items-center gap-2 flex-wrap">
+                        <div className="text-xs text-cyan-300 flex items-center gap-2 flex-wrap font-mono">
                           <span>الصف ({seat.row}) • مقعد ({seat.number})</span>
                           <span>•</span>
                           <span>{seat.level === 'B' ? 'البلكونة' : 'الدور الأرضي'}</span>
@@ -699,37 +667,58 @@ export default function StaffPortal() {
                           <span>قطاع {seat.sector || 'الوسط'}</span>
                         </div>
 
-                        {seat.guest?.phone && (
-                          <div className="text-[10px] text-slate-400 font-mono">
-                            📱 {seat.guest.phone} {seat.guest.jobTitle ? `• ${seat.guest.jobTitle}` : ''}
+                        {seat.guest?.jobTitle && (
+                          <div className="text-[11px] text-slate-400">
+                            💼 {seat.guest.jobTitle} {seat.guest.category ? `• ${seat.guest.category}` : ''}
                           </div>
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
-                        {/* Guide button */}
+                      {/* Action buttons for each booking */}
+                      <div className="flex items-center gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/10 shrink-0">
+                        {/* Send WhatsApp */}
                         <button
-                          onClick={() => setGuidedSeat(seat)}
-                          title="عرض موقع المقعد"
-                          className="p-2 rounded-xl bg-cyan-500/15 text-cyan-300 hover:bg-cyan-500/25 border border-cyan-400/30 transition-all text-xs"
+                          onClick={() => handleSendWhatsApp(seat)}
+                          title="إرسال التذكرة عبر الواتساب"
+                          className="p-2 rounded-xl bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 border border-emerald-400/30 transition-all text-xs flex items-center gap-1"
                         >
-                          <Compass className="w-4 h-4" />
+                          <Send className="w-3.5 h-3.5" />
+                          <span className="text-[11px] font-bold">واتساب</span>
                         </button>
 
-                        {/* Check in button */}
+                        {/* View Ticket */}
+                        <button
+                          onClick={() => setSelectedSeatForCard(seat)}
+                          title="عرض وطباعة التذكرة"
+                          className="p-2 rounded-xl bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 border border-cyan-400/30 transition-all text-xs flex items-center gap-1"
+                        >
+                          <Ticket className="w-3.5 h-3.5" />
+                          <span className="text-[11px] font-bold">التذكرة</span>
+                        </button>
+
+                        {/* Check in Toggle */}
                         {!isCheckedIn ? (
                           <button
-                            onClick={() => handleManualCheckIn(seat)}
+                            onClick={() => handleProcessScan(seat.guest?.token || seat.id)}
                             className="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition-all shadow-md active:scale-95 flex items-center gap-1"
                           >
                             <Check className="w-3.5 h-3.5" />
                             <span>تحضير</span>
                           </button>
-                        ) : (
-                          <span className="text-[10px] text-emerald-400 font-mono font-bold bg-emerald-500/10 px-2.5 py-1.5 rounded-xl">
-                            {seat.guest?.checkedInAt ? new Date(seat.guest.checkedInAt).toLocaleTimeString('ar-SA', {hour: '2-digit', minute:'2-digit'}) : 'حاضر'}
-                          </span>
-                        )}
+                        ) : null}
+
+                        {/* Cancel Booking */}
+                        <button
+                          onClick={() => {
+                            if (confirm(`إلغاء حجز الضيف ${seat.guest?.name}؟`)) {
+                              handleCancelBooking(seat.id);
+                            }
+                          }}
+                          title="إلغاء الحجز"
+                          className="p-2 rounded-xl bg-rose-500/15 text-rose-300 hover:bg-rose-500/25 border border-rose-400/30 transition-all"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
                   );
@@ -741,7 +730,185 @@ export default function StaffPortal() {
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 4: THEATER MAP & SEAT GUIDE & INTERACTIVE BOOKING */}
+        {/* TAB 3: PRINT CENTER */}
+        {/* ========================================================================= */}
+        {activeTab === 'print' && (
+          <div className="space-y-4 animate-fade-in">
+            <div className="bg-[#0b162b] border border-white/10 p-5 sm:p-6 rounded-3xl shadow-xl space-y-4">
+              <div className="flex items-center gap-3 border-b border-white/10 pb-4">
+                <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 flex items-center justify-center">
+                  <Printer className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white">مركز طباعة التذاكر والبطاقات والملصقات</h3>
+                  <p className="text-xs text-slate-400">طباعة نماذج الحضور المعتمدة بجودة عالية جاهزة لورق A4 والملصقات</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2">
+                
+                {/* Print Option 1: All Official Tickets */}
+                <div className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-cyan-400/50 transition-all flex flex-col justify-between space-y-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-cyan-300 font-bold text-sm">
+                      <Ticket className="w-5 h-5 text-cyan-400" />
+                      <span>طباعة تذاكر الحضور الرسمية (A4)</span>
+                    </div>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      توليد وطباعة تذاكر الضيوف بالنموذج الرسمي مع شعار الوزارة والباركود وموقع المقعد.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowAllTicketsPrintModal(true)}
+                    className="w-full py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs transition-all shadow-md flex items-center justify-center gap-2 active:scale-95"
+                  >
+                    <Printer className="w-4 h-4" />
+                    <span>فتح نافذة طباعة التذاكر ({bookedSeats.length})</span>
+                  </button>
+                </div>
+
+                {/* Print Option 2: Batch Seat Cards */}
+                <div className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-purple-400/50 transition-all flex flex-col justify-between space-y-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-purple-300 font-bold text-sm">
+                      <Armchair className="w-5 h-5 text-purple-400" />
+                      <span>طباعة بطاقات المقاعد المجمعة</span>
+                    </div>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      بطاقات توضع على كراسي المسرح بأسماء الضيوف وأرقام الصفوف والمقاعد.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowBatchSeatCardsModal(true)}
+                    className="w-full py-2.5 rounded-xl bg-purple-500 hover:bg-purple-400 text-white font-black text-xs transition-all shadow-md flex items-center justify-center gap-2 active:scale-95"
+                  >
+                    <Printer className="w-4 h-4" />
+                    <span>طباعة بطاقات الكراسي</span>
+                  </button>
+                </div>
+
+                {/* Print Option 3: Seat Stickers QR */}
+                <div className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-amber-400/50 transition-all flex flex-col justify-between space-y-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-amber-300 font-bold text-sm">
+                      <QrCode className="w-5 h-5 text-amber-400" />
+                      <span>طباعة ملصقات المقاعد (QR Stickers)</span>
+                    </div>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      لاصقات صغيرة تحتوي على رقم المقعد ورمز QR تلصق على ظهر الكرسي.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowPrintLabelsModal(true)}
+                    className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all shadow-md flex items-center justify-center gap-2 active:scale-95"
+                  >
+                    <Printer className="w-4 h-4" />
+                    <span>طباعة ملصقات QR</span>
+                  </button>
+                </div>
+
+                {/* Print Option 4: Excel Roster Export */}
+                <div className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-emerald-400/50 transition-all flex flex-col justify-between space-y-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-emerald-300 font-bold text-sm">
+                      <FileSpreadsheet className="w-5 h-5 text-emerald-400" />
+                      <span>تصدير كشف Excel كامل</span>
+                    </div>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      تصدير كشف شامل بجميع الضيوف والمقاعد وأوقات التحضير لملف Excel.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => exportSeatsToExcel(seats, eventDetails)}
+                    className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition-all shadow-md flex items-center justify-center gap-2 active:scale-95"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>تنزيل ملف Excel (.xlsx)</span>
+                  </button>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB 4: SEND & WHATSAPP HUB */}
+        {/* ========================================================================= */}
+        {activeTab === 'share' && (
+          <div className="space-y-4 animate-fade-in">
+            <div className="bg-[#0b162b] border border-white/10 p-5 rounded-3xl shadow-xl space-y-4">
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 flex items-center justify-center">
+                    <Send className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-white">إرسال الدعوات والتذاكر عبر الواتساب</h3>
+                    <p className="text-xs text-slate-400">إرسال التذاكر مباشرة لجوالات الضيوف بنص رسمي منسق ورابط الباركود</p>
+                  </div>
+                </div>
+                <span className="text-xs text-emerald-300 font-bold bg-emerald-500/10 px-3 py-1 rounded-full">
+                  {bookedSeats.length} مدعو
+                </span>
+              </div>
+
+              {/* Guest Roster for WhatsApp sending */}
+              <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
+                {bookedSeats.map(seat => (
+                  <div 
+                    key={seat.id}
+                    className="p-3.5 rounded-2xl bg-white/5 border border-white/10 hover:border-emerald-400/40 transition-all flex items-center justify-between gap-3"
+                  >
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-white text-xs sm:text-sm">{seat.guest?.name}</span>
+                        {seat.isVip && (
+                          <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded font-bold">VIP</span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-cyan-300 font-mono">
+                        الصف ({seat.row}) • مقعد ({seat.number}) {seat.guest?.phone ? `• 📱 ${seat.guest.phone}` : ''}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      {/* Copy message */}
+                      <button
+                        onClick={() => handleCopyInvitation(seat)}
+                        className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 text-xs font-bold transition-all flex items-center gap-1"
+                      >
+                        {copiedId === seat.id ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                            <span className="text-emerald-300">تم النسخ!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>نسخ الدعوة</span>
+                          </>
+                        )}
+                      </button>
+
+                      {/* WhatsApp Direct Send */}
+                      <button
+                        onClick={() => handleSendWhatsApp(seat)}
+                        className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition-all shadow-md active:scale-95 flex items-center gap-1.5"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        <span>إرسال واتساب</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB 5: THEATER MAP */}
         {/* ========================================================================= */}
         {activeTab === 'map' && (
           <div className="space-y-4 animate-fade-in">
@@ -774,55 +941,6 @@ export default function StaffPortal() {
           </div>
         )}
 
-        {/* ========================================================================= */}
-        {/* TAB 5: LIVE CHECK-IN LOG */}
-        {/* ========================================================================= */}
-        {activeTab === 'log' && (
-          <div className="bg-[#0b162b] border border-white/10 p-5 rounded-3xl shadow-xl space-y-4 animate-fade-in">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <h3 className="text-xs sm:text-sm font-black text-white flex items-center gap-2">
-                <Clock className="w-4 h-4 text-emerald-400" />
-                <span>سجل عمليات الدخول عند الباب (Live Gate Log)</span>
-              </h3>
-              <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-full font-bold">
-                {recentCheckIns.length} عمليات
-              </span>
-            </div>
-
-            {recentCheckIns.length === 0 ? (
-              <div className="py-12 text-center text-slate-400 text-xs space-y-2">
-                <UserCheck className="w-10 h-10 text-slate-600 mx-auto" />
-                <p>لم يتم تسجيل حضور ضيوف في هذه الجلسة بعد</p>
-                <p className="text-[10px] text-slate-400">ستظهر هنا تفاصيل كل ضيف يدخل القاعة فوراً</p>
-              </div>
-            ) : (
-              <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
-                {recentCheckIns.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="p-3 rounded-2xl bg-white/5 border border-emerald-500/20 flex items-center justify-between text-xs"
-                  >
-                    <div className="space-y-0.5">
-                      <div className="font-bold text-white flex items-center gap-1.5">
-                        <span>{item.name}</span>
-                        {item.isVip && (
-                          <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded font-bold">VIP</span>
-                        )}
-                      </div>
-                      <div className="text-[10px] text-cyan-300">
-                        الصف ({item.row}) • مقعد ({item.number}) • {item.level} • قطاع {item.sector}
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-mono text-emerald-300 font-bold bg-emerald-500/10 px-2.5 py-1 rounded-xl">
-                      {item.time}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
       </main>
 
       {/* Booking Form Modal for Staff */}
@@ -832,27 +950,87 @@ export default function StaffPortal() {
           onClose={() => setSelectedSeatForBooking(null)}
           onConfirmBooking={handleConfirmBooking}
           onCancelBooking={(seatId) => {
-            cancelBooking(seatId);
-            refreshData();
-            setSelectedSeatForBooking(null);
+            handleCancelBooking(seatId);
           }}
           onDeleteSeat={() => {}}
           onOpenCard={(seat) => {
             setSelectedSeatForBooking(null);
-            setBookedTicketSeat(seat);
+            setSelectedSeatForCard(seat);
           }}
-          onOpenInvitation={() => {}}
-          onOpenSeatCard={() => {}}
+          onOpenInvitation={(seat) => {
+            setSelectedSeatForBooking(null);
+            setSelectedSeatForInvitation(seat);
+          }}
+          onOpenSeatCard={(seat) => {
+            setSelectedSeatForBooking(null);
+            setSelectedSeatForSeatCard(seat);
+          }}
         />
       )}
 
-      {/* Ticket Modal after instant booking */}
-      {bookedTicketSeat && (
+      {/* Ticket Modal */}
+      {selectedSeatForCard && (
         <InvitationCard
-          seat={bookedTicketSeat}
+          seat={selectedSeatForCard}
           eventDetails={eventDetails}
-          onClose={() => setBookedTicketSeat(null)}
+          onClose={() => setSelectedSeatForCard(null)}
           onPreviewGuestView={() => {}}
+        />
+      )}
+
+      {/* Luxury Electronic Invitation Modal */}
+      {selectedSeatForInvitation && (
+        <ElectronicInvitationModal
+          seat={selectedSeatForInvitation}
+          eventDetails={eventDetails}
+          onClose={() => setSelectedSeatForInvitation(null)}
+          onOpenSeatCard={(seat) => {
+            setSelectedSeatForInvitation(null);
+            setSelectedSeatForSeatCard(seat);
+          }}
+          onOpenTicketCard={(seat) => {
+            setSelectedSeatForInvitation(null);
+            setSelectedSeatForCard(seat);
+          }}
+          onPreviewGuestView={() => {}}
+        />
+      )}
+
+      {/* Individual Seat Card Modal */}
+      {selectedSeatForSeatCard && (
+        <SeatCardModal
+          seat={selectedSeatForSeatCard}
+          eventDetails={eventDetails}
+          onClose={() => setSelectedSeatForSeatCard(null)}
+          onOpenInvitation={() => {}}
+          onOpenBatchPrint={() => setShowBatchSeatCardsModal(true)}
+        />
+      )}
+
+      {/* Print All Official Tickets Modal */}
+      {showAllTicketsPrintModal && (
+        <AllTicketsPrintModal
+          seats={seats}
+          eventDetails={eventDetails}
+          onClose={() => setShowAllTicketsPrintModal(false)}
+        />
+      )}
+
+      {/* Batch Seat Cards Print Modal */}
+      {showBatchSeatCardsModal && (
+        <BatchSeatCardsPrintModal
+          seats={seats}
+          eventDetails={eventDetails}
+          onClose={() => setShowBatchSeatCardsModal(false)}
+        />
+      )}
+
+      {/* Seat Labels Print Modal */}
+      {showPrintLabelsModal && (
+        <SeatLabelsPrintModal
+          seats={seats}
+          eventDetails={eventDetails}
+          onClose={() => setShowPrintLabelsModal(false)}
         />
       )}
 
@@ -921,7 +1099,7 @@ export default function StaffPortal() {
               {guidedSeat.status !== 'checked_in' && (
                 <button
                   onClick={() => {
-                    handleManualCheckIn(guidedSeat);
+                    handleProcessScan(guidedSeat.guest?.token || guidedSeat.id);
                     setGuidedSeat(null);
                   }}
                   className="flex-1 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5"
