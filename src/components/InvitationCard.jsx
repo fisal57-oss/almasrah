@@ -23,7 +23,7 @@ import {
   Briefcase
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import html2canvas from 'html2canvas';
+import { exportElementToPng } from '../utils/exportImage';
 import { formatArabicSeatCode } from '../utils/storage';
 import ModernAttendanceCard from './ModernAttendanceCard';
 
@@ -126,35 +126,22 @@ export default function InvitationCard({
   const seatDisplay = `${seat.row}${parseInt(seat.number, 10)}`;
   const barcodeNumber = `20261007${seat.row}${String(seat.number).padStart(3, '0')}`;
 
-  // Download high-resolution PNG
+  // Download high-resolution PNG with flawless Arabic font rendering
   const handleDownloadPNG = async () => {
     const targetElement = cardOnlyRef.current;
     if (!targetElement) return;
     setIsDownloading(true);
     try {
-      const canvas = await html2canvas(targetElement, {
-        scale: 3,
-        useCORS: true,
-        backgroundColor: null,
-        logging: false
-      });
-      
-      canvas.toBlob((blob) => {
-        if (!blob) {
-          setIsDownloading(false);
-          return;
+      await exportElementToPng(
+        targetElement, 
+        `تذكرة_حضور_${seat.guest.name}_مقعد_${seatDisplay}.png`,
+        {
+          pixelRatio: 3,
+          backgroundColor: null,
+          onSuccess: () => setIsDownloading(false),
+          onError: () => setIsDownloading(false)
         }
-        const blobUrl = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.download = `تذكرة_حضور_${seat.guest.name}_مقعد_${seatDisplay}.png`;
-        link.href = blobUrl;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
-        setIsDownloading(false);
-      }, 'image/png');
-
+      );
     } catch (err) {
       console.error('Error rendering PNG ticket', err);
       alert('حدث خطأ أثناء تصدير الصورة، يرجى المحاولة مرة أخرى.');

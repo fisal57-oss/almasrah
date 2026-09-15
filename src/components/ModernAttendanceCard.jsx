@@ -127,8 +127,8 @@ export function MinistryOfEducationLogo({ className = "h-11", color = "#00a887",
         <circle cx="60" cy="60" r="2.8" />
       </svg>
       <div className="flex flex-col text-right leading-none">
-        <span className="font-extrabold text-xs sm:text-sm tracking-wider font-sans" style={{ color: textColor }}>
-          وزارة الـتـعـلـيـم
+        <span className="font-extrabold text-xs sm:text-sm tracking-normal font-sans" style={{ color: textColor }}>
+          وزارة التعليم
         </span>
         <span className="text-[7.5px] sm:text-[8.5px] font-sans font-semibold tracking-normal mt-0.5" style={{ color: subColor }}>
           Ministry of Education
@@ -595,7 +595,7 @@ export default function ModernAttendanceCard({
         <div className="relative z-10 px-4 pt-3.5 pb-1 flex items-start justify-between">
           {/* Top Right (first in RTL): Vertical Motto */}
           <div className="flex flex-col items-center select-none text-center">
-            <div className="flex flex-col text-[10px] sm:text-[11px] font-black text-[#162a5c] leading-[1.1] tracking-tight">
+            <div className="flex flex-col text-[10px] sm:text-[11px] font-black text-[#162a5c] leading-[1.1] tracking-normal">
               <span>من</span>
               <span>أجل</span>
               <span>تعليم</span>
@@ -630,8 +630,8 @@ export default function ModernAttendanceCard({
           {/* Title with Laurel Leaf Flourishes */}
           <div className="flex items-center justify-center gap-1.5 sm:gap-2">
             <LaurelFlourish className="w-6 h-6 sm:w-7 sm:h-7 text-[#162a5c]" />
-            <h1 className="text-2xl sm:text-[26px] font-black tracking-tight text-[#162a5c] leading-none">
-              دَعـْوَةٌ خَـاصَّـة
+            <h1 className="text-2xl sm:text-[26px] font-black tracking-normal text-[#162a5c] leading-none">
+              دَعْوَةٌ خَاصَّة
             </h1>
             <LaurelFlourish className="w-6 h-6 sm:w-7 sm:h-7 text-[#162a5c]" flip />
           </div>
@@ -642,14 +642,14 @@ export default function ModernAttendanceCard({
 
           {/* Formal Invitation Statement */}
           <div className="mt-1 space-y-0.5 leading-snug">
-            <div className="text-[11px] sm:text-[12px] font-black text-[#162a5c]">
+            <div className="text-[11px] sm:text-[12px] font-black text-[#162a5c] tracking-normal">
               تتشرف الإدارة العامة للتعليم بمنطقة عسير
             </div>
-            <div className="text-[10.5px] sm:text-[11px] font-bold text-[#162a5c]">
+            <div className="text-[10.5px] sm:text-[11px] font-bold text-[#162a5c] tracking-normal">
               بدعوتكم لحضور الفعالية
             </div>
-            <div className="text-[8.5px] sm:text-[9px] font-bold text-slate-600 font-sans tracking-tight">
-              {activeEvent.title ? activeEvent.title : "Aseer Education General Directorate Theater"}
+            <div className="text-[9.5px] sm:text-[10px] font-bold text-slate-700 tracking-normal" dir="rtl">
+              {activeEvent.title ? activeEvent.title : "مسرح الإدارة العامة للتعليم بمنطقة عسير"}
             </div>
           </div>
         </div>
@@ -709,20 +709,20 @@ export default function ModernAttendanceCard({
             </div>
 
             {/* Col 3: المدخل */}
-            <div className="flex flex-col items-center justify-center px-0.5">
+            <div className="flex flex-col items-center justify-center px-0.5 overflow-visible">
               <DoorClosed className="w-3.5 h-3.5 text-blue-600 mb-0.5" />
               <span className="text-[8px] font-bold text-slate-700 leading-none">المدخل</span>
-              <span className="text-[9px] font-black text-[#162a5c] leading-tight mt-0.5 truncate max-w-full">
+              <span className="text-[8.5px] font-black text-[#162a5c] leading-normal mt-0.5 truncate max-w-full tracking-normal">
                 {eventEntrance}
               </span>
               <span className="text-[6px] text-slate-500 font-sans leading-none mt-0.5">Main Entrance</span>
             </div>
 
             {/* Col 4: الموقع */}
-            <div className="flex flex-col items-center justify-center px-0.5">
+            <div className="flex flex-col items-center justify-center px-0.5 overflow-visible">
               <MapPin className="w-3.5 h-3.5 text-blue-600 mb-0.5" />
               <span className="text-[8px] font-bold text-slate-700 leading-none">الموقع</span>
-              <span className="text-[8.5px] font-black text-[#162a5c] leading-tight mt-0.5 line-clamp-1">
+              <span className="text-[8.5px] font-black text-[#162a5c] leading-normal mt-0.5 line-clamp-1 tracking-normal">
                 {eventVenue.replace('مسرح ', '').replace('الإدارة العامة للتعليم بمنطقة عسير', 'مسرح التعليم')}
               </span>
               <span className="text-[6px] text-slate-500 font-sans leading-none mt-0.5">Theater</span>
@@ -754,12 +754,12 @@ export default function ModernAttendanceCard({
         {/* COURTESY STATEMENT & WE ARE HONORED */}
         {/* ========================================================================= */}
         <div className="relative z-10 px-3 text-center my-1 space-y-0.5">
-          <p className="text-[9.5px] sm:text-[10px] text-slate-800 leading-snug font-medium max-w-[310px] mx-auto">
+          <p className="text-[9.5px] sm:text-[10px] text-slate-800 leading-snug font-medium max-w-[310px] mx-auto tracking-normal">
             نأمل أن تشرفونا بحضوركم ومشاركتكم في هذه الفعالية<br />
             التي تأتي ضمن جهودنا في دعم مسيرة التعليم وصناعة مستقبل أكثر إشراقاً.
           </p>
           <div className="pt-0.5">
-            <div className="text-base sm:text-lg font-black text-[#162a5c] tracking-tight leading-tight">
+            <div className="text-base sm:text-lg font-black text-[#162a5c] tracking-normal leading-tight">
               وجودكم يسعدنا
             </div>
             <div className="text-[7.5px] font-black text-[#162a5c] tracking-[0.2em] uppercase font-sans mt-0.5">

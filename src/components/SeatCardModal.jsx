@@ -17,8 +17,7 @@ import {
   Ticket,
   User
 } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
-import html2canvas from 'html2canvas';
+import { exportElementToPng } from '../utils/exportImage';
 import ModernAttendanceCard from './ModernAttendanceCard';
 
 function MinistryOfEducationLogo({ className = "h-10", color = "#00a887", textColor = "#00a887", subColor = "#4a6b63" }) {
@@ -114,31 +113,20 @@ export default function SeatCardModal({
     if (!cardRef.current) return;
     setIsDownloading(true);
     try {
-      const canvas = await html2canvas(cardRef.current, {
-        scale: 3,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        logging: false
-      });
+      const fileName = orientation === 'landscape' 
+        ? `بطاقة_مقعد_A4_بالعرض_${seatDisplay}_${seat.guest?.name || 'متاح'}.png`
+        : `بطاقة_مقعد_${seatDisplay}_${seat.guest?.name || 'متاح'}.png`;
 
-      canvas.toBlob((blob) => {
-        if (!blob) {
-          setIsDownloading(false);
-          return;
+      await exportElementToPng(
+        cardRef.current,
+        fileName,
+        {
+          pixelRatio: 3,
+          backgroundColor: '#ffffff',
+          onSuccess: () => setIsDownloading(false),
+          onError: () => setIsDownloading(false)
         }
-        const blobUrl = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.download = orientation === 'landscape' 
-          ? `بطاقة_مقعد_A4_بالعرض_${seatDisplay}_${seat.guest?.name || 'متاح'}.png`
-          : `بطاقة_مقعد_${seatDisplay}_${seat.guest?.name || 'متاح'}.png`;
-        link.href = blobUrl;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
-        setIsDownloading(false);
-      }, 'image/png');
-
+      );
     } catch (err) {
       console.error('Error rendering seat card PNG', err);
       alert('حدث خطأ أثناء تصدير بطاقة المقعد، يرجى المحاولة مرة أخرى.');
