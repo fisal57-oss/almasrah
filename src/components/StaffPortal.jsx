@@ -35,7 +35,8 @@ import {
   FileSpreadsheet,
   Mail,
   Trash2,
-  Eye
+  Eye,
+  Camera
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { 
@@ -58,11 +59,13 @@ import BatchSeatCardsPrintModal from './BatchSeatCardsPrintModal';
 import SeatLabelsPrintModal from './SeatLabelsPrintModal';
 import ElectronicInvitationModal from './ElectronicInvitationModal';
 import SeatCardModal from './SeatCardModal';
+import MobileCameraScannerModal from './MobileCameraScannerModal';
 
 export default function StaffPortal() {
   const [seats, setSeats] = useState([]);
   const [eventDetails, setEventDetails] = useState(getEventDetails());
   const [activeTab, setActiveTab] = useState('checkin'); // 'checkin', 'bookings', 'print', 'share', 'map'
+  const [showCameraScanner, setShowCameraScanner] = useState(false);
   
   // Scanner state
   const [inputCode, setInputCode] = useState('');
@@ -397,6 +400,28 @@ export default function StaffPortal() {
         {activeTab === 'checkin' && (
           <div className="space-y-4 animate-fade-in">
             
+            {/* Mobile Camera Quick Launcher Button */}
+            <div className="bg-gradient-to-r from-cyan-950/60 via-[#0b1b36] to-blue-950/60 border border-cyan-400/40 p-4 sm:p-5 rounded-3xl shadow-xl flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="w-11 h-11 rounded-2xl bg-cyan-500/20 border border-cyan-400/50 flex items-center justify-center text-cyan-300 shrink-0">
+                  <Camera className="w-6 h-6 animate-pulse text-cyan-300" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-black text-white">كاميرا مسح التذاكر بالجوال</h4>
+                  <p className="text-[11px] text-cyan-300 font-medium">امسح باركود وتذاكر الـ QR فوراً بكاميرا هاتفك الذكي</p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowCameraScanner(true)}
+                className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 font-black text-xs rounded-2xl transition-all shadow-lg shadow-cyan-500/30 active:scale-95 flex items-center justify-center gap-2 shrink-0"
+              >
+                <Camera className="w-4 h-4" />
+                <span>فتح كاميرا الجوال للمسح</span>
+              </button>
+            </div>
+
             {/* Barcode Scanner Box */}
             <div className="bg-[#0b162b] border border-cyan-500/30 p-5 sm:p-6 rounded-3xl shadow-xl space-y-4">
               <form onSubmit={handleScannerSubmit} className="space-y-3">
@@ -1112,6 +1137,78 @@ export default function StaffPortal() {
           </div>
         </div>
       )}
+
+      {/* Mobile Camera Scanner Modal */}
+      <MobileCameraScannerModal
+        isOpen={showCameraScanner}
+        onClose={() => setShowCameraScanner(false)}
+        onScanSuccess={(code) => {
+          handleProcessScan(code);
+        }}
+      />
+
+      {/* Fixed Bottom Navigation Bar for Mobile Web App */}
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#060D1A]/95 backdrop-blur-xl border-t border-cyan-500/25 px-2 py-1.5 flex items-center justify-around shadow-[0_-5px_25px_rgba(0,0,0,0.6)]">
+        <button
+          onClick={() => setActiveTab('checkin')}
+          className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl transition-all ${
+            activeTab === 'checkin' ? 'text-cyan-300 font-bold scale-105' : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <div className={`p-1.5 rounded-xl transition-all ${activeTab === 'checkin' ? 'bg-cyan-500/20 border border-cyan-400/40 text-cyan-300' : ''}`}>
+            <QrCode className="w-4 h-4" />
+          </div>
+          <span className="text-[10px]">التحضير</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('bookings')}
+          className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl transition-all ${
+            activeTab === 'bookings' ? 'text-cyan-300 font-bold scale-105' : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <div className={`p-1.5 rounded-xl transition-all ${activeTab === 'bookings' ? 'bg-cyan-500/20 border border-cyan-400/40 text-cyan-300' : ''}`}>
+            <Users className="w-4 h-4" />
+          </div>
+          <span className="text-[10px]">الحجوزات</span>
+        </button>
+
+        {/* Center Prominent Camera Button */}
+        <button
+          onClick={() => setShowCameraScanner(true)}
+          className="flex flex-col items-center -mt-5 group"
+          title="كاميرا المسح المباشر"
+        >
+          <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-cyan-400 via-cyan-500 to-blue-600 border-2 border-[#060D1A] flex items-center justify-center text-slate-950 shadow-lg shadow-cyan-500/40 active:scale-95 group-hover:scale-105 transition-all">
+            <Camera className="w-6 h-6 animate-pulse" />
+          </div>
+          <span className="text-[9px] font-black text-cyan-300 mt-0.5">كاميرا QR</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('share')}
+          className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl transition-all ${
+            activeTab === 'share' ? 'text-cyan-300 font-bold scale-105' : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <div className={`p-1.5 rounded-xl transition-all ${activeTab === 'share' ? 'bg-cyan-500/20 border border-cyan-400/40 text-cyan-300' : ''}`}>
+            <Send className="w-4 h-4" />
+          </div>
+          <span className="text-[10px]">الإرسال</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('print')}
+          className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl transition-all ${
+            activeTab === 'print' ? 'text-cyan-300 font-bold scale-105' : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <div className={`p-1.5 rounded-xl transition-all ${activeTab === 'print' ? 'bg-cyan-500/20 border border-cyan-400/40 text-cyan-300' : ''}`}>
+            <Printer className="w-4 h-4" />
+          </div>
+          <span className="text-[10px]">الطباعة</span>
+        </button>
+      </nav>
 
     </div>
   );
