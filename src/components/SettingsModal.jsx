@@ -34,6 +34,39 @@ export default function SettingsModal({
   const [adminPassword, setAdminPassword] = useState(localStorage.getItem('theaterAdminPassword') || 'admin123');
   const [credentialsSaved, setCredentialsSaved] = useState(false);
 
+  // Logo upload from local device (converts to base64 DataURL for offline storage)
+  const handleLogoUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('يرجى اختيار ملف صورة صالح (PNG, JPG, SVG, WebP)');
+      return;
+    }
+
+    if (file.size > 3 * 1024 * 1024) {
+      alert('حجم الصورة كبير جداً، يفضل اختيار صورة أقل من 3 ميغابايت للحفاظ على كفاءة المتصفح');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (uploadEvent) => {
+      const base64Url = uploadEvent.target.result;
+      setEventData(prev => ({
+        ...prev,
+        logoUrl: base64Url
+      }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveLogo = () => {
+    setEventData(prev => ({
+      ...prev,
+      logoUrl: ''
+    }));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     saveEventDetails(eventData);
@@ -116,6 +149,79 @@ export default function SettingsModal({
               onChange={(e) => setEventData({ ...eventData, title: e.target.value })}
               className="w-full bg-white/5 border border-white/15 focus:border-cyan-400 focus:bg-white/10 rounded-xl px-4 py-2.5 text-xs text-white outline-none"
             />
+          </div>
+
+          {/* Logo Upload & Preview Section */}
+          <div className="bg-white/5 border border-cyan-500/20 rounded-2xl p-4 space-y-3 shadow-inner">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Image className="w-4 h-4 text-cyan-400" />
+                <label className="text-xs font-bold text-slate-200">شعار الفعالية / الجهة المنظمة</label>
+                <span className="text-[10px] text-cyan-300 bg-cyan-500/10 border border-cyan-400/20 px-2 py-0.5 rounded-full">
+                  يظهر في التذاكر والدعوات وبطاقات المقاعد
+                </span>
+              </div>
+              {eventData.logoUrl && (
+                <button
+                  type="button"
+                  onClick={handleRemoveLogo}
+                  className="text-[11px] text-rose-400 hover:text-rose-300 font-bold flex items-center gap-1 transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>إزالة الشعار (استعادة الافتراضي)</span>
+                </button>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              {/* Preview Box */}
+              <div className="w-full sm:w-44 h-24 rounded-xl border border-white/15 bg-slate-900/80 flex items-center justify-center p-2 relative overflow-hidden shrink-0 shadow-md">
+                {eventData.logoUrl ? (
+                  <img
+                    src={eventData.logoUrl}
+                    alt="معاينة الشعار"
+                    className="max-h-full max-w-full object-contain"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-center p-2">
+                    <span className="text-[10px] text-cyan-400 font-bold block mb-0.5">الشعار الافتراضي</span>
+                    <span className="text-[9px] text-slate-400">وزارة التعليم</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Upload controls & URL input */}
+              <div className="flex-1 w-full space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="flex-1 min-w-[160px] cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoUpload}
+                      className="hidden"
+                    />
+                    <div className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-l from-cyan-500/20 to-blue-600/20 hover:from-cyan-500/30 hover:to-blue-600/30 border border-cyan-400/40 text-cyan-200 hover:text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-sm">
+                      <Upload className="w-4 h-4 text-cyan-400" />
+                      <span>اختيار ورفع صورة شعار من جهازك</span>
+                    </div>
+                  </label>
+                </div>
+
+                <div>
+                  <input
+                    type="text"
+                    placeholder="أو الصق رابط صورة الشعار مباشرة (https://...)..."
+                    value={eventData.logoUrl || ''}
+                    onChange={(e) => setEventData({ ...eventData, logoUrl: e.target.value })}
+                    className="w-full bg-white/5 border border-white/15 focus:border-cyan-400 rounded-xl px-3 py-2 text-[11px] text-white outline-none"
+                    dir="ltr"
+                  />
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  يدعم صيغ الصور (PNG شفافة، JPG، SVG، WebP). يتم حفظ الشعار تلقائياً ليظهر بدقة متناهية على جميع التذاكر.
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
