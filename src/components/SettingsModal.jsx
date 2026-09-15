@@ -1,0 +1,308 @@
+import React, { useState } from 'react';
+import { 
+  Settings, 
+  Calendar, 
+  Clock, 
+  MapPin, 
+  FileText, 
+  Save, 
+  RotateCcw, 
+  Database, 
+  Download, 
+  Upload, 
+  Check, 
+  Sparkles,
+  Image,
+  Trash2,
+  Lock,
+  KeyRound,
+  ShieldCheck
+} from 'lucide-react';
+import { getEventDetails, saveEventDetails } from '../utils/storage';
+
+export default function SettingsModal({ 
+  onEventUpdated, 
+  onResetAllSeats, 
+  onSeedDemoData,
+  onImportBackup 
+}) {
+  const [eventData, setEventData] = useState(getEventDetails());
+  const [isSaved, setIsSaved] = useState(false);
+  
+  // Admin Credentials settings
+  const [adminUsername, setAdminUsername] = useState(localStorage.getItem('theaterAdminUsername') || 'admin');
+  const [adminPassword, setAdminPassword] = useState(localStorage.getItem('theaterAdminPassword') || 'admin123');
+  const [credentialsSaved, setCredentialsSaved] = useState(false);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    saveEventDetails(eventData);
+    onEventUpdated(eventData);
+    setIsSaved(true);
+    setTimeout(() => setIsSaved(false), 3000);
+  };
+
+  const handleSaveCredentials = (e) => {
+    e.preventDefault();
+    if (!adminUsername.trim()) {
+      alert('يرجى إدخال اسم المستخدم');
+      return;
+    }
+    if (!adminPassword || adminPassword.length < 3) {
+      alert('يرجى إدخال كلمة مرور مكونة من 3 أحرف/أرقام على الأقل');
+      return;
+    }
+    localStorage.setItem('theaterAdminUsername', adminUsername.trim());
+    localStorage.setItem('theaterAdminPassword', adminPassword);
+    setCredentialsSaved(true);
+    setTimeout(() => setCredentialsSaved(false), 3000);
+  };
+
+  // Export database JSON
+  const handleExportJSON = () => {
+    const seats = localStorage.getItem('theater_seats_v1') || '[]';
+    const event = localStorage.getItem('theater_event_v1') || '{}';
+
+    const backup = {
+      timestamp: new Date().toISOString(),
+      event: JSON.parse(event),
+      seats: JSON.parse(seats)
+    };
+
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `نسخة_احتياطية_المسرح_${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+  };
+
+  // Import JSON backup
+  const handleImportJSON = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target.result);
+        if (data.seats && Array.isArray(data.seats)) {
+          onImportBackup(data.seats, data.event);
+          alert('تم استيراد النسخة الاحتياطية بنجاح!');
+        } else {
+          alert('ملف النسخة الاحتياطية غير صالح.');
+        }
+      } catch (err) {
+        alert('حدث خطأ أثناء قراءة ملف JSON');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  return (
+    <div className="w-full max-w-3xl mx-auto space-y-6" dir="rtl">
+      
+      {/* Event Info Form */}
+      <form onSubmit={handleSubmit} className="bg-[#0b162b] p-6 sm:p-8 rounded-3xl border border-cyan-500/30 space-y-6 shadow-2xl">
+        <div className="flex items-center justify-between pb-4 border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-cyan-500/15 text-cyan-300 border border-cyan-400/30 flex items-center justify-center">
+              <Settings className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-black text-white">إعدادات وبيانات الفعالية</h2>
+              <p className="text-xs text-slate-400">تعديل الترويسة والمعلومات الظاهرة على بطاقات الدعوة وصفحة الجوال</p>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-l from-cyan-500 to-blue-600 text-slate-950 font-black text-xs shadow-lg shadow-cyan-500/20 hover:scale-105 transition-all flex items-center gap-2"
+          >
+            {isSaved ? <Check className="w-4 h-4 text-slate-950" /> : <Save className="w-4 h-4 text-slate-950" />}
+            <span>{isSaved ? 'تم الحفظ!' : 'حفظ التعديلات'}</span>
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          
+          <div>
+            <label className="block text-xs font-bold text-slate-200 mb-1">اسم الفعالية / المناسبة</label>
+            <input
+              type="text"
+              value={eventData.title || ''}
+              onChange={(e) => setEventData({ ...eventData, title: e.target.value })}
+              className="w-full bg-white/5 border border-white/15 focus:border-cyan-400 focus:bg-white/10 rounded-xl px-4 py-2.5 text-xs text-white outline-none"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-200 mb-1">الجهة المنظمة / الترويسة</label>
+              <input
+                type="text"
+                value={eventData.organizer || ''}
+                onChange={(e) => setEventData({ ...eventData, organizer: e.target.value })}
+                className="w-full bg-white/5 border border-white/15 focus:border-cyan-400 focus:bg-white/10 rounded-xl px-4 py-2.5 text-xs text-white outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-200 mb-1">المكان / القاعة</label>
+              <input
+                type="text"
+                value={eventData.venue || ''}
+                onChange={(e) => setEventData({ ...eventData, venue: e.target.value })}
+                className="w-full bg-white/5 border border-white/15 focus:border-cyan-400 focus:bg-white/10 rounded-xl px-4 py-2.5 text-xs text-white outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-200 mb-1">التاريخ</label>
+              <input
+                type="text"
+                value={eventData.date || ''}
+                onChange={(e) => setEventData({ ...eventData, date: e.target.value })}
+                className="w-full bg-white/5 border border-white/15 focus:border-cyan-400 focus:bg-white/10 rounded-xl px-4 py-2.5 text-xs text-white outline-none font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-200 mb-1">الموعد والتوقيت</label>
+              <input
+                type="text"
+                value={eventData.time || ''}
+                onChange={(e) => setEventData({ ...eventData, time: e.target.value })}
+                className="w-full bg-white/5 border border-white/15 focus:border-cyan-400 focus:bg-white/10 rounded-xl px-4 py-2.5 text-xs text-white outline-none font-mono"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-200 mb-1">ملاحظات / تعليمات التذكرة</label>
+            <input
+              type="text"
+              value={eventData.notes || ''}
+              onChange={(e) => setEventData({ ...eventData, notes: e.target.value })}
+              className="w-full bg-white/5 border border-white/15 focus:border-cyan-400 focus:bg-white/10 rounded-xl px-4 py-2.5 text-xs text-white outline-none"
+            />
+          </div>
+
+        </div>
+      </form>
+
+      {/* Admin Security Credentials Settings */}
+      <form onSubmit={handleSaveCredentials} className="bg-[#0b162b] p-6 sm:p-8 rounded-3xl border border-amber-500/30 space-y-4 shadow-xl">
+        <div className="flex items-center justify-between pb-3 border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-300 border border-amber-400/30 flex items-center justify-center">
+              <KeyRound className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-white">بيانات تسجيل دخول الإدارة (Username & Password)</h3>
+              <p className="text-xs text-slate-400">تعديل اسم المستخدم وكلمة المرور الخاصة بقفل ودخول لوحة تحكم الإدارة</p>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all flex items-center gap-1.5"
+          >
+            {credentialsSaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+            <span>{credentialsSaved ? 'تم الحفظ!' : 'تحديث البيانات'}</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-300 mb-1">اسم المستخدم (Username)</label>
+            <input
+              type="text"
+              value={adminUsername}
+              onChange={(e) => setAdminUsername(e.target.value)}
+              className="w-full bg-white/5 border border-white/15 focus:border-amber-400 focus:bg-white/10 rounded-xl px-4 py-2.5 text-xs text-white outline-none"
+              placeholder="admin"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-300 mb-1">كلمة المرور (Password)</label>
+            <input
+              type="password"
+              value={adminPassword}
+              onChange={(e) => setAdminPassword(e.target.value)}
+              className="w-full bg-white/5 border border-white/15 focus:border-amber-400 focus:bg-white/10 rounded-xl px-4 py-2.5 text-xs text-white outline-none"
+              placeholder="admin123"
+            />
+          </div>
+        </div>
+      </form>
+
+      {/* Data Management & Backup */}
+      <div className="bg-[#0b162b] p-6 rounded-3xl border border-white/10 space-y-4 shadow-xl">
+        <div className="flex items-center gap-3 pb-3 border-b border-white/10">
+          <div className="w-10 h-10 rounded-xl bg-white/5 text-cyan-300 border border-white/10 flex items-center justify-center">
+            <Database className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-black text-white">إدارة بيانات المسرح والنسخ الاحتياطي</h3>
+            <p className="text-xs text-slate-400">تفريغ الحجوزات أو تصدير واستيراد نسخة احتياطية من قاعدة البيانات</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          
+          <button
+            onClick={onSeedDemoData}
+            className="p-3.5 rounded-2xl bg-white/5 hover:bg-white/10 text-amber-300 border border-white/10 text-xs font-bold transition-all text-right flex items-center justify-between"
+          >
+            <div>
+              <span className="block font-bold">توليد بيانات تجريبية (Demo Data)</span>
+              <span className="text-[10px] text-slate-400">حجز بعض الكراسي عشوائياً لمعاينة النظام</span>
+            </div>
+            <Sparkles className="w-4 h-4 shrink-0" />
+          </button>
+
+          <button
+            onClick={handleExportJSON}
+            className="p-3.5 rounded-2xl bg-white/5 hover:bg-white/10 text-white border border-white/10 text-xs font-bold transition-all text-right flex items-center justify-between"
+          >
+            <div>
+              <span className="block font-bold">تصدير نسخة احتياطية JSON</span>
+              <span className="text-[10px] text-slate-400">حفظ قاعدة البيانات لملف خارجي</span>
+            </div>
+            <Download className="w-4 h-4 shrink-0" />
+          </button>
+
+          <label className="p-3.5 rounded-2xl bg-white/5 hover:bg-white/10 text-white border border-white/10 text-xs font-bold transition-all text-right flex items-center justify-between cursor-pointer">
+            <div>
+              <span className="block font-bold">استيراد نسخة احتياطية</span>
+              <span className="text-[10px] text-slate-400">رفع ملف JSON سابق</span>
+            </div>
+            <Upload className="w-4 h-4 shrink-0" />
+            <input type="file" accept=".json" onChange={handleImportJSON} className="hidden" />
+          </label>
+
+          <button
+            onClick={() => {
+              if (confirm('تنبيه: هل أنت متأكد من إعادة تفريغ جميع الحجوزات وإرجاع المسرح كاملاً إلى متاح؟')) {
+                onResetAllSeats();
+              }
+            }}
+            className="p-3.5 rounded-2xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-200 border border-rose-400/30 text-xs font-bold transition-all text-right flex items-center justify-between"
+          >
+            <div>
+              <span className="block font-bold">إعادة تهيئة الكراسي كاملاً</span>
+              <span className="text-[10px] text-rose-300">مسح كافة الحجوزات وإرجاع الكراسي متاحة</span>
+            </div>
+            <RotateCcw className="w-4 h-4 shrink-0" />
+          </button>
+
+        </div>
+      </div>
+
+    </div>
+  );
+}
