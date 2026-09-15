@@ -444,11 +444,11 @@ export default function ModernAttendanceCard({
             <div className="p-2 sm:p-2.5 bg-white rounded-2xl shadow-sm border border-slate-200/90">
               <QRCodeSVG
                 value={qrUrl}
-                size={86}
-                level="H"
+                size={88}
+                level="M"
                 fgColor="#0c234b"
                 bgColor="#ffffff"
-                includeMargin={false}
+                includeMargin={true}
               />
             </div>
             <span className="text-xs sm:text-[13px] font-black text-[#0c234b] mt-1.5 block leading-tight">
@@ -812,14 +812,14 @@ export default function ModernAttendanceCard({
                 <span className="text-[6.5px] font-bold tracking-wider font-sans block uppercase text-blue-200">EVENT TICKET</span>
               </div>
 
-              <div className="p-1 bg-white rounded-xl border border-slate-200 shadow-inner">
+              <div className="p-1 bg-white rounded-xl border border-slate-200 shadow-sm">
                 <QRCodeSVG
                   value={qrUrl}
-                  size={58}
-                  level="H"
+                  size={66}
+                  level="M"
                   fgColor="#0f1f4b"
                   bgColor="#ffffff"
-                  includeMargin={false}
+                  includeMargin={true}
                 />
               </div>
 
@@ -983,11 +983,11 @@ export default function ModernAttendanceCard({
           <div className="shrink-0 p-1.5 bg-white border border-slate-100 rounded-xl">
             <QRCodeSVG
               value={qrUrl}
-              size={seat.guest?.name ? 90 : 108}
+              size={seat.guest?.name ? 94 : 108}
               level="M"
               fgColor="#0e2b5c"
               bgColor="#ffffff"
-              includeMargin={false}
+              includeMargin={true}
             />
           </div>
           {/* Seat location summary next to QR */}
