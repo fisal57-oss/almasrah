@@ -15,7 +15,8 @@ import {
   Crown,
   FileSpreadsheet,
   Lock,
-  ExternalLink
+  ExternalLink,
+  ShieldCheck
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -59,6 +60,13 @@ export default function Sidebar({
       label: 'ماسح الباركود عند الباب', 
       icon: QrCode,
       badge: `${stats.checkedIn || 0} حاضر`
+    },
+    { 
+      id: 'staff-portal', 
+      label: 'بوابة الموظف والمنظمين', 
+      icon: ShieldCheck, 
+      onClick: () => window.open('staff.html', '_blank'),
+      isExternal: true
     },
     { 
       id: 'beneficiary-portal', 

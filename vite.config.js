@@ -9,7 +9,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
-        beneficiary: resolve(__dirname, 'beneficiary.html')
+        beneficiary: resolve(__dirname, 'beneficiary.html'),
+        staff: resolve(__dirname, 'staff.html')
       }
     }
   },
