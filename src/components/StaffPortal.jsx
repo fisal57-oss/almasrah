@@ -289,13 +289,6 @@ export default function StaffPortal() {
               <RefreshCw className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">تحديث</span>
             </button>
-            <a
-              href="index.html"
-              title="لوحة تحكم الإدارة الكاملة"
-              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-cyan-300 text-xs font-bold transition-all border border-cyan-400/30"
-            >
-              لوحة الإدارة
-            </a>
           </div>
 
         </div>
