@@ -54,6 +54,7 @@ body {
 .gold-text, .cyan-text {
   background: linear-gradient(135deg, #e0f7fa 0%, #00d2ff 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   text-shadow: 0 2px 10px rgba(0, 210, 255, 0.3);
 }
