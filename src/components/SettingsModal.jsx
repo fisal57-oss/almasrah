@@ -18,7 +18,7 @@ import {
   KeyRound,
   ShieldCheck
 } from 'lucide-react';
-import { getEventDetails, saveEventDetails } from '../utils/storage';
+import { getEventDetails, saveEventDetails, exportDatabaseBackup, importDatabaseBackup } from '../utils/storage';
 
 export default function SettingsModal({ 
   onEventUpdated, 
@@ -60,21 +60,7 @@ export default function SettingsModal({
 
   // Export database JSON
   const handleExportJSON = () => {
-    const seats = localStorage.getItem('theater_seats_v1') || '[]';
-    const event = localStorage.getItem('theater_event_v1') || '{}';
-
-    const backup = {
-      timestamp: new Date().toISOString(),
-      event: JSON.parse(event),
-      seats: JSON.parse(seats)
-    };
-
-    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `نسخة_احتياطية_المسرح_${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
+    exportDatabaseBackup();
   };
 
   // Import JSON backup
@@ -84,16 +70,12 @@ export default function SettingsModal({
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      try {
-        const data = JSON.parse(event.target.result);
-        if (data.seats && Array.isArray(data.seats)) {
-          onImportBackup(data.seats, data.event);
-          alert('تم استيراد النسخة الاحتياطية بنجاح!');
-        } else {
-          alert('ملف النسخة الاحتياطية غير صالح.');
-        }
-      } catch (err) {
-        alert('حدث خطأ أثناء قراءة ملف JSON');
+      const res = importDatabaseBackup(event.target.result);
+      if (res.success) {
+        onImportBackup?.();
+        alert(`تمت استعادة النسخة الاحتياطية بنجاح (${res.count} مقعد)!`);
+      } else {
+        alert('حدث خطأ أثناء استيراد النسخة الاحتياطية: ' + res.error);
       }
     };
     reader.readAsText(file);

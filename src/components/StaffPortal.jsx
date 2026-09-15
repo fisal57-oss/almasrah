@@ -181,14 +181,38 @@ export default function StaffPortal() {
     setSelectedSeatForCard(null);
   };
 
-  // WhatsApp Sender
-  const handleSendWhatsApp = (seat) => {
-    if (!seat.guest) return;
+  // WhatsApp Message Generator
+  const getWhatsAppMessageText = (seat) => {
+    if (!seat.guest) return '';
     const baseUrl = window.location.origin + window.location.pathname.replace('staff.html', '').replace('beneficiary.html', '');
     const invitationUrl = `${baseUrl}?invitation=${seat.guest.token}`;
     const seatDisplay = `${seat.row}${String(seat.number).padStart(2, '0')}`;
-    
-    const text = 
+
+    if (whatsappTemplate === 'reminder') {
+      return `⏰ *تـذكـيـر بـمـوعـد الـفـعـالـيـة* ⏰\n\n` +
+        `سعادة: *${seat.guest.name}* حفظكم الله\n` +
+        `نتشرف بتذكيركم بموعد حضور فعاليتنا:\n` +
+        `✨ *${eventDetails.title || 'مسرح الإدارة العامة للتعليم بمنطقة عسير'}* ✨\n\n` +
+        `💺 *مقعدكم المحجوز:* الصف (${seat.row}) - رقم (${seatDisplay}) [${seat.level === 'B' ? 'البلكونة' : 'الدور الأرضي'}]\n` +
+        `📍 *المكان:* ${eventDetails.venue || 'المسرح الرئيسي'}\n` +
+        `⏰ *الموعد:* اليوم في تمام الساعة ${eventDetails.time || '07:00 م'}\n\n` +
+        `📲 *تذكرتكم وموقع مقعدكم:*\n${invitationUrl}\n\n` +
+        `نتطلع لحضوركم المشرّف 🌟`;
+    }
+
+    if (whatsappTemplate === 'welcome') {
+      return `🎉 *أهـلاً وسـهـلاً بـكـم فـي مـسـرح الـتـعـلـيـم* 🎉\n\n` +
+        `سعادة: *${seat.guest.name}*\n` +
+        `نرحب بحضوركم الكريم في:\n` +
+        `✨ *${eventDetails.title || 'مسرح تعليم عسير'}* ✨\n\n` +
+        `💺 *توجيه المقعد:* الصف (${seat.row}) - مقعد (${seatDisplay}) - قطاع ${seat.sector || 'الوسط'}\n` +
+        `🚪 *المدخل:* ${seat.level === 'B' ? 'بوابة البلكونة العلوية' : 'بوابة الدور الأرضي الرئيسية'}\n\n` +
+        `📲 *رابط التذكرة:* ${invitationUrl}\n\n` +
+        `نتمنى لكم وقتاً ممتعاً ومليئاً بالإلهام ✨`;
+    }
+
+    // Default VIP Formal Invitation
+    return `🎫 *دعـوة حـضـور ومـوقـع مـقـعـد الـمـسـرح* 🎫\n\n` +
       `يسر الإدارة العامة للتعليم بمنطقة عسير دعوتكم لحضور:\n` +
       `✨ *${eventDetails.title || 'مسرح الإدارة العامة للتعليم بمنطقة عسير'}* ✨\n\n` +
       `👤 *اسم الضيف:* ${seat.guest.name}\n` +
@@ -201,7 +225,12 @@ export default function StaffPortal() {
       `📲 *رابط بطاقة الحضور والباركود الذكي وموقع المقعد:*\n` +
       `${invitationUrl}\n\n` +
       `أهلاً وسهلاً بحضوركم الكريم ✨`;
+  };
 
+  // WhatsApp Sender
+  const handleSendWhatsApp = (seat) => {
+    if (!seat.guest) return;
+    const text = getWhatsAppMessageText(seat);
     const phone = (seat.guest.phone || '').replace(/[^0-9]/g, '');
     const cleanPhone = phone.startsWith('05') ? '966' + phone.substring(1) : phone;
     const whatsappUrl = cleanPhone 
@@ -214,17 +243,7 @@ export default function StaffPortal() {
   // Copy invitation link & message
   const handleCopyInvitation = (seat) => {
     if (!seat.guest) return;
-    const baseUrl = window.location.origin + window.location.pathname.replace('staff.html', '').replace('beneficiary.html', '');
-    const invitationUrl = `${baseUrl}?invitation=${seat.guest.token}`;
-    const seatDisplay = `${seat.row}${String(seat.number).padStart(2, '0')}`;
-    
-    const text = 
-      `دعوة حضور:\n` +
-      `✨ ${eventDetails.title || 'مسرح تعليم عسير'} ✨\n` +
-      `👤 الضيف: ${seat.guest.name}\n` +
-      `💺 المقعد: الصف (${seat.row}) - رقم (${seatDisplay})\n` +
-      `📲 الرابط: ${invitationUrl}`;
-
+    const text = getWhatsAppMessageText(seat);
     navigator.clipboard.writeText(text);
     setCopiedId(seat.id);
     setTimeout(() => setCopiedId(null), 2500);
@@ -869,6 +888,44 @@ export default function StaffPortal() {
                 <span className="text-xs text-emerald-300 font-bold bg-emerald-500/10 px-3 py-1 rounded-full">
                   {bookedSeats.length} مدعو
                 </span>
+              </div>
+
+              {/* Template Selector */}
+              <div className="flex items-center gap-2 flex-wrap bg-white/5 p-2 rounded-2xl border border-white/10">
+                <span className="text-xs font-bold text-slate-300 px-2">اختر نموذج الرسالة:</span>
+                <button
+                  type="button"
+                  onClick={() => setWhatsappTemplate('vip')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    whatsappTemplate === 'vip' 
+                      ? 'bg-amber-400 text-slate-950 shadow-md font-black' 
+                      : 'bg-white/5 text-slate-300 hover:text-white'
+                  }`}
+                >
+                  👑 دعوة رسمية VIP
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWhatsappTemplate('reminder')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    whatsappTemplate === 'reminder' 
+                      ? 'bg-cyan-400 text-slate-950 shadow-md font-black' 
+                      : 'bg-white/5 text-slate-300 hover:text-white'
+                  }`}
+                >
+                  ⏰ تذكير بموعد الحفل
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWhatsappTemplate('welcome')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    whatsappTemplate === 'welcome' 
+                      ? 'bg-emerald-400 text-slate-950 shadow-md font-black' 
+                      : 'bg-white/5 text-slate-300 hover:text-white'
+                  }`}
+                >
+                  🎉 ترحيب وتوجيه بالباب
+                </button>
               </div>
 
               {/* Guest Roster for WhatsApp sending */}

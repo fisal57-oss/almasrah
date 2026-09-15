@@ -474,5 +474,55 @@ export async function bookSeatAsync(seatId, guestData) {
   return bookSeat(seatId, guestData);
 }
 
+/**
+ * Export full database (seats, event details, settings) as a downloadable JSON file.
+ */
+export function exportDatabaseBackup() {
+  const seats = getSeats();
+  const eventDetails = getEventDetails();
+  const backupData = {
+    version: '2.0',
+    exportDate: new Date().toISOString(),
+    eventDetails,
+    seats
+  };
 
+  const jsonStr = JSON.stringify(backupData, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `theater_backup_${(eventDetails.title || 'event').replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.json`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
 
+/**
+ * Import and restore database from a JSON backup string or object.
+ */
+export function importDatabaseBackup(jsonData) {
+  try {
+    const data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
+    if (data && data.seats && Array.isArray(data.seats)) {
+      saveSeats(data.seats);
+      if (data.eventDetails) {
+        saveEventDetails(data.eventDetails);
+      }
+      return { success: true, count: data.seats.length };
+    }
+    return { success: false, error: 'صيغة ملف النسخة الاحتياطية غير صحيحة.' };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Reset all seat reservations while preserving the theater layout.
+ */
+export function resetAllSeats() {
+  const defaultSeats = generateDefaultSeats();
+  saveSeats(defaultSeats);
+  return defaultSeats;
+}

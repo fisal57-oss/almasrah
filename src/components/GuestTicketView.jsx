@@ -16,7 +16,11 @@ import {
   Download,
   Share2,
   Check,
-  Briefcase
+  Briefcase,
+  Navigation,
+  Printer,
+  CalendarPlus,
+  ExternalLink
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import html2canvas from 'html2canvas';
@@ -24,6 +28,7 @@ import TheaterMap from './TheaterMap';
 import SeatCardModal from './SeatCardModal';
 import { formatArabicSeatCode } from '../utils/storage';
 import ModernAttendanceCard from './ModernAttendanceCard';
+import { generateIcsCalendarFile, getGoogleCalendarUrl, getGoogleMapsUrl } from '../utils/calendarUtils';
 
 function MinistryOfEducationLogo({ className = "h-10", color = "#00a887", textColor = "#00a887", subColor = "#4a6b63" }) {
   return (
@@ -347,54 +352,78 @@ export default function GuestTicketView({
           />
         </div>
 
-        {/* 3 Bottom Action Buttons */}
-        <div className="grid grid-cols-3 gap-2 mt-4 px-1 relative z-20">
+        {/* 6 Comprehensive Action Buttons */}
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-4 px-1 relative z-20">
           <button
             onClick={handleDownloadPNG}
             disabled={isDownloading}
-            className="py-2.5 px-2 rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white font-bold text-[10px] sm:text-xs transition-all flex flex-col items-center justify-center gap-1 shadow-md active:scale-95"
+            className="py-2.5 px-1.5 rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white font-bold text-[10px] transition-all flex flex-col items-center justify-center gap-1 shadow-md active:scale-95"
+            title="تحميل التذكرة كصورة"
           >
             <Download className="w-4 h-4 text-cyan-300" />
-            <span>{isDownloading ? 'جاري الحفظ...' : 'حفظ التذكرة'}</span>
-            <span className="text-[8px] text-slate-400 font-sans">Save Ticket</span>
+            <span className="truncate max-w-full">{isDownloading ? 'جاري...' : 'حفظ كصورة'}</span>
+            <span className="text-[7.5px] text-slate-400 font-sans">Save PNG</span>
           </button>
 
           <button
+            onClick={() => generateIcsCalendarFile(eventDetails, seat)}
+            className="py-2.5 px-1.5 rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white font-bold text-[10px] transition-all flex flex-col items-center justify-center gap-1 shadow-md active:scale-95"
+            title="إضافة موعد الفعالية لتقويم الهاتف"
+          >
+            <CalendarPlus className="w-4 h-4 text-amber-300" />
+            <span className="truncate max-w-full">التقويم</span>
+            <span className="text-[7.5px] text-slate-400 font-sans">Calendar</span>
+          </button>
+
+          <a
+            href={getGoogleMapsUrl(eventDetails.venue || eventDetails.hallName)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="py-2.5 px-1.5 rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white font-bold text-[10px] transition-all flex flex-col items-center justify-center gap-1 shadow-md active:scale-95 text-center"
+            title="فتح الموقع على خرائط جوجل"
+          >
+            <Navigation className="w-4 h-4 text-emerald-300" />
+            <span className="truncate max-w-full">الاتجاهات</span>
+            <span className="text-[7.5px] text-slate-400 font-sans">Maps</span>
+          </a>
+
+          <button
             onClick={handleCopyWhatsApp}
-            className="py-2.5 px-2 rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white font-bold text-[10px] sm:text-xs transition-all flex flex-col items-center justify-center gap-1 shadow-md active:scale-95"
+            className="py-2.5 px-1.5 rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white font-bold text-[10px] transition-all flex flex-col items-center justify-center gap-1 shadow-md active:scale-95"
           >
             {copiedLink ? (
               <>
                 <Check className="w-4 h-4 text-emerald-400" />
                 <span className="text-emerald-300">تم النسخ!</span>
-                <span className="text-[8px] text-emerald-200">Copied</span>
+                <span className="text-[7.5px] text-emerald-200">Copied</span>
               </>
             ) : (
               <>
                 <Share2 className="w-4 h-4 text-cyan-300" />
-                <span>مشاركة</span>
-                <span className="text-[8px] text-slate-400 font-sans">Share</span>
+                <span className="truncate max-w-full">مشاركة</span>
+                <span className="text-[7.5px] text-slate-400 font-sans">Share</span>
               </>
             )}
           </button>
 
           <button
-            onClick={handleAddToWallet}
-            className="py-2.5 px-2 rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white font-bold text-[10px] sm:text-xs transition-all flex flex-col items-center justify-center gap-1 shadow-md active:scale-95"
+            onClick={() => setShowSeatCardModal(true)}
+            className="py-2.5 px-1.5 rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white font-bold text-[10px] transition-all flex flex-col items-center justify-center gap-1 shadow-md active:scale-95"
+            title="عرض بطاقة المقعد الأفقية"
           >
-            {walletAdded ? (
-              <>
-                <Check className="w-4 h-4 text-emerald-400" />
-                <span className="text-emerald-300">تمت الإضافة!</span>
-                <span className="text-[8px] text-emerald-200">Added</span>
-              </>
-            ) : (
-              <>
-                <Wallet className="w-4 h-4 text-cyan-300" />
-                <span>إضافة إلى المحفظة</span>
-                <span className="text-[8px] text-slate-400 font-sans">Add to Wallet</span>
-              </>
-            )}
+            <Armchair className="w-4 h-4 text-purple-300" />
+            <span className="truncate max-w-full">بطاقة المقعد</span>
+            <span className="text-[7.5px] text-slate-400 font-sans">Seat Card</span>
+          </button>
+
+          <button
+            onClick={() => window.print()}
+            className="py-2.5 px-1.5 rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white font-bold text-[10px] transition-all flex flex-col items-center justify-center gap-1 shadow-md active:scale-95"
+            title="طباعة التذكرة"
+          >
+            <Printer className="w-4 h-4 text-amber-300" />
+            <span className="truncate max-w-full">طباعة</span>
+            <span className="text-[7.5px] text-slate-400 font-sans">Print</span>
           </button>
         </div>
 

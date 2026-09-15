@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Search, Bell, Building2, Crown, Sparkles, LogOut, Lock, Users, ExternalLink } from 'lucide-react';
 import { MinistryOfEducationLogo } from './ModernAttendanceCard';
 
-export default function HeaderBar({ eventDetails = {}, onSearchQuery, onLogout, onOpenBeneficiary }) {
+export default function HeaderBar({ eventDetails = {}, onSearchQuery, onLogout, onOpenBeneficiary, onOpenCommandPalette }) {
   const [searchTerm, setSearchTerm] = useState('');
 
   const handleSearchChange = (e) => {
@@ -34,17 +34,24 @@ export default function HeaderBar({ eventDetails = {}, onSearchQuery, onLogout, 
         </div>
       </div>
 
-      {/* Center Search Input */}
+      {/* Center Search Input / Command Palette Launcher */}
       <div className="flex-1 max-w-md mx-4 sm:mx-8">
-        <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
+        <div 
+          onClick={onOpenCommandPalette}
+          className="relative cursor-pointer group"
+        >
+          <Search className="w-4 h-4 text-slate-400 group-hover:text-cyan-400 absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors" />
           <input
             type="text"
-            placeholder="بحث فوري في الضيوف، المقاعد، الفعاليات..."
-            value={searchTerm}
-            onChange={handleSearchChange}
-            className="w-full bg-white/5 border border-white/15 focus:border-cyan-400 focus:bg-white/10 rounded-xl pr-10 pl-4 py-2 text-xs text-white placeholder-slate-400 outline-none transition-all shadow-inner"
+            readOnly
+            placeholder="بحث فوري في الضيوف، المقاعد، الفعاليات... (اضغط Ctrl+K)"
+            className="w-full bg-white/5 group-hover:bg-white/10 border border-white/15 group-hover:border-cyan-400/50 rounded-xl pr-10 pl-16 py-2 text-xs text-white placeholder-slate-400 outline-none transition-all shadow-inner cursor-pointer"
           />
+          <div className="absolute left-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            <kbd className="hidden sm:inline-block px-2 py-0.5 text-[10px] font-mono font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-400/30 rounded-md">
+              Ctrl+K
+            </kbd>
+          </div>
         </div>
       </div>
 

@@ -18,6 +18,8 @@ import SeatCardModal from './components/SeatCardModal';
 import BatchSeatCardsPrintModal from './components/BatchSeatCardsPrintModal';
 import InvitationsHub from './components/InvitationsHub';
 import AdminLogin from './components/AdminLogin';
+import CommandPalette from './components/CommandPalette';
+import { exportSeatsToExcel } from './utils/excelUtils';
 
 import {
   getSeats,
@@ -67,6 +69,7 @@ export default function App() {
   const [showSeatManagerModal, setShowSeatManagerModal] = useState(false);
   const [showAllTicketsPrintModal, setShowAllTicketsPrintModal] = useState(false);
   const [showBatchSeatCardsModal, setShowBatchSeatCardsModal] = useState(false);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
 
   useEffect(() => {
     seedSampleDataIfEmpty();
@@ -223,6 +226,7 @@ export default function App() {
           }}
           onLogout={handleAdminLogout}
           onOpenBeneficiary={() => window.open('beneficiary.html', '_blank')}
+          onOpenCommandPalette={() => setShowCommandPalette(true)}
         />
 
         {/* Main Content Body */}
@@ -421,6 +425,31 @@ export default function App() {
           onClose={() => setShowAllTicketsPrintModal(false)}
         />
       )}
+
+      {/* Global Command Palette (Ctrl+K) */}
+      <CommandPalette
+        isOpen={showCommandPalette}
+        onClose={() => setShowCommandPalette(false)}
+        seats={seats}
+        onSelectSeat={(seat) => {
+          if (seat.status === 'available') {
+            setSelectedSeatForBooking(seat);
+          } else {
+            setSelectedSeatForCard(seat);
+          }
+        }}
+        onOpenBookingModal={() => {
+          const firstAvailable = seats.find(s => s.status === 'available');
+          if (firstAvailable) setSelectedSeatForBooking(firstAvailable);
+          else setCurrentTab('map');
+        }}
+        onOpenAllTicketsPrint={() => setShowAllTicketsPrintModal(true)}
+        onOpenBatchSeatCards={() => setShowBatchSeatCardsModal(true)}
+        onOpenPrintLabels={() => setShowPrintLabelsModal(true)}
+        onOpenSettings={() => setCurrentTab('settings')}
+        onOpenScanner={() => setCurrentTab('scanner')}
+        onExportExcel={() => exportSeatsToExcel(seats, eventDetails)}
+      />
 
     </div>
   );
