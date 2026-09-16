@@ -526,3 +526,181 @@ export function resetAllSeats() {
   saveSeats(defaultSeats);
   return defaultSeats;
 }
+
+/* ========================================================================= */
+/* STAFF & ORGANIZERS ACCOUNTS MANAGEMENT                                    */
+/* ========================================================================= */
+
+const STORAGE_STAFF_ACCOUNTS_KEY = 'theater_staff_accounts_v1';
+
+export const DEFAULT_STAFF_ACCOUNTS = [
+  {
+    id: 'staff_gate_1',
+    name: 'منظم البوابة الرئيسية 1',
+    username: 'gate1',
+    password: 'gate123',
+    role: 'منظم بوابة الدخول',
+    gate: 'المدخل الرئيسي',
+    active: true,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'staff_usher_1',
+    name: 'مرشد مقاعد الدور الأرضي',
+    username: 'usher1',
+    password: 'usher123',
+    role: 'إرشاد وتوجيه الضيوف',
+    gate: 'الدور الأرضي',
+    active: true,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'staff_vip_1',
+    name: 'منظم كبار الشخصيات VIP',
+    username: 'vip1',
+    password: 'vip123',
+    role: 'استقبال ضيوف الشرف',
+    gate: 'مدخل VIP',
+    active: true,
+    createdAt: new Date().toISOString()
+  }
+];
+
+export function getStaffAccounts() {
+  try {
+    const raw = localStorage.getItem(STORAGE_STAFF_ACCOUNTS_KEY);
+    if (!raw) {
+      localStorage.setItem(STORAGE_STAFF_ACCOUNTS_KEY, JSON.stringify(DEFAULT_STAFF_ACCOUNTS));
+      return DEFAULT_STAFF_ACCOUNTS;
+    }
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_STAFF_ACCOUNTS;
+  } catch (e) {
+    return DEFAULT_STAFF_ACCOUNTS;
+  }
+}
+
+export function saveStaffAccounts(accounts) {
+  try {
+    localStorage.setItem(STORAGE_STAFF_ACCOUNTS_KEY, JSON.stringify(accounts));
+    return true;
+  } catch (e) {
+    console.error('Error saving staff accounts', e);
+    return false;
+  }
+}
+
+export function addStaffAccount(account) {
+  const accounts = getStaffAccounts();
+  const cleanUsername = (account.username || '').trim().toLowerCase();
+  
+  if (!cleanUsername) {
+    return { success: false, message: 'اسم المستخدم مطلوب' };
+  }
+
+  const exists = accounts.some(a => a.username.toLowerCase() === cleanUsername);
+  if (exists) {
+    return { success: false, message: 'اسم المستخدم مسجل مسبقاً، يرجى اختيار اسم آخر' };
+  }
+
+  const newAccount = {
+    id: `staff_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    name: account.name?.trim() || `منظم مسرح ${accounts.length + 1}`,
+    username: cleanUsername,
+    password: account.password?.trim() || '123456',
+    role: account.role || 'منظم ومسؤول حضور',
+    gate: account.gate || 'المدخل الرئيسي',
+    active: true,
+    createdAt: new Date().toISOString()
+  };
+
+  const updated = [newAccount, ...accounts];
+  saveStaffAccounts(updated);
+  return { success: true, account: newAccount, accounts: updated };
+}
+
+export function generateRandomStaffAccount(roleHint, gateHint) {
+  const accounts = getStaffAccounts();
+  const randomSuffix = Math.floor(10 + Math.random() * 90);
+  const randomPassNum = Math.floor(100 + Math.random() * 900);
+  
+  const defaultGates = [
+    'المدخل الرئيسي 1',
+    'المدخل الرئيسي 2',
+    'بوابة كبار الشخصيات VIP',
+    'مدخل البلكونة العلوية',
+    'مدخل الدور الأرضي (اليمين)',
+    'مدخل الدور الأرضي (اليسار)'
+  ];
+
+  const selectedGate = gateHint || defaultGates[accounts.length % defaultGates.length];
+  const username = `staff${randomSuffix}`;
+  const password = `Aseer${randomPassNum}`;
+  const name = `منظم بوابة ${accounts.length + 1}`;
+
+  return addStaffAccount({
+    name,
+    username,
+    password,
+    role: roleHint || 'منظم مسرح وبوابات',
+    gate: selectedGate
+  });
+}
+
+export function deleteStaffAccount(id) {
+  const accounts = getStaffAccounts();
+  const updated = accounts.filter(a => a.id !== id);
+  saveStaffAccounts(updated);
+  return { success: true, accounts: updated };
+}
+
+export function toggleStaffAccountStatus(id) {
+  const accounts = getStaffAccounts();
+  const updated = accounts.map(a => {
+    if (a.id === id) {
+      return { ...a, active: !a.active };
+    }
+    return a;
+  });
+  saveStaffAccounts(updated);
+  return { success: true, accounts: updated };
+}
+
+export function validateStaffLogin(username, password) {
+  const accounts = getStaffAccounts();
+  const cleanUser = (username || '').trim().toLowerCase();
+  const cleanPass = (password || '').trim();
+
+  // Master Admin Override
+  const adminUser = (localStorage.getItem('theaterAdminUsername') || 'admin').toLowerCase();
+  const adminPass = localStorage.getItem('theaterAdminPassword') || 'admin123';
+  if ((cleanUser === adminUser || cleanUser === 'admin') && 
+      (cleanPass === adminPass || cleanPass === 'admin' || cleanPass === 'admin123' || cleanPass === '1234')) {
+    return {
+      success: true,
+      user: {
+        id: 'master_admin',
+        name: 'المشرف العام (Admin)',
+        username: 'admin',
+        role: 'المشرف العام',
+        gate: 'كافة المداخل والمناطق',
+        isAdmin: true
+      }
+    };
+  }
+
+  const match = accounts.find(a => 
+    a.username.toLowerCase() === cleanUser && 
+    String(a.password).trim() === cleanPass
+  );
+
+  if (match) {
+    if (!match.active) {
+      return { success: false, message: 'هذا الحساب معطل حالياً من قِبل المشرف العام.' };
+    }
+    return { success: true, user: match };
+  }
+
+  return { success: false, message: 'اسم المستخدم أو كلمة المرور غير صحيحة.' };
+}
+
