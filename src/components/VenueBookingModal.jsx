@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Building2, 
   Armchair, 
@@ -27,11 +27,25 @@ import {
 } from 'lucide-react';
 import { DEFAULT_VENUES, submitHallBooking, getHallBookings } from '../utils/storage';
 
-export default function VenueBookingModal({ isOpen, onClose, eventDetails }) {
+export default function VenueBookingModal({ isOpen, onClose, eventDetails, initialVenueId = null }) {
   const [activeTab, setActiveTab] = useState('browse'); // 'browse' | 'form' | 'success' | 'my-requests'
   const [selectedVenue, setSelectedVenue] = useState(DEFAULT_VENUES[0]);
   const [lastBooking, setLastBooking] = useState(null);
   const [myBookings, setMyBookings] = useState(() => getHallBookings());
+
+  useEffect(() => {
+    if (isOpen) {
+      if (initialVenueId) {
+        const found = DEFAULT_VENUES.find(v => v.id === initialVenueId);
+        if (found) {
+          setSelectedVenue(found);
+          setActiveTab('form');
+          return;
+        }
+      }
+      setActiveTab('browse');
+    }
+  }, [isOpen, initialVenueId]);
 
   // Form State
   const [orgName, setOrgName] = useState('');

@@ -28,6 +28,7 @@ import InvitationCard from './InvitationCard';
 import ElectronicInvitationModal from './ElectronicInvitationModal';
 import SeatCardModal from './SeatCardModal';
 import VenueBookingModal from './VenueBookingModal';
+import BeneficiaryServicesGrid from './BeneficiaryServicesGrid';
 import { formatArabicSeatCode } from '../utils/storage';
 
 export default function BeneficiaryPortal({ 
@@ -41,6 +42,7 @@ export default function BeneficiaryPortal({
   const [showInvitationModal, setShowInvitationModal] = useState(false);
   const [showSeatCardModal, setShowSeatCardModal] = useState(false);
   const [showVenueModal, setShowVenueModal] = useState(false);
+  const [selectedVenueIdForModal, setSelectedVenueIdForModal] = useState(null);
 
   // Filter booked seats only for guest lookup
   const bookedSeats = seats.filter(s => s.guest && s.status !== 'available');
@@ -142,30 +144,34 @@ export default function BeneficiaryPortal({
           </div>
         </div>
 
-        {/* Hall & Theater Reservation Feature Card */}
-        <div className="glass-panel-luxury p-4 sm:p-5 rounded-3xl border border-amber-500/30 bg-gradient-to-r from-[#17203a]/90 via-[#0e182e]/90 to-[#17203a]/90 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
-          <div className="flex items-center gap-3.5 text-center sm:text-right">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-400 to-yellow-500 flex items-center justify-center text-slate-950 font-black shadow-lg shadow-amber-500/20 shrink-0">
-              <Building2 className="w-6 h-6 text-slate-950" />
-            </div>
-            <div>
-              <h3 className="text-sm sm:text-base font-black text-white flex items-center gap-2 justify-center sm:justify-start">
-                <span>خدمة حجز القاعات والمسارح الرسمية</span>
-                <span className="text-[10px] bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded-full font-bold">متاح للجهات</span>
-              </h3>
-              <p className="text-xs text-slate-300 mt-0.5">
-                يمكن للإدارات والمدارس والجهات الشريكة تقديم طلب حجز لمسارح وقاعات تعليم عسير إلكترونياً وبأعلى جاهزية.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setShowVenueModal(true)}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:brightness-110 text-slate-950 font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 shrink-0 active:scale-95"
-          >
-            <Building2 className="w-4 h-4 text-slate-950" />
-            <span>طلب حجز مسرح / قاعة 🏛️</span>
-          </button>
-        </div>
+        {/* Interactive Services & Halls Icon Grid */}
+        <BeneficiaryServicesGrid
+          onOpenVenueModal={(venueId) => {
+            setSelectedVenueIdForModal(venueId || null);
+            setShowVenueModal(true);
+          }}
+          activeTab={null}
+          onSelectTab={(tab) => {
+            if (tab === 'find') {
+              const el = document.getElementById('ticketSearchInput');
+              if (el) {
+                el.focus();
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            } else if (tab === 'map') {
+              // scroll to theater map
+              const mapEl = document.querySelector('.theater-map-container, #theaterMapSection');
+              if (mapEl) mapEl.scrollIntoView({ behavior: 'smooth' });
+            }
+          }}
+          onFocusSearch={() => {
+            const el = document.getElementById('ticketSearchInput');
+            if (el) {
+              el.focus();
+              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }}
+        />
 
         {/* Live Search Input Card */}
         <div className="glass-panel-luxury p-5 rounded-3xl border border-white/15 space-y-3">
@@ -176,6 +182,7 @@ export default function BeneficiaryPortal({
 
           <div className="relative">
             <input
+              id="ticketSearchInput"
               type="text"
               placeholder="اكتب اسمك الكامل أو رقم الجوال هنا (مثال: خالد السليمان)..."
               value={searchQuery}
@@ -384,6 +391,7 @@ export default function BeneficiaryPortal({
         isOpen={showVenueModal}
         onClose={() => setShowVenueModal(false)}
         eventDetails={eventDetails}
+        initialVenueId={selectedVenueIdForModal}
       />
 
     </div>
