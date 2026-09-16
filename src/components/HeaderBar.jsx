@@ -11,6 +11,7 @@ export default function HeaderBar({
   onToggleMobileMenu
 }) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [logoError, setLogoError] = useState(false);
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
@@ -37,9 +38,18 @@ export default function HeaderBar({
           </button>
         )}
 
-        <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-cyan-500/15 border border-cyan-400/30 flex items-center justify-center text-cyan-300 shrink-0">
-          <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
-        </div>
+        {eventDetails?.logoUrl && !logoError ? (
+          <img 
+            src={eventDetails.logoUrl} 
+            alt={eventDetails.title || "شعار الفعالية"} 
+            onError={() => setLogoError(true)}
+            className="h-10 sm:h-11 max-h-11 max-w-[130px] sm:max-w-[160px] object-contain rounded-xl p-1 bg-white/10 backdrop-blur-md border border-white/20 shadow-md shrink-0"
+          />
+        ) : (
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-cyan-500/15 border border-cyan-400/30 flex items-center justify-center text-cyan-300 shrink-0">
+            <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
+          </div>
+        )}
 
         <div>
           <h2 className="text-xs font-black text-white flex items-center gap-1.5 leading-tight">

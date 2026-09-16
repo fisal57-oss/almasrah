@@ -308,6 +308,7 @@ export default function StaffPortal() {
   if (!staffUser) {
     return (
       <StaffLogin
+        eventDetails={eventDetails}
         onLoginSuccess={(user) => setStaffUser(user)}
         onGuestMode={() => window.open('beneficiary.html', '_blank')}
       />
@@ -322,9 +323,17 @@ export default function StaffPortal() {
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
           
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 flex items-center justify-center font-bold shrink-0">
-              <ShieldCheck className="w-5 h-5 text-cyan-300" />
-            </div>
+            {eventDetails?.logoUrl ? (
+              <img 
+                src={eventDetails.logoUrl} 
+                alt="شعار الفعالية" 
+                className="h-10 max-h-10 max-w-[120px] object-contain rounded-xl p-1 bg-white/10 border border-white/20 shadow-md shrink-0"
+              />
+            ) : (
+              <div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 flex items-center justify-center font-bold shrink-0">
+                <ShieldCheck className="w-5 h-5 text-cyan-300" />
+              </div>
+            )}
             <div>
               <h1 className="text-xs sm:text-sm font-black text-white flex items-center gap-1.5">
                 <span>بوابة الموظف والمنظمين</span>

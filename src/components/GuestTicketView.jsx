@@ -324,9 +324,18 @@ export default function GuestTicketView({
             <ArrowRight className="w-4 h-4" />
             <span>العودة للوحة تحكم المسرح</span>
           </button>
-          <span className="text-xs bg-cyan-500/20 text-cyan-300 px-3 py-1 rounded-full border border-cyan-400/30 font-black">
-            بوابة المستفيد والضيف
-          </span>
+          <div className="flex items-center gap-2">
+            {eventDetails?.logoUrl && (
+              <img 
+                src={eventDetails.logoUrl} 
+                alt="شعار الفعالية" 
+                className="h-7 max-w-[90px] object-contain rounded p-0.5 bg-white/10 border border-white/20 shadow-sm" 
+              />
+            )}
+            <span className="text-xs bg-cyan-500/20 text-cyan-300 px-3 py-1 rounded-full border border-cyan-400/30 font-black">
+              بوابة المستفيد والضيف
+            </span>
+          </div>
         </div>
       )}
 
@@ -416,12 +425,20 @@ export default function GuestTicketView({
           </div>
 
           <div className="flex flex-col items-end">
-            <MinistryOfEducationLogo 
-              className="h-10" 
-              color="#ffffff" 
-              textColor="#ffffff" 
-              subColor="#cbd5e1" 
-            />
+            {eventDetails?.logoUrl ? (
+              <img 
+                src={eventDetails.logoUrl} 
+                alt={eventDetails.title || "شعار الفعالية"} 
+                className="h-10 sm:h-11 max-h-11 max-w-[130px] object-contain rounded-lg p-0.5 bg-white/10 shadow-sm"
+              />
+            ) : (
+              <MinistryOfEducationLogo 
+                className="h-10" 
+                color="#ffffff" 
+                textColor="#ffffff" 
+                subColor="#cbd5e1" 
+              />
+            )}
           </div>
         </div>
 

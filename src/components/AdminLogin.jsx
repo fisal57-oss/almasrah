@@ -12,14 +12,19 @@ import {
   LogIn
 } from 'lucide-react';
 import { MinistryOfEducationLogo } from './ModernAttendanceCard';
+import { getEventDetails } from '../utils/storage';
 
-export default function AdminLogin({ onLoginSuccess, onGuestMode }) {
+export default function AdminLogin({ onLoginSuccess, onGuestMode, eventDetails }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [logoError, setLogoError] = useState(false);
+
+  const activeEvent = eventDetails || getEventDetails();
+  const currentLogo = !logoError && activeEvent?.logoUrl;
 
   // Saved credentials from localStorage or defaults
   const savedUsername = localStorage.getItem('theaterAdminUsername') || 'admin';
@@ -82,13 +87,24 @@ export default function AdminLogin({ onLoginSuccess, onGuestMode }) {
             </div>
           </div>
 
-          <div className="h-9">
-            <MinistryOfEducationLogo 
-              className="h-9" 
-              color="#ffffff" 
-              textColor="#ffffff" 
-              subColor="#94a3b8" 
-            />
+          <div className="flex items-center">
+            {currentLogo ? (
+              <img 
+                src={currentLogo} 
+                alt="شعار" 
+                onError={() => setLogoError(true)}
+                className="h-9 sm:h-10 max-h-10 max-w-[120px] object-contain rounded-lg p-0.5 bg-white/10"
+              />
+            ) : (
+              <div className="h-9">
+                <MinistryOfEducationLogo 
+                  className="h-9" 
+                  color="#ffffff" 
+                  textColor="#ffffff" 
+                  subColor="#94a3b8" 
+                />
+              </div>
+            )}
           </div>
         </div>
 

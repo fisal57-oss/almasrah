@@ -14,15 +14,19 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { MinistryOfEducationLogo } from './ModernAttendanceCard';
-import { validateStaffLogin } from '../utils/storage';
+import { validateStaffLogin, getEventDetails } from '../utils/storage';
 
-export default function StaffLogin({ onLoginSuccess, onGuestMode }) {
+export default function StaffLogin({ onLoginSuccess, onGuestMode, eventDetails }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [logoError, setLogoError] = useState(false);
+
+  const activeEvent = eventDetails || getEventDetails();
+  const currentLogo = !logoError && activeEvent?.logoUrl;
 
   const handleSubmit = (e) => {
     if (e) e.preventDefault();
@@ -87,13 +91,24 @@ export default function StaffLogin({ onLoginSuccess, onGuestMode }) {
             </div>
           </div>
 
-          <div className="h-9">
-            <MinistryOfEducationLogo 
-              className="h-9" 
-              color="#ffffff" 
-              textColor="#ffffff" 
-              subColor="#94a3b8" 
-            />
+          <div className="flex items-center">
+            {currentLogo ? (
+              <img 
+                src={currentLogo} 
+                alt="شعار" 
+                onError={() => setLogoError(true)}
+                className="h-9 sm:h-10 max-h-10 max-w-[120px] object-contain rounded-lg p-0.5 bg-white/10"
+              />
+            ) : (
+              <div className="h-9">
+                <MinistryOfEducationLogo 
+                  className="h-9" 
+                  color="#ffffff" 
+                  textColor="#ffffff" 
+                  subColor="#94a3b8" 
+                />
+              </div>
+            )}
           </div>
         </div>
 

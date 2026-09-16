@@ -204,6 +204,7 @@ export default function App() {
   if (!isAdminAuthenticated) {
     return (
       <AdminLogin
+        eventDetails={eventDetails}
         onLoginSuccess={() => setIsAdminAuthenticated(true)}
         onGuestMode={() => setAppMode('beneficiary')}
       />
@@ -219,6 +220,7 @@ export default function App() {
         currentTab={currentTab}
         setCurrentTab={setCurrentTab}
         stats={stats}
+        eventDetails={eventDetails}
         isMobileOpen={isMobileMenuOpen}
         onCloseMobile={() => setIsMobileMenuOpen(false)}
         onOpenPrintLabels={() => setShowPrintLabelsModal(true)}

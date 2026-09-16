@@ -11,7 +11,7 @@ export const DEFAULT_EVENT = {
   venue: 'المسرح الرئيسي - القاعة الكبرى',
   city: 'الرياض، المملكة العربية السعودية',
   logoText: 'المسرح الرئيسي',
-  logoUrl: '',
+  logoUrl: 'ministry_logo.png',
   theaterImageUrl: '',
   note: 'يرجى إبراز بطاقة الحضور عند مدخل المسرح للتحقق عبر الـ QR Code.'
 };
@@ -180,7 +180,11 @@ export function getEventDetails() {
   try {
     const saved = localStorage.getItem(STORAGE_EVENT_KEY);
     if (saved) {
-      return { ...DEFAULT_EVENT, ...JSON.parse(saved) };
+      const parsed = JSON.parse(saved);
+      if (!parsed.logoUrl) {
+        parsed.logoUrl = 'ministry_logo.png';
+      }
+      return { ...DEFAULT_EVENT, ...parsed };
     }
   } catch (err) {
     console.error('Error loading event', err);

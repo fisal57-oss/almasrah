@@ -60,9 +60,17 @@ export default function BeneficiaryPortal({
       {/* Top Header Bar for Beneficiary Portal */}
       <header className="bg-[#060B14] border-b border-slate-800/60 sticky top-0 z-40 backdrop-blur-md bg-opacity-90 px-4 sm:px-8 py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#00d2ff] to-[#7952b3] flex items-center justify-center shadow-lg shadow-cyan-500/20 text-white font-black">
-            <Rocket className="w-6 h-6 transform -rotate-45" />
-          </div>
+          {eventDetails?.logoUrl ? (
+            <img 
+              src={eventDetails.logoUrl} 
+              alt="شعار الفعالية" 
+              className="h-10 max-h-10 max-w-[120px] object-contain rounded-xl p-1 bg-white/10 border border-white/20 shadow-md shrink-0"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#00d2ff] to-[#7952b3] flex items-center justify-center shadow-lg shadow-cyan-500/20 text-white font-black shrink-0">
+              <Rocket className="w-6 h-6 transform -rotate-45" />
+            </div>
+          )}
           <div>
             <h1 className="text-lg font-black tracking-wide text-white">
               بوابة المستفيدين والضيوف

@@ -1,4 +1,3 @@
-import React from 'react';
 import { 
   Rocket, 
   Armchair, 
@@ -19,11 +18,13 @@ import {
   ShieldCheck,
   X
 } from 'lucide-react';
+import { getEventDetails } from '../utils/storage';
 
 export default function Sidebar({ 
   currentTab, 
   setCurrentTab, 
   stats = {}, 
+  eventDetails,
   onOpenPrintLabels, 
   onOpenSeatManager, 
   onOpenPrintAllTickets,
@@ -33,6 +34,9 @@ export default function Sidebar({
   isMobileOpen = false,
   onCloseMobile
 }) {
+  const [logoError, setLogoError] = React.useState(false);
+  const activeEvent = eventDetails || getEventDetails();
+  const activeLogo = !logoError && activeEvent?.logoUrl;
   const menuItems = [
     { 
       id: 'dashboard', 
@@ -121,9 +125,18 @@ export default function Sidebar({
         {/* Top Logo & App Title */}
         <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 text-white font-black shrink-0">
-              <Crown className="w-5 h-5 text-amber-300" />
-            </div>
+            {activeLogo ? (
+              <img 
+                src={activeLogo} 
+                alt="شعار الفعالية" 
+                onError={() => setLogoError(true)}
+                className="h-10 sm:h-11 max-h-11 max-w-[120px] object-contain rounded-xl p-1 bg-white/10 backdrop-blur-md border border-white/20 shadow-md shrink-0"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 text-white font-black shrink-0">
+                <Crown className="w-5 h-5 text-amber-300" />
+              </div>
+            )}
             <div>
               <h1 className="text-sm sm:text-base font-black tracking-wide text-white">
                 مسرح تعليم عسير

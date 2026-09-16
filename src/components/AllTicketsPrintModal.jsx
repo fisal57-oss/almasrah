@@ -202,12 +202,20 @@ export default function AllTicketsPrintModal({ seats, eventDetails, onClose }) {
                     {/* Top Header: Logo on Right + Slogan Badge */}
                     <div className="relative z-10 flex items-center justify-between gap-4 border-b border-slate-200/80 pb-3">
                       <div className="flex items-center gap-3">
-                        <MinistryOfEducationLogo 
-                          className="h-10" 
-                          color="#00a887" 
-                          textColor="#0e2b5c" 
-                          subColor="#4a6b63" 
-                        />
+                        {eventDetails?.logoUrl ? (
+                          <img 
+                            src={eventDetails.logoUrl} 
+                            alt={eventDetails.title || "شعار الفعالية"} 
+                            className="h-10 sm:h-11 max-h-11 max-w-[140px] object-contain"
+                          />
+                        ) : (
+                          <MinistryOfEducationLogo 
+                            className="h-10" 
+                            color="#00a887" 
+                            textColor="#0e2b5c" 
+                            subColor="#4a6b63" 
+                          />
+                        )}
                       </div>
 
                       <div className="flex items-center gap-1.5 text-[10px] font-black text-[#0b1b3d] bg-cyan-100/60 border border-cyan-300/60 px-3 py-1 rounded-full shadow-sm">

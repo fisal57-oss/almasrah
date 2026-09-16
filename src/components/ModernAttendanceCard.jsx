@@ -95,6 +95,19 @@ function WireframeMesh({ className = "w-28 h-28" }) {
  * Official Ministry of Education Logo component for fallback
  */
 export function MinistryOfEducationLogo({ className = "h-11", color = "#00a887", textColor = "#00a887", subColor = "#4a6b63" }) {
+  const [imgErr, setImgErr] = React.useState(false);
+
+  if (!imgErr) {
+    return (
+      <img
+        src="ministry_logo.png"
+        alt="وزارة التعليم - Ministry of Education"
+        onError={() => setImgErr(true)}
+        className={`object-contain select-none max-h-14 ${className}`}
+      />
+    );
+  }
+
   return (
     <div className={`flex items-center gap-2 select-none ${className}`}>
       <svg viewBox="0 0 100 80" className="h-full w-auto shrink-0" fill={color}>
