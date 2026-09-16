@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { 
   ShieldCheck, 
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { MinistryOfEducationLogo } from './ModernAttendanceCard';
 import { getEventDetails } from '../utils/storage';
+import aseerVerticalBg from '../assets/aseer_vertical_bg.png';
 
 /**
  * Laurel Leaf Flourish SVG for badge title
@@ -96,6 +97,7 @@ export default function OrganizerBadgeCard({
     ? eventDetails 
     : getEventDetails();
   const currentLogo = activeEvent?.logoUrl;
+  const [logoError, setLogoError] = useState(false);
 
   const baseUrl = typeof window !== 'undefined' ? (window.location.origin + window.location.pathname.replace(/[^/]*$/, '')) : '';
   const portalUrl = `${baseUrl}staff.html`;
@@ -114,15 +116,18 @@ export default function OrganizerBadgeCard({
     <div
       ref={innerRef}
       dir="rtl"
-      className={`organizer-badge-card relative w-full max-w-[390px] aspect-[9/16] bg-[#f8fbff] text-[#162a5c] rounded-[28px] sm:rounded-[32px] shadow-[0_20px_50px_rgba(14,43,92,0.28)] border-2 border-indigo-200/70 overflow-hidden select-none flex flex-col justify-between ${className}`}
+      className={`organizer-badge-card relative w-full max-w-[390px] aspect-[9/16] bg-gradient-to-b from-[#f8fbff] via-[#eef5fc] to-[#e4f0fa] text-[#162a5c] rounded-[28px] sm:rounded-[32px] shadow-[0_20px_50px_rgba(14,43,92,0.28)] border-2 border-indigo-200/70 overflow-hidden select-none flex flex-col justify-between ${className}`}
       style={{ fontFamily: "'Cairo', 'Readex Pro', sans-serif", aspectRatio: '9 / 16' }}
     >
-      {/* Scenic Asir Mountain & Heritage Village Background Image (using img tag so it prints even if background graphics is disabled) */}
-      <img 
-        src="/aseer_vertical_bg.png" 
-        alt="" 
-        className="absolute inset-0 w-full h-full object-cover pointer-events-none z-0"
-      />
+      {/* Scenic Asir Mountain & Heritage Village Background Image */}
+      {aseerVerticalBg && (
+        <img 
+          src={aseerVerticalBg} 
+          alt="" 
+          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none z-0"
+        />
+      )}
 
       {/* Soft atmospheric white mist overlay for crystal-clear readability and contrast */}
       <div 
@@ -156,12 +161,13 @@ export default function OrganizerBadgeCard({
           <div className="w-7 h-[2px] bg-gradient-to-r from-cyan-400 to-indigo-600 rounded-full mt-1"></div>
         </div>
 
-        {/* Top Left (second in RTL): Logo */}
+        {/* Top Left (second in RTL): Logo with automatic fallback */}
         <div className="flex items-center">
-          {currentLogo ? (
+          {currentLogo && !logoError ? (
             <img 
               src={currentLogo} 
               alt={activeEvent?.title || "شعار الفعالية"} 
+              onError={() => setLogoError(true)}
               className="h-10 sm:h-11 max-h-11 max-w-[130px] object-contain"
             />
           ) : (

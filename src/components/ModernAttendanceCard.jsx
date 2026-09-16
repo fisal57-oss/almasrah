@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { 
   Armchair, 
@@ -10,6 +10,8 @@ import {
   User 
 } from 'lucide-react';
 import { formatArabicSeatCode, getEventDetails } from '../utils/storage';
+import aseerVerticalBg from '../assets/aseer_vertical_bg.png';
+import aseerSeatCardBg from '../assets/aseer_seat_card_bg.png';
 
 /**
  * Laurel Leaf Flourish SVG for invitation title
@@ -251,6 +253,7 @@ export default function ModernAttendanceCard({
     ? eventDetails 
     : getEventDetails();
   const currentLogo = activeEvent?.logoUrl;
+  const [logoError, setLogoError] = useState(false);
 
   // Pill badge code: e.g. A-05 or A-01
   const rowLetter = seat.row || 'A';
@@ -298,14 +301,16 @@ export default function ModernAttendanceCard({
       <div
         ref={innerRef}
         dir="rtl"
-        className={`printable-seat-card-landscape relative w-full max-w-[860px] aspect-[297/210] bg-[#f8fbff] text-[#0e2b5c] rounded-[24px] sm:rounded-[32px] shadow-[0_20px_60px_rgba(14,43,92,0.22)] border-2 border-[#00b4d8]/40 overflow-hidden select-none flex flex-col justify-between ${className}`}
+        className={`printable-seat-card-landscape relative w-full max-w-[860px] aspect-[297/210] bg-gradient-to-b from-[#f8fbff] via-[#eef5fc] to-[#e4f0fa] text-[#0e2b5c] rounded-[24px] sm:rounded-[32px] shadow-[0_20px_60px_rgba(14,43,92,0.22)] border-2 border-[#00b4d8]/40 overflow-hidden select-none flex flex-col justify-between ${className}`}
         style={{ fontFamily: "'Cairo', 'Readex Pro', sans-serif", aspectRatio: '297 / 210' }}
       >
         {/* Scenic Panoramic Asir Mountain Background Image */}
-        <div 
-          className="absolute inset-0 z-0 bg-cover bg-center pointer-events-none"
-          style={{ backgroundImage: `url('/aseer_seat_card_bg.png')` }}
-        />
+        {aseerSeatCardBg && (
+          <div 
+            className="absolute inset-0 z-0 bg-cover bg-center pointer-events-none"
+            style={{ backgroundImage: `url(${aseerSeatCardBg})` }}
+          />
+        )}
 
         {/* Soft atmospheric white mist overlay for crystal-clear readability */}
         <div 
@@ -322,10 +327,11 @@ export default function ModernAttendanceCard({
           
           {/* RIGHT: Ministry Logo & Directorate Text */}
           <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-            {currentLogo ? (
+            {currentLogo && !logoError ? (
               <img 
                 src={currentLogo} 
                 alt={activeEvent?.title || "شعار الفعالية"} 
+                onError={() => setLogoError(true)}
                 className="h-11 sm:h-14 max-h-14 max-w-[140px] object-contain"
               />
             ) : (
@@ -572,14 +578,16 @@ export default function ModernAttendanceCard({
       <div
         ref={innerRef}
         dir="rtl"
-        className={`relative w-full max-w-[390px] aspect-[9/16] bg-[#f8fbff] text-[#162a5c] rounded-[28px] sm:rounded-[32px] shadow-[0_20px_50px_rgba(14,43,92,0.28)] border-2 border-indigo-200/70 overflow-hidden select-none flex flex-col justify-between ${className}`}
+        className={`relative w-full max-w-[390px] aspect-[9/16] bg-gradient-to-b from-[#f8fbff] via-[#eef5fc] to-[#e4f0fa] text-[#162a5c] rounded-[28px] sm:rounded-[32px] shadow-[0_20px_50px_rgba(14,43,92,0.28)] border-2 border-indigo-200/70 overflow-hidden select-none flex flex-col justify-between ${className}`}
         style={{ fontFamily: "'Cairo', 'Readex Pro', sans-serif", aspectRatio: '9 / 16' }}
       >
         {/* Scenic Asir Mountain & Heritage Village Background Image (uploaded by user) */}
-        <div 
-          className="absolute inset-0 z-0 bg-cover bg-center pointer-events-none"
-          style={{ backgroundImage: `url('/aseer_vertical_bg.png')` }}
-        />
+        {aseerVerticalBg && (
+          <div 
+            className="absolute inset-0 z-0 bg-cover bg-center pointer-events-none"
+            style={{ backgroundImage: `url(${aseerVerticalBg})` }}
+          />
+        )}
 
         {/* Soft atmospheric white mist overlay for crystal clear contrast */}
         <div 
@@ -606,10 +614,11 @@ export default function ModernAttendanceCard({
 
           {/* Top Left (second in RTL): Logo */}
           <div className="flex items-center">
-            {currentLogo ? (
+            {currentLogo && !logoError ? (
               <img 
                 src={currentLogo} 
                 alt={activeEvent?.title || "شعار الفعالية"} 
+                onError={() => setLogoError(true)}
                 className="h-10 sm:h-11 max-h-11 max-w-[130px] object-contain"
               />
             ) : (
@@ -894,14 +903,16 @@ export default function ModernAttendanceCard({
     <div
       ref={innerRef}
       dir="rtl"
-      className={`relative w-full max-w-[360px] aspect-[9/16] bg-[#f8fbff] text-[#0e2b5c] rounded-[24px] sm:rounded-[28px] shadow-[0_16px_50px_rgba(14,43,92,0.25)] border-2 border-indigo-200/80 overflow-hidden select-none flex flex-col ${className}`}
+      className={`relative w-full max-w-[360px] aspect-[9/16] bg-gradient-to-b from-[#f8fbff] via-[#eef5fc] to-[#e4f0fa] text-[#0e2b5c] rounded-[24px] sm:rounded-[28px] shadow-[0_16px_50px_rgba(14,43,92,0.25)] border-2 border-indigo-200/80 overflow-hidden select-none flex flex-col ${className}`}
       style={{ fontFamily: "'Cairo', 'Readex Pro', sans-serif", aspectRatio: '9 / 16' }}
     >
       {/* Scenic Panoramic Asir Mountain Background Image */}
-      <div 
-        className="absolute inset-0 z-0 bg-cover bg-center pointer-events-none"
-        style={{ backgroundImage: `url('/aseer_vertical_bg.png')` }}
-      />
+      {aseerVerticalBg && (
+        <div 
+          className="absolute inset-0 z-0 bg-cover bg-center pointer-events-none"
+          style={{ backgroundImage: `url(${aseerVerticalBg})` }}
+        />
+      )}
       {/* Mist overlay - lighter at bottom to show the mountain wave */}
       <div 
         className="absolute inset-0 z-0 pointer-events-none"
@@ -914,10 +925,11 @@ export default function ModernAttendanceCard({
       <div className="relative z-10 pt-3.5 px-4 flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center justify-center min-h-[42px]">
-          {currentLogo ? (
+          {currentLogo && !logoError ? (
             <img 
               src={currentLogo} 
               alt={activeEvent?.title || "شعار الفعالية"} 
+              onError={() => setLogoError(true)}
               className="h-10 max-h-10 max-w-[120px] object-contain"
             />
           ) : (
