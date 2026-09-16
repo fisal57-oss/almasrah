@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { 
   Rocket, 
   Armchair, 
@@ -34,7 +35,7 @@ export default function Sidebar({
   isMobileOpen = false,
   onCloseMobile
 }) {
-  const [logoError, setLogoError] = React.useState(false);
+  const [logoError, setLogoError] = useState(false);
   const activeEvent = eventDetails || getEventDetails();
   const activeLogo = !logoError && activeEvent?.logoUrl;
   const menuItems = [
