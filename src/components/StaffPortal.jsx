@@ -1280,7 +1280,7 @@ export default function StaffPortal() {
       />
 
       {/* Fixed Bottom Navigation Bar for Mobile Web App */}
-      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#060D1A]/95 backdrop-blur-xl border-t border-cyan-500/25 px-2 py-1.5 flex items-center justify-around shadow-[0_-5px_25px_rgba(0,0,0,0.6)]">
+      <nav className="sm:hidden no-print fixed bottom-0 left-0 right-0 z-40 bg-[#060D1A]/95 backdrop-blur-xl border-t border-cyan-500/25 px-2 py-1.5 flex items-center justify-around shadow-[0_-5px_25px_rgba(0,0,0,0.6)]">
         <button
           onClick={() => setActiveTab('checkin')}
           className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl transition-all ${

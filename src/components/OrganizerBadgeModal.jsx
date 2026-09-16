@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   X, 
   Download, 
@@ -82,7 +83,7 @@ export default function OrganizerBadgeModal({
     setTimeout(() => setCopiedLink(false), 3000);
   };
 
-  return (
+  const modalContent = (
     <div className="fixed inset-0 z-50 flex items-start justify-center p-2 sm:p-4 md:py-6 bg-[#030917]/90 backdrop-blur-2xl overflow-y-auto">
       
       <div className="relative w-full max-w-xl my-2 flex flex-col items-center">
@@ -150,4 +151,6 @@ export default function OrganizerBadgeModal({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 }

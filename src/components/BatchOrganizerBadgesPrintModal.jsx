@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   X, 
   Printer, 
@@ -62,7 +63,7 @@ export default function BatchOrganizerBadgesPrintModal({
     }
   };
 
-  return (
+  const modalContent = (
     <div className="fixed inset-0 z-50 flex items-start justify-center p-2 sm:p-4 bg-slate-950/85 backdrop-blur-xl overflow-y-auto">
       
       <div className="relative w-full max-w-6xl my-2 flex flex-col items-center">
@@ -224,4 +225,6 @@ export default function BatchOrganizerBadgesPrintModal({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 }

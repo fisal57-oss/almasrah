@@ -117,10 +117,11 @@ export default function OrganizerBadgeCard({
       className={`organizer-badge-card relative w-full max-w-[390px] aspect-[9/16] bg-[#f8fbff] text-[#162a5c] rounded-[28px] sm:rounded-[32px] shadow-[0_20px_50px_rgba(14,43,92,0.28)] border-2 border-indigo-200/70 overflow-hidden select-none flex flex-col justify-between ${className}`}
       style={{ fontFamily: "'Cairo', 'Readex Pro', sans-serif", aspectRatio: '9 / 16' }}
     >
-      {/* Scenic Asir Mountain & Heritage Village Background Image */}
-      <div 
-        className="absolute inset-0 z-0 bg-cover bg-center pointer-events-none"
-        style={{ backgroundImage: `url('/aseer_vertical_bg.png')` }}
+      {/* Scenic Asir Mountain & Heritage Village Background Image (using img tag so it prints even if background graphics is disabled) */}
+      <img 
+        src="/aseer_vertical_bg.png" 
+        alt="" 
+        className="absolute inset-0 w-full h-full object-cover pointer-events-none z-0"
       />
 
       {/* Soft atmospheric white mist overlay for crystal-clear readability and contrast */}

@@ -328,7 +328,7 @@ export default function App() {
 
         {/* Sleek Native-Feel Mobile Bottom Navigation Bar */}
         <nav 
-          className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#060D1A]/95 backdrop-blur-2xl border-t border-white/15 px-3 py-1 flex items-center justify-around shadow-[0_-10px_30px_rgba(0,0,0,0.7)]"
+          className="lg:hidden no-print fixed bottom-0 left-0 right-0 z-40 bg-[#060D1A]/95 backdrop-blur-2xl border-t border-white/15 px-3 py-1 flex items-center justify-around shadow-[0_-10px_30px_rgba(0,0,0,0.7)]"
           dir="rtl"
           style={{ paddingBottom: 'max(0.6rem, env(safe-area-inset-bottom))' }}
         >
