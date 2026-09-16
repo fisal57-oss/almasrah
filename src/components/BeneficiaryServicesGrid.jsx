@@ -4,14 +4,8 @@ import {
   Ticket, 
   Armchair, 
   Info, 
-  ChevronLeft, 
-  Landmark, 
-  Crown, 
-  Tv, 
-  Sparkles,
-  Search
+  ChevronLeft
 } from 'lucide-react';
-import { DEFAULT_VENUES } from '../utils/storage';
 
 export default function BeneficiaryServicesGrid({
   onOpenVenueModal,
@@ -36,7 +30,7 @@ export default function BeneficiaryServicesGrid({
           </h3>
         </div>
         <span className="text-xs text-slate-400 hidden sm:inline">
-          اختر أيقونة الخدمة أو القاعة للوصول السريع
+          اختر أيقونة الخدمة للوصول السريع
         </span>
       </div>
 
@@ -168,53 +162,6 @@ export default function BeneficiaryServicesGrid({
             <ChevronLeft className="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform" />
           </div>
         </button>
-      </div>
-
-      {/* Quick Direct Venue Icons (أيقونات المسارح والقاعات المتاحة للحجز المباشر) */}
-      <div className="glass-panel-luxury p-3 sm:p-4 rounded-2xl border border-amber-500/25 bg-gradient-to-r from-amber-500/10 via-slate-900/50 to-amber-500/10 shadow-lg">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-3 px-1">
-          <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
-            <Building2 className="w-4 h-4 text-amber-400" />
-            <span>أيقونات القاعات والمسارح المتاحة للحجز الفوري:</span>
-          </span>
-          <span className="text-[10px] text-slate-400">انقر على أيقونة القاعة لبدء طلب الحجز مباشرة</span>
-        </div>
-        
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-          {DEFAULT_VENUES.map(venue => {
-            const isMain = venue.id === 'main-theater';
-            const isEdu = venue.id === 'education-theater';
-            const isHall = venue.id === 'faisal-hall';
-            return (
-              <button
-                key={venue.id}
-                type="button"
-                onClick={() => onOpenVenueModal && onOpenVenueModal(venue.id)}
-                className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-900/80 hover:bg-amber-500/20 border border-white/10 hover:border-amber-400/60 transition-all text-right group active:scale-95 shadow-sm cursor-pointer"
-              >
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 shadow-md ${
-                  isMain ? 'bg-gradient-to-tr from-amber-400 to-yellow-500 text-slate-950 font-black' :
-                  isEdu ? 'bg-gradient-to-tr from-cyan-400 to-blue-500 text-slate-950 font-black' :
-                  isHall ? 'bg-gradient-to-tr from-purple-400 to-pink-500 text-slate-950 font-black' :
-                  'bg-gradient-to-tr from-emerald-400 to-teal-500 text-slate-950 font-black'
-                }`}>
-                  {isMain ? <Landmark className="w-5 h-5" /> :
-                   isEdu ? <Tv className="w-5 h-5" /> :
-                   isHall ? <Crown className="w-5 h-5" /> :
-                   <Sparkles className="w-5 h-5" />}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-[11px] font-black text-white truncate group-hover:text-amber-300 transition-colors">
-                    {venue.name.split('(')[0]}
-                  </div>
-                  <div className="text-[10px] text-amber-400 font-bold font-mono">
-                    {venue.capacity}
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
       </div>
     </div>
   );
