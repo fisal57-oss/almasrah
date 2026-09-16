@@ -117,20 +117,20 @@ export default function DoorScanner({ seats, onUpdateSeats }) {
         </div>
 
         {/* Live Counters */}
-        <div className="flex items-center gap-4 bg-white/5 border border-white/10 p-3.5 rounded-2xl shrink-0">
-          <div className="text-center px-2">
+        <div className="flex items-center justify-around w-full md:w-auto gap-2 sm:gap-4 bg-white/5 border border-white/10 p-3 sm:p-3.5 rounded-2xl">
+          <div className="text-center px-1 sm:px-2">
             <span className="text-[10px] text-slate-400 block font-bold">حاضر بالقاعة</span>
-            <span className="text-xl font-black text-emerald-300">{checkedInSeats.length}</span>
+            <span className="text-lg sm:text-xl font-black text-emerald-300">{checkedInSeats.length}</span>
           </div>
           <div className="w-[1px] h-8 bg-white/15"></div>
-          <div className="text-center px-2">
+          <div className="text-center px-1 sm:px-2">
             <span className="text-[10px] text-slate-400 block font-bold">بانتظار الدخول</span>
-            <span className="text-xl font-black text-amber-300">{reservedSeats.length}</span>
+            <span className="text-lg sm:text-xl font-black text-amber-300">{reservedSeats.length}</span>
           </div>
           <div className="w-[1px] h-8 bg-white/15"></div>
-          <div className="text-center px-2">
+          <div className="text-center px-1 sm:px-2">
             <span className="text-[10px] text-slate-400 block font-bold">نسبة الحضور</span>
-            <span className="text-xl font-black text-cyan-300">{attendanceRate}%</span>
+            <span className="text-lg sm:text-xl font-black text-cyan-300">{attendanceRate}%</span>
           </div>
         </div>
 
@@ -143,13 +143,13 @@ export default function DoorScanner({ seats, onUpdateSeats }) {
         <div className="lg:col-span-2 space-y-6">
           
           {/* Barcode Input Form */}
-          <div className="bg-[#0b162b] border border-white/10 p-6 rounded-3xl shadow-xl space-y-4">
+          <div className="bg-[#0b162b] border border-white/10 p-4 sm:p-6 rounded-3xl shadow-xl space-y-4">
             <form onSubmit={handleSubmit} className="space-y-3">
               <label className="text-xs font-bold text-slate-200 block">
                 مسح الباركود أو إدخال رمز التذكرة / رقم المقعد:
               </label>
 
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <div className="relative flex-1">
                   <input
                     ref={inputRef}
@@ -164,7 +164,7 @@ export default function DoorScanner({ seats, onUpdateSeats }) {
 
                 <button
                   type="submit"
-                  className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-xs transition-all shadow-lg shadow-cyan-500/20 active:scale-95 flex items-center gap-2"
+                  className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-xs transition-all shadow-lg shadow-cyan-500/20 active:scale-95 flex items-center justify-center gap-2"
                 >
                   <Check className="w-4 h-4" />
                   <span>تأكيد الدخول</span>

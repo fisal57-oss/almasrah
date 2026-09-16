@@ -252,16 +252,18 @@ export default function BookingsList({
         </div>
       </div>
 
-      {/* Bookings List Table */}
+      {/* Bookings List Container */}
       {filtered.length === 0 ? (
-        <div className="bg-[#0b162b] border border-white/10 rounded-3xl p-12 text-center text-slate-400 space-y-3">
+        <div className="bg-[#0b162b] border border-white/10 rounded-3xl p-8 sm:p-12 text-center text-slate-400 space-y-3">
           <User className="w-12 h-12 text-slate-600 mx-auto" />
           <p className="text-sm font-bold text-slate-300">لا توجد حجوزات مطابقة للبحث أو التصفية الحالية</p>
           <p className="text-xs text-slate-400">يمكنك حجز مقعد جديد من الخريطة أو استيراد أسماء الضيوف من ملف Excel</p>
         </div>
       ) : (
         <div className="bg-[#0b162b] border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
-          <div className="overflow-x-auto">
+          
+          {/* Desktop Table View (Hidden on mobile) */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-right text-xs">
               <thead className="bg-[#070f1f] text-slate-400 border-b border-white/10 uppercase tracking-wider text-[11px] font-bold">
                 <tr>
@@ -396,6 +398,117 @@ export default function BookingsList({
               </tbody>
             </table>
           </div>
+
+          {/* Mobile Card List View (Phones only) */}
+          <div className="md:hidden divide-y divide-white/10">
+            {filtered.map((seat, index) => {
+              const guest = seat.guest || {};
+              const isCheckedIn = seat.status === 'checked_in';
+
+              return (
+                <div key={seat.id} className="p-4 space-y-3 bg-[#0b162b] hover:bg-white/5 transition-colors">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-0.5">
+                      <div className="font-extrabold text-white flex items-center gap-1.5 text-sm">
+                        <span>{guest.name}</span>
+                        {seat.isVip && (
+                          <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded-full font-bold border border-amber-500/30">
+                            VIP
+                          </span>
+                        )}
+                      </div>
+                      {guest.jobTitle && (
+                        <div className="text-xs text-slate-400 font-medium">
+                          {guest.jobTitle}
+                        </div>
+                      )}
+                      {guest.phone && (
+                        <div className="text-[11px] text-slate-500 font-mono">
+                          📞 {guest.phone}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      {isCheckedIn ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                          <Check className="w-3 h-3" />
+                          <span>تم الدخول</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                          <span>مؤكد</span>
+                        </span>
+                      )}
+                      <span className="text-[10px] bg-white/10 text-slate-300 px-2 py-0.5 rounded-md border border-white/10">
+                        {guest.category || 'عام'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs bg-white/5 p-2.5 rounded-xl border border-white/10">
+                    <div className="flex items-center gap-1.5 text-cyan-300 font-bold">
+                      <Armchair className="w-4 h-4 text-cyan-400 shrink-0" />
+                      <span>الصف ({seat.row}) • مقعد ({String(seat.number).padStart(2, '0')})</span>
+                    </div>
+                    <span className="text-[11px] text-slate-400">
+                      {seat.level === 'B' ? 'البلكونة' : 'الأرضي'} • {seat.sector || 'الوسط'}
+                    </span>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="grid grid-cols-4 gap-1.5 pt-1">
+                    <button
+                      onClick={() => onOpenCard(seat)}
+                      className="py-2 px-1 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/30 text-[11px] font-bold flex items-center justify-center gap-1 active:scale-95"
+                    >
+                      <Ticket className="w-3.5 h-3.5" />
+                      <span>التذكرة</span>
+                    </button>
+
+                    <button
+                      onClick={() => onOpenInvitation ? onOpenInvitation(seat) : onOpenCard(seat)}
+                      className="py-2 px-1 rounded-xl bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 border border-amber-400/30 text-[11px] font-bold flex items-center justify-center gap-1 active:scale-95"
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                      <span>الدعوة</span>
+                    </button>
+
+                    <button
+                      onClick={() => onOpenSeatCard(seat)}
+                      className="py-2 px-1 rounded-xl bg-purple-500/15 hover:bg-purple-500/30 text-purple-300 border border-purple-400/30 text-[11px] font-bold flex items-center justify-center gap-1 active:scale-95"
+                    >
+                      <Armchair className="w-3.5 h-3.5" />
+                      <span>المقعد</span>
+                    </button>
+
+                    {!isCheckedIn ? (
+                      <button
+                        onClick={() => onCheckIn(guest.token || seat.id)}
+                        className="py-2 px-1 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 text-[11px] font-black flex items-center justify-center gap-1 active:scale-95"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>تسجيل</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          if (confirm(`هل أنت متأكد من إلغاء حجز المقعد (${seat.row}${seat.number}) للضيف ${guest.name}؟`)) {
+                            onCancelBooking(seat.id);
+                          }
+                        }}
+                        className="py-2 px-1 rounded-xl bg-rose-500/15 hover:bg-rose-500/30 text-rose-300 border border-rose-400/30 text-[11px] font-bold flex items-center justify-center gap-1 active:scale-95"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>إلغاء</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
         </div>
       )}
 

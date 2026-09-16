@@ -451,208 +451,219 @@ export default function TheaterMap({
       )}
 
       {/* Main Theater Arena Container */}
-      <div className="glass-panel-luxury p-8 rounded-3xl border-2 border-white/20 shadow-2xl overflow-x-auto relative min-w-[950px]">
+      <div className="glass-panel-luxury p-3 sm:p-6 lg:p-8 rounded-3xl border-2 border-white/20 shadow-2xl relative w-full overflow-hidden">
         
-        {/* Stage Screen */}
-        <div className="mb-10 text-center relative">
-          <div className="stage-spotlight max-w-2xl mx-auto py-3.5 px-10 rounded-b-3xl">
-            <div className="flex items-center justify-center gap-3">
-              <span className="text-lg font-black tracking-widest text-cyan-200 uppercase drop-shadow-md">
-                المسرح الرئيسي • STAGE
-              </span>
-            </div>
-            <div className="text-[10px] text-cyan-100 mt-0.5 tracking-widest font-mono">
-              {activeLevel === 'G' ? `الدور الأرضي - ${rowKeys.length} صفاً` : `الدور الثاني - ${rowKeys.length} صفوف`}
-            </div>
-          </div>
+        {/* Mobile Swipe Hint */}
+        <div className="lg:hidden mb-3 flex items-center justify-center gap-1.5 text-[11px] text-cyan-300 font-bold bg-cyan-500/10 border border-cyan-400/20 py-1.5 px-3 rounded-xl select-none">
+          <span>↔️ اسحب الخريطة أفقياً للتنقل بين المقاعد والأجنحة</span>
         </div>
 
-        {/* Rows Grid with Zoom Transform */}
-        <div 
-          className="flex flex-col gap-2.5 transition-transform origin-top duration-300 items-center"
-          style={{ transform: `scale(${zoomScale})` }}
-        >
-          {rowKeys.map((rowLabel) => {
-            const rowSeats = levelSeats.filter((s) => s.row === rowLabel);
+        <div className="overflow-x-auto pb-4 custom-scrollbar">
+          <div className="min-w-[920px] mx-auto">
             
-            const leftSector = rowSeats.filter((s) => s.sectorKey === 'left');
-            const centerSector = rowSeats.filter((s) => s.sectorKey === 'center');
-            const rightSector = rowSeats.filter((s) => s.sectorKey === 'right');
-
-            const isAddOpen = addPanel?.row === rowLabel && addPanel?.level === activeLevel;
-
-            return (
-              <div key={rowLabel}>
-                <div 
-                  className="flex items-center justify-center gap-2 sm:gap-4 py-0.5 px-2 rounded-xl hover:bg-white/10 transition-all w-full"
-                >
-                  
-                  {/* Row Identifier Badge Right */}
-                  <div className="w-7 h-7 rounded-lg bg-white/20 border border-white/40 flex items-center justify-center text-white font-black text-xs shrink-0 shadow-lg backdrop-blur-md">
-                    {rowLabel}
-                  </div>
-
-                  {/* Left Sector */}
-                  <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md p-1.5 rounded-xl border border-white/20 shadow-inner flex-nowrap shrink-0">
-                    {leftSector.map((seat) => (
-                      <Seat3DButton 
-                        key={seat.id} 
-                        seat={seat} 
-                        onClick={() => deleteMode ? handleDeleteSeatDirect(seat) : onSelectSeat(seat)}
-                        onContextMenu={(e) => {
-                          e.preventDefault();
-                          if (seat.status === 'available') {
-                            handleDeleteSeatDirect(seat);
-                          }
-                        }}
-                        deleteMode={deleteMode}
-                        isHighlighted={highlightSeatId === seat.id}
-                        isFilteredOut={!filteredSeats.some(s => s.id === seat.id)}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Sleek Aisle Pathway (Left <-> Center) */}
-                  <div className="w-8 flex items-center justify-center shrink-0 self-stretch relative">
-                    <div className="w-px h-full bg-gradient-to-b from-cyan-400/10 via-cyan-400/30 to-cyan-400/10"></div>
-                    <div className="absolute w-1.5 h-1.5 rounded-full bg-cyan-400/50 border border-cyan-300/70 shadow-sm shadow-cyan-400/60"></div>
-                  </div>
-
-                  {/* Center Sector */}
-                  <div className="flex items-center gap-1.5 bg-white/20 backdrop-blur-md p-1.5 rounded-xl border border-cyan-400/30 shadow-lg flex-nowrap shrink-0">
-                    {centerSector.map((seat) => (
-                      <Seat3DButton 
-                        key={seat.id} 
-                        seat={seat} 
-                        onClick={() => deleteMode ? handleDeleteSeatDirect(seat) : onSelectSeat(seat)}
-                        onContextMenu={(e) => {
-                          e.preventDefault();
-                          if (seat.status === 'available') {
-                            handleDeleteSeatDirect(seat);
-                          }
-                        }}
-                        deleteMode={deleteMode}
-                        isHighlighted={highlightSeatId === seat.id}
-                        isFilteredOut={!filteredSeats.some(s => s.id === seat.id)}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Sleek Aisle Pathway (Center <-> Right) */}
-                  <div className="w-8 flex items-center justify-center shrink-0 self-stretch relative">
-                    <div className="w-px h-full bg-gradient-to-b from-cyan-400/10 via-cyan-400/30 to-cyan-400/10"></div>
-                    <div className="absolute w-1.5 h-1.5 rounded-full bg-cyan-400/50 border border-cyan-300/70 shadow-sm shadow-cyan-400/60"></div>
-                  </div>
-
-                  {/* Right Sector */}
-                  <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md p-1.5 rounded-xl border border-white/20 shadow-inner flex-nowrap shrink-0">
-                    {rightSector.map((seat) => (
-                      <Seat3DButton 
-                        key={seat.id} 
-                        seat={seat} 
-                        onClick={() => deleteMode ? handleDeleteSeatDirect(seat) : onSelectSeat(seat)}
-                        onContextMenu={(e) => {
-                          e.preventDefault();
-                          if (seat.status === 'available') {
-                            handleDeleteSeatDirect(seat);
-                          }
-                        }}
-                        deleteMode={deleteMode}
-                        isHighlighted={highlightSeatId === seat.id}
-                        isFilteredOut={!filteredSeats.some(s => s.id === seat.id)}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Row Identifier Badge Left */}
-                  <div className="w-7 h-7 rounded-lg bg-white/20 border border-white/40 flex items-center justify-center text-white font-black text-xs shrink-0 shadow-lg backdrop-blur-md">
-                    {rowLabel}
-                  </div>
-
-                  {/* Quick Add Button */}
-                  {!isBeneficiaryView && onSeatsUpdated && (
-                    <button
-                      onClick={() => isAddOpen ? setAddPanel(null) : handleQuickAdd(rowLabel)}
-                      title={`إضافة مقعد للصف ${rowLabel}`}
-                      className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0 border transition-all ${
-                        isAddOpen
-                          ? 'bg-red-500/30 border-red-400/40 text-red-300 hover:bg-red-500/40'
-                          : 'bg-emerald-500/20 border-emerald-400/30 text-emerald-300 hover:bg-emerald-500/30 hover:scale-110'
-                      }`}
-                    >
-                      {isAddOpen ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-                    </button>
-                  )}
-
+            {/* Stage Screen */}
+            <div className="mb-10 text-center relative">
+              <div className="stage-spotlight max-w-2xl mx-auto py-3.5 px-10 rounded-b-3xl">
+                <div className="flex items-center justify-center gap-3">
+                  <span className="text-lg font-black tracking-widest text-cyan-200 uppercase drop-shadow-md">
+                    المسرح الرئيسي • STAGE
+                  </span>
                 </div>
+                <div className="text-[10px] text-cyan-100 mt-0.5 tracking-widest font-mono">
+                  {activeLevel === 'G' ? `الدور الأرضي - ${rowKeys.length} صفاً` : `الدور الثاني - ${rowKeys.length} صفوف`}
+                </div>
+              </div>
+            </div>
 
-                {/* Inline Quick-Add Panel */}
-                {isAddOpen && (
-                  <div className="mx-auto mt-1 mb-2 p-3 bg-emerald-500/10 border border-emerald-400/30 rounded-2xl flex flex-wrap items-center gap-3 max-w-2xl text-xs animate-fade-in shadow-xl">
-                    <span className="text-emerald-300 font-black text-sm">+ الصف {rowLabel}</span>
-                    
-                    {/* Sector selector */}
-                    <div className="flex items-center gap-1">
-                      {SECTORS.map(s => (
+            {/* Rows Grid with Zoom Transform */}
+            <div 
+              className="flex flex-col gap-2.5 transition-transform origin-top duration-300 items-center"
+              style={{ transform: `scale(${zoomScale})` }}
+            >
+              {rowKeys.map((rowLabel) => {
+                const rowSeats = levelSeats.filter((s) => s.row === rowLabel);
+                
+                const leftSector = rowSeats.filter((s) => s.sectorKey === 'left');
+                const centerSector = rowSeats.filter((s) => s.sectorKey === 'center');
+                const rightSector = rowSeats.filter((s) => s.sectorKey === 'right');
+
+                const isAddOpen = addPanel?.row === rowLabel && addPanel?.level === activeLevel;
+
+                return (
+                  <div key={rowLabel}>
+                    <div 
+                      className="flex items-center justify-center gap-2 sm:gap-4 py-0.5 px-2 rounded-xl hover:bg-white/10 transition-all w-full"
+                    >
+                      
+                      {/* Row Identifier Badge Right */}
+                      <div className="w-7 h-7 rounded-lg bg-white/20 border border-white/40 flex items-center justify-center text-white font-black text-xs shrink-0 shadow-lg backdrop-blur-md">
+                        {rowLabel}
+                      </div>
+
+                      {/* Left Sector */}
+                      <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md p-1.5 rounded-xl border border-white/20 shadow-inner flex-nowrap shrink-0">
+                        {leftSector.map((seat) => (
+                          <Seat3DButton 
+                            key={seat.id} 
+                            seat={seat} 
+                            onClick={() => deleteMode ? handleDeleteSeatDirect(seat) : onSelectSeat(seat)}
+                            onContextMenu={(e) => {
+                              e.preventDefault();
+                              if (seat.status === 'available') {
+                                handleDeleteSeatDirect(seat);
+                              }
+                            }}
+                            deleteMode={deleteMode}
+                            isHighlighted={highlightSeatId === seat.id}
+                            isFilteredOut={!filteredSeats.some(s => s.id === seat.id)}
+                          />
+                        ))}
+                      </div>
+
+                      {/* Sleek Aisle Pathway (Left <-> Center) */}
+                      <div className="w-8 flex items-center justify-center shrink-0 self-stretch relative">
+                        <div className="w-px h-full bg-gradient-to-b from-cyan-400/10 via-cyan-400/30 to-cyan-400/10"></div>
+                        <div className="absolute w-1.5 h-1.5 rounded-full bg-cyan-400/50 border border-cyan-300/70 shadow-sm shadow-cyan-400/60"></div>
+                      </div>
+
+                      {/* Center Sector */}
+                      <div className="flex items-center gap-1.5 bg-white/20 backdrop-blur-md p-1.5 rounded-xl border border-cyan-400/30 shadow-lg flex-nowrap shrink-0">
+                        {centerSector.map((seat) => (
+                          <Seat3DButton 
+                            key={seat.id} 
+                            seat={seat} 
+                            onClick={() => deleteMode ? handleDeleteSeatDirect(seat) : onSelectSeat(seat)}
+                            onContextMenu={(e) => {
+                              e.preventDefault();
+                              if (seat.status === 'available') {
+                                handleDeleteSeatDirect(seat);
+                              }
+                            }}
+                            deleteMode={deleteMode}
+                            isHighlighted={highlightSeatId === seat.id}
+                            isFilteredOut={!filteredSeats.some(s => s.id === seat.id)}
+                          />
+                        ))}
+                      </div>
+
+                      {/* Sleek Aisle Pathway (Center <-> Right) */}
+                      <div className="w-8 flex items-center justify-center shrink-0 self-stretch relative">
+                        <div className="w-px h-full bg-gradient-to-b from-cyan-400/10 via-cyan-400/30 to-cyan-400/10"></div>
+                        <div className="absolute w-1.5 h-1.5 rounded-full bg-cyan-400/50 border border-cyan-300/70 shadow-sm shadow-cyan-400/60"></div>
+                      </div>
+
+                      {/* Right Sector */}
+                      <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md p-1.5 rounded-xl border border-white/20 shadow-inner flex-nowrap shrink-0">
+                        {rightSector.map((seat) => (
+                          <Seat3DButton 
+                            key={seat.id} 
+                            seat={seat} 
+                            onClick={() => deleteMode ? handleDeleteSeatDirect(seat) : onSelectSeat(seat)}
+                            onContextMenu={(e) => {
+                              e.preventDefault();
+                              if (seat.status === 'available') {
+                                handleDeleteSeatDirect(seat);
+                              }
+                            }}
+                            deleteMode={deleteMode}
+                            isHighlighted={highlightSeatId === seat.id}
+                            isFilteredOut={!filteredSeats.some(s => s.id === seat.id)}
+                          />
+                        ))}
+                      </div>
+
+                      {/* Row Identifier Badge Left */}
+                      <div className="w-7 h-7 rounded-lg bg-white/20 border border-white/40 flex items-center justify-center text-white font-black text-xs shrink-0 shadow-lg backdrop-blur-md">
+                        {rowLabel}
+                      </div>
+
+                      {/* Quick Add Seats to Row Button */}
+                      {!isBeneficiaryView && onSeatsUpdated && (
                         <button
-                          key={s.key}
-                          onClick={() => setAddForm(f => ({ ...f, sectorKey: s.key }))}
-                          className={`px-2.5 py-1 rounded-lg font-bold border transition-all ${
-                            addForm.sectorKey === s.key
-                              ? 'bg-emerald-500/40 text-emerald-200 border-emerald-400/50 shadow'
-                              : 'bg-white/5 text-white/60 border-white/10 hover:text-white'
+                          type="button"
+                          onClick={() => isAddOpen ? setAddPanel(null) : handleQuickAdd(rowLabel)}
+                          title={`إضافة مقاعد جديدة إلى الصف (${rowLabel})`}
+                          className={`w-7 h-7 rounded-lg text-xs font-black flex items-center justify-center transition-all shrink-0 ${
+                            isAddOpen
+                              ? 'bg-rose-500 text-white shadow-md'
+                              : 'bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-300 border border-emerald-400/30 hover:scale-105'
                           }`}
                         >
-                          {s.name}
+                          {isAddOpen ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
                         </button>
-                      ))}
+                      )}
+
                     </div>
 
-                    {/* Count */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-white/60 font-bold">العدد:</span>
-                      <button
-                        onClick={() => setAddForm(f => ({ ...f, count: Math.max(1, f.count - 1) }))}
-                        className="w-6 h-6 rounded-lg bg-white/10 text-white hover:bg-white/20 flex items-center justify-center font-black"
-                      >−</button>
-                      <span className="text-white font-black w-6 text-center">{addForm.count}</span>
-                      <button
-                        onClick={() => setAddForm(f => ({ ...f, count: Math.min(20, f.count + 1) }))}
-                        className="w-6 h-6 rounded-lg bg-white/10 text-white hover:bg-white/20 flex items-center justify-center font-black"
-                      >+</button>
-                    </div>
+                    {/* Inline Quick-Add Panel */}
+                    {isAddOpen && (
+                      <div className="mx-auto mt-1 mb-2 p-3 bg-emerald-500/10 border border-emerald-400/30 rounded-2xl flex flex-wrap items-center gap-3 max-w-2xl text-xs animate-fade-in shadow-xl">
+                        <span className="text-emerald-300 font-black text-sm">+ الصف {rowLabel}</span>
+                        
+                        {/* Sector selector */}
+                        <div className="flex items-center gap-1">
+                          {SECTORS.map(s => (
+                            <button
+                              key={s.key}
+                              onClick={() => setAddForm(f => ({ ...f, sectorKey: s.key }))}
+                              className={`px-2.5 py-1 rounded-lg font-bold border transition-all ${
+                                addForm.sectorKey === s.key
+                                  ? 'bg-emerald-500/40 text-emerald-200 border-emerald-400/50 shadow'
+                                  : 'bg-white/5 text-white/60 border-white/10 hover:text-white'
+                              }`}
+                            >
+                              {s.name}
+                            </button>
+                          ))}
+                        </div>
 
-                    {/* Auto renumber checkbox */}
-                    <label className="flex items-center gap-1.5 text-slate-200 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={addForm.autoRenumber}
-                        onChange={(e) => setAddForm(f => ({ ...f, autoRenumber: e.target.checked }))}
-                        className="accent-cyan-400 rounded"
-                      />
-                      <span className="text-[11px]">ترقيم تسلسلي تلقائي</span>
-                    </label>
+                        {/* Count */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-white/60 font-bold">العدد:</span>
+                          <button
+                            onClick={() => setAddForm(f => ({ ...f, count: Math.max(1, f.count - 1) }))}
+                            className="w-6 h-6 rounded-lg bg-white/10 text-white hover:bg-white/20 flex items-center justify-center font-black"
+                          >−</button>
+                          <span className="text-white font-black w-6 text-center">{addForm.count}</span>
+                          <button
+                            onClick={() => setAddForm(f => ({ ...f, count: Math.min(20, f.count + 1) }))}
+                            className="w-6 h-6 rounded-lg bg-white/10 text-white hover:bg-white/20 flex items-center justify-center font-black"
+                          >+</button>
+                        </div>
 
-                    {/* Confirm */}
-                    {addSuccess ? (
-                      <span className="text-emerald-300 font-black">{addSuccess}</span>
-                    ) : (
-                      <button
-                        onClick={handleConfirmAdd}
-                        disabled={addSaving}
-                        className="px-4 py-1.5 rounded-xl bg-gradient-to-l from-[#00d2ff] to-[#7952b3] text-white font-black shadow hover:scale-105 transition-all flex items-center gap-1.5"
-                      >
-                        <Save className="w-3.5 h-3.5" />
-                        إضافة الآن
-                      </button>
+                        {/* Auto renumber checkbox */}
+                        <label className="flex items-center gap-1.5 text-slate-200 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={addForm.autoRenumber}
+                            onChange={(e) => setAddForm(f => ({ ...f, autoRenumber: e.target.checked }))}
+                            className="accent-cyan-400 rounded"
+                          />
+                          <span className="text-[11px]">ترقيم تسلسلي تلقائي</span>
+                        </label>
+
+                        {/* Confirm */}
+                        {addSuccess ? (
+                          <span className="text-emerald-300 font-black">{addSuccess}</span>
+                        ) : (
+                          <button
+                            onClick={handleConfirmAdd}
+                            disabled={addSaving}
+                            className="px-4 py-1.5 rounded-xl bg-gradient-to-l from-[#00d2ff] to-[#7952b3] text-white font-black shadow hover:scale-105 transition-all flex items-center gap-1.5"
+                          >
+                            <Save className="w-3.5 h-3.5" />
+                            إضافة الآن
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+                );
+              })}
+            </div>
 
+          </div>
+        </div>
       </div>
 
       {/* Seat Deletion Confirmation Modal */}

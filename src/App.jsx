@@ -1,4 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { 
+  LayoutDashboard, 
+  Armchair, 
+  Calendar, 
+  Mail, 
+  MoreHorizontal, 
+  QrCode 
+} from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import HeaderBar from './components/HeaderBar';
 import DashboardOverview from './components/DashboardOverview';
@@ -52,6 +60,7 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
   const [appMode, setAppMode] = useState(isBeneficiaryMode ? 'beneficiary' : 'admin');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Admin authentication state
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
@@ -197,11 +206,13 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#060D1A] text-white flex font-sans selection:bg-cyan-400 selection:text-slate-950" dir="rtl">
       
-      {/* Right Sidebar */}
+      {/* Right Sidebar (Desktop pinned + Mobile slide-over drawer) */}
       <Sidebar
         currentTab={currentTab}
         setCurrentTab={setCurrentTab}
         stats={stats}
+        isMobileOpen={isMobileMenuOpen}
+        onCloseMobile={() => setIsMobileMenuOpen(false)}
         onOpenPrintLabels={() => setShowPrintLabelsModal(true)}
         onOpenSeatManager={() => setShowSeatManagerModal(true)}
         onOpenPrintAllTickets={() => setShowAllTicketsPrintModal(true)}
@@ -218,6 +229,7 @@ export default function App() {
         {/* Top Header */}
         <HeaderBar
           eventDetails={eventDetails}
+          onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           onSearchQuery={(q) => {
             setSearchQuery(q);
             if (q.trim() && currentTab === 'dashboard') {
@@ -229,8 +241,8 @@ export default function App() {
           onOpenCommandPalette={() => setShowCommandPalette(true)}
         />
 
-        {/* Main Content Body */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1600px] w-full mx-auto">
+        {/* Main Content Body - with bottom padding on mobile for the bottom nav */}
+        <main className="flex-1 p-3 sm:p-6 lg:p-8 max-w-[1600px] w-full mx-auto pb-24 lg:pb-8">
           
           {/* Tab 0: Luxury Dashboard Overview */}
           {currentTab === 'dashboard' && (
@@ -309,10 +321,88 @@ export default function App() {
 
         </main>
 
-        {/* Footer */}
-        <footer className="py-4 px-8 border-t border-white/10 text-center text-xs text-slate-400 bg-[#060D1A]">
+        {/* Footer (Desktop & Tablet) */}
+        <footer className="py-4 px-8 border-t border-white/10 text-center text-xs text-slate-400 bg-[#060D1A] hidden sm:block">
           <p>نظام حجز وإدارة مقاعد مسارح وقاعات الإدارة العامة للتعليم بمنطقة عسير © 2026</p>
         </footer>
+
+        {/* Sleek Native-Feel Mobile Bottom Navigation Bar */}
+        <nav 
+          className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#060D1A]/95 backdrop-blur-2xl border-t border-white/15 px-3 py-1 flex items-center justify-around shadow-[0_-10px_30px_rgba(0,0,0,0.7)]"
+          dir="rtl"
+          style={{ paddingBottom: 'max(0.6rem, env(safe-area-inset-bottom))' }}
+        >
+          {/* 1. Dashboard */}
+          <button
+            onClick={() => setCurrentTab('dashboard')}
+            className={`flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-all ${
+              currentTab === 'dashboard' 
+                ? 'text-cyan-400 font-bold' 
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <div className={`p-1 rounded-lg ${currentTab === 'dashboard' ? 'bg-cyan-500/20 text-cyan-300 shadow-sm shadow-cyan-500/30' : ''}`}>
+              <LayoutDashboard className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] leading-none">الرئيسية</span>
+          </button>
+
+          {/* 2. Map */}
+          <button
+            onClick={() => setCurrentTab('map')}
+            className={`flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-all ${
+              currentTab === 'map' 
+                ? 'text-cyan-400 font-bold' 
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <div className={`p-1 rounded-lg ${currentTab === 'map' ? 'bg-cyan-500/20 text-cyan-300 shadow-sm shadow-cyan-500/30' : ''}`}>
+              <Armchair className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] leading-none">الخريطة</span>
+          </button>
+
+          {/* 3. Bookings List */}
+          <button
+            onClick={() => setCurrentTab('list')}
+            className={`flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-all ${
+              currentTab === 'list' 
+                ? 'text-cyan-400 font-bold' 
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <div className={`p-1 rounded-lg ${currentTab === 'list' ? 'bg-cyan-500/20 text-cyan-300 shadow-sm shadow-cyan-500/30' : ''}`}>
+              <Calendar className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] leading-none">الحجوزات</span>
+          </button>
+
+          {/* 4. Invitations */}
+          <button
+            onClick={() => setCurrentTab('invitations')}
+            className={`flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-all ${
+              currentTab === 'invitations' 
+                ? 'text-cyan-400 font-bold' 
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <div className={`p-1 rounded-lg ${currentTab === 'invitations' ? 'bg-cyan-500/20 text-cyan-300 shadow-sm shadow-cyan-500/30' : ''}`}>
+              <Mail className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] leading-none">الدعوات</span>
+          </button>
+
+          {/* 5. More (Opens Drawer) */}
+          <button
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="flex flex-col items-center gap-1 py-1 px-2 rounded-xl text-slate-400 hover:text-white transition-all active:scale-95"
+          >
+            <div className="p-1 rounded-lg bg-white/5">
+              <MoreHorizontal className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] leading-none">المزيد</span>
+          </button>
+        </nav>
 
       </div>
 

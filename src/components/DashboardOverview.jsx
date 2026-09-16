@@ -131,15 +131,15 @@ export default function DashboardOverview({
         </div>
 
         {/* Live Digital Clock Widget */}
-        <div className="bg-[#060c17]/90 border border-cyan-400/30 rounded-2xl p-4 flex items-center gap-4 shadow-xl shadow-cyan-500/5 min-w-[270px] shrink-0">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-cyan-500/20 to-blue-500/20 text-cyan-300 border border-cyan-400/40 flex items-center justify-center font-bold text-xl shrink-0">
-            <Clock className="w-6 h-6 animate-pulse text-cyan-300" />
+        <div className="bg-[#060c17]/90 border border-cyan-400/30 rounded-2xl p-3.5 sm:p-4 flex items-center gap-3 sm:gap-4 shadow-xl shadow-cyan-500/5 w-full sm:w-auto sm:min-w-[270px]">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-tr from-cyan-500/20 to-blue-500/20 text-cyan-300 border border-cyan-400/40 flex items-center justify-center font-bold text-lg sm:text-xl shrink-0">
+            <Clock className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse text-cyan-300" />
           </div>
           <div>
-            <div className="text-xl sm:text-2xl font-black font-mono tracking-wider text-cyan-300">
+            <div className="text-lg sm:text-2xl font-black font-mono tracking-wider text-cyan-300">
               {timeStr || '07:00:00 م'}
             </div>
-            <div className="text-[11px] font-bold text-slate-300 mt-0.5">
+            <div className="text-[10px] sm:text-[11px] font-bold text-slate-300 mt-0.5">
               {dateStr || 'الأربعاء، 15 سبتمبر 2026'}
             </div>
           </div>

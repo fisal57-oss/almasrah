@@ -16,7 +16,8 @@ import {
   FileSpreadsheet,
   Lock,
   ExternalLink,
-  ShieldCheck
+  ShieldCheck,
+  X
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -28,7 +29,9 @@ export default function Sidebar({
   onOpenPrintAllTickets,
   onOpenBeneficiaryPortal,
   onOpenSettings,
-  onLogout
+  onLogout,
+  isMobileOpen = false,
+  onCloseMobile
 }) {
   const menuItems = [
     { 
@@ -96,23 +99,33 @@ export default function Sidebar({
     { 
       id: 'settings', 
       label: 'إعدادات الفعالية والمسرح', 
-      icon: Settings,
+      icon: Settings, 
       onClick: onOpenSettings
     },
   ];
 
-  return (
-    <aside className="w-64 bg-[#060D1A] border-l border-white/10 flex flex-col justify-between h-screen sticky top-0 shrink-0 select-none z-30 overflow-y-auto" dir="rtl">
-      
+  const handleItemClick = (item) => {
+    if (item.onClick) {
+      item.onClick();
+    } else {
+      setCurrentTab(item.id);
+    }
+    if (onCloseMobile) {
+      onCloseMobile();
+    }
+  };
+
+  const renderNavContent = (isDrawer = false) => (
+    <>
       <div>
         {/* Top Logo & App Title */}
-        <div className="p-5 border-b border-white/10 flex items-center justify-between">
+        <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 text-white font-black">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 text-white font-black shrink-0">
               <Crown className="w-5 h-5 text-amber-300" />
             </div>
             <div>
-              <h1 className="text-base font-black tracking-wide text-white">
+              <h1 className="text-sm sm:text-base font-black tracking-wide text-white">
                 مسرح تعليم عسير
               </h1>
               <p className="text-[10px] text-cyan-400 font-bold tracking-wider uppercase">
@@ -120,6 +133,17 @@ export default function Sidebar({
               </p>
             </div>
           </div>
+
+          {/* Close button for mobile drawer */}
+          {isDrawer && onCloseMobile && (
+            <button
+              onClick={onCloseMobile}
+              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-400 hover:text-white transition-all"
+              aria-label="إغلاق القائمة"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
 
         {/* Navigation Items List */}
@@ -135,13 +159,7 @@ export default function Sidebar({
             return (
               <button
                 key={item.id}
-                onClick={() => {
-                  if (item.onClick) {
-                    item.onClick();
-                  } else {
-                    setCurrentTab(item.id);
-                  }
-                }}
+                onClick={() => handleItemClick(item)}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all duration-200 ${
                   isActive
                     ? 'bg-gradient-to-l from-cyan-500 to-blue-600 text-slate-950 shadow-lg shadow-cyan-500/25 scale-[1.01] font-black'
@@ -191,7 +209,10 @@ export default function Sidebar({
 
         {onLogout && (
           <button
-            onClick={onLogout}
+            onClick={() => {
+              if (onCloseMobile) onCloseMobile();
+              onLogout();
+            }}
             className="w-full py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 text-xs font-bold transition-all flex items-center justify-center gap-2 active:scale-95"
           >
             <Lock className="w-3.5 h-3.5 text-rose-400" />
@@ -199,7 +220,31 @@ export default function Sidebar({
           </button>
         )}
       </div>
+    </>
+  );
 
-    </aside>
+  return (
+    <>
+      {/* Desktop Persistent Sidebar */}
+      <aside className="hidden lg:flex w-64 bg-[#060D1A] border-l border-white/10 flex-col justify-between h-screen sticky top-0 shrink-0 select-none z-30 overflow-y-auto" dir="rtl">
+        {renderNavContent(false)}
+      </aside>
+
+      {/* Mobile Backdrop & Slide Drawer */}
+      {isMobileOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 flex justify-end" dir="rtl">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm animate-fade-in transition-opacity"
+            onClick={onCloseMobile}
+          />
+          
+          {/* Drawer Content */}
+          <aside className="relative z-50 w-72 max-w-[85vw] bg-[#060D1A] border-l border-white/15 flex flex-col justify-between h-full shadow-2xl overflow-y-auto animate-slide-left select-none">
+            {renderNavContent(true)}
+          </aside>
+        </div>
+      )}
+    </>
   );
 }
