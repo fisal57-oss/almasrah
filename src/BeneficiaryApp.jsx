@@ -23,11 +23,13 @@ import {
   AlertCircle,
   Copy,
   ExternalLink,
-  ChevronLeft
+  ChevronLeft,
+  Building2
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import TheaterMap from './components/TheaterMap';
 import InvitationCard from './components/InvitationCard';
+import VenueBookingModal from './components/VenueBookingModal';
 import { 
   getSeats, 
   getEventDetails, 
@@ -49,6 +51,7 @@ export default function BeneficiaryApp() {
   const [selectedSeat, setSelectedSeat] = useState(null);
   const [showFullCardModal, setShowFullCardModal] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [showVenueModal, setShowVenueModal] = useState(false);
 
   // Self-booking modal state
   const [bookingSeat, setBookingSeat] = useState(null);
@@ -179,9 +182,17 @@ export default function BeneficiaryApp() {
       {/* Top Header Bar */}
       <header className="bg-[#060B14]/95 border-b border-cyan-500/20 sticky top-0 z-40 backdrop-blur-xl px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-xl">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#00d2ff] to-[#7952b3] flex items-center justify-center shadow-lg shadow-cyan-500/30 text-white font-black">
-            <Ticket className="w-5 h-5" />
-          </div>
+          {eventDetails?.logoUrl ? (
+            <img 
+              src={eventDetails.logoUrl} 
+              alt="شعار الفعالية" 
+              className="h-10 max-h-10 max-w-[120px] object-contain rounded-xl p-1 bg-white/10 border border-white/20 shadow-md shrink-0"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#00d2ff] to-[#7952b3] flex items-center justify-center shadow-lg shadow-cyan-500/30 text-white font-black">
+              <Ticket className="w-5 h-5" />
+            </div>
+          )}
           <div>
             <h1 className="text-base sm:text-lg font-black tracking-wide text-white">
               بوابة المستفيد والضيوف
@@ -193,7 +204,7 @@ export default function BeneficiaryApp() {
         </div>
 
         {/* Navigation Tabs */}
-        <nav className="flex items-center gap-1.5 sm:gap-2 bg-slate-900/90 p-1 rounded-2xl border border-white/10 text-xs font-bold">
+        <nav className="flex items-center gap-1.5 sm:gap-2 bg-slate-900/90 p-1 rounded-2xl border border-white/10 text-xs font-bold flex-wrap justify-end">
           <button
             onClick={() => setActiveTab('find')}
             className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl transition-all ${
@@ -231,6 +242,17 @@ export default function BeneficiaryApp() {
             <span className="hidden sm:inline">تفاصيل الفعالية</span>
             <span className="sm:hidden">الفعالية</span>
           </button>
+
+          {/* Venue & Hall Booking Action Button */}
+          <button
+            onClick={() => setShowVenueModal(true)}
+            className="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500/20 via-yellow-400/20 to-amber-500/20 hover:from-amber-500/30 hover:to-yellow-400/30 text-amber-300 border border-amber-400/40 transition-all shadow-sm active:scale-95"
+            title="طلب حجز مسرح أو قاعة رسمية للفعاليات"
+          >
+            <Building2 className="w-3.5 h-3.5 text-amber-400" />
+            <span>حجز القاعات والمسارح</span>
+            <span className="text-[9px] bg-amber-400 text-slate-950 font-black px-1.5 py-0.5 rounded-full hidden sm:inline-block">جديد</span>
+          </button>
         </nav>
       </header>
 
@@ -266,6 +288,31 @@ export default function BeneficiaryApp() {
               <span>{eventDetails.venue}</span>
             </div>
           </div>
+        </div>
+
+        {/* Hall & Theater Reservation Feature Card */}
+        <div className="glass-panel-luxury p-4 sm:p-5 rounded-3xl border border-amber-500/30 bg-gradient-to-r from-[#17203a]/90 via-[#0e182e]/90 to-[#17203a]/90 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
+          <div className="flex items-center gap-3.5 text-center sm:text-right">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-400 to-yellow-500 flex items-center justify-center text-slate-950 font-black shadow-lg shadow-amber-500/20 shrink-0">
+              <Building2 className="w-6 h-6 text-slate-950" />
+            </div>
+            <div>
+              <h3 className="text-sm sm:text-base font-black text-white flex items-center gap-2 justify-center sm:justify-start">
+                <span>خدمة حجز القاعات والمسارح الرسمية</span>
+                <span className="text-[10px] bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded-full font-bold">متاح للجهات</span>
+              </h3>
+              <p className="text-xs text-slate-300 mt-0.5">
+                يمكن للإدارات والمدارس والجهات الشريكة تقديم طلب حجز لمسارح وقاعات تعليم عسير إلكترونياً وبأعلى جاهزية.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowVenueModal(true)}
+            className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:brightness-110 text-slate-950 font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 shrink-0 active:scale-95"
+          >
+            <Building2 className="w-4 h-4 text-slate-950" />
+            <span>طلب حجز مسرح / قاعة 🏛️</span>
+          </button>
         </div>
 
         {/* Success Alert Notice */}
@@ -669,6 +716,13 @@ export default function BeneficiaryApp() {
           onClose={() => setShowFullCardModal(false)}
         />
       )}
+
+      {/* Hall & Theater Reservation Modal */}
+      <VenueBookingModal
+        isOpen={showVenueModal}
+        onClose={() => setShowVenueModal(false)}
+        eventDetails={eventDetails}
+      />
 
     </div>
   );

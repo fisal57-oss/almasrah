@@ -735,3 +735,85 @@ export function validateStaffLogin(username, password) {
   return { success: false, message: 'اسم المستخدم أو كلمة المرور غير صحيحة.' };
 }
 
+/**
+ * ============================================================================
+ * THEATERS & HALLS RESERVATION SYSTEM (حجز القاعات والمسارح)
+ * ============================================================================
+ */
+export const DEFAULT_VENUES = [
+  {
+    id: 'main-theater',
+    name: 'المسرح الرئيسي (القاعة الكبرى)',
+    capacity: '650 مقعد',
+    type: 'مسرح رئيسي مدرج',
+    location: 'المبنى الرئيسي - الدور الأرضي',
+    features: ['منصة مسرح مجهزة بالكامل', 'شاشة عرض سينمائية 4K', 'نظام صوت دولبي محيطي', 'غرف تبديل وكواليس خاصة', 'مدخل شرفي خاص لكبار الشخصيات'],
+    badge: 'الأكبر سعة',
+    badgeColor: 'amber'
+  },
+  {
+    id: 'education-theater',
+    name: 'مسرح الشؤون التعليمية',
+    capacity: '380 مقعد',
+    type: 'مسرح متوسط مجهز',
+    location: 'مبنى الشؤون التعليمية - الدور الأول',
+    features: ['شاشة عرض LED عملاقة', 'أنظمة تحكم رقمية وإضاءة مسرحية', 'منصة خطابة ذكية', 'نظام ترجمة وتوثيق'],
+    badge: 'أحدث التجهيزات',
+    badgeColor: 'cyan'
+  },
+  {
+    id: 'faisal-hall',
+    name: 'قاعة الاحتفالات والمؤتمرات الكبرى',
+    capacity: '250 شخص',
+    type: 'قاعة مؤتمرات واحتفالات',
+    location: 'مبنى الإدارة العامة - بهو كبار الشخصيات',
+    features: ['طاولات دائرية فاخرة', 'منصة شرفية', 'بوفيه ضيافة مدمج', 'نظام صوت وتوثيق مرئي'],
+    badge: 'مناسبات VIP',
+    badgeColor: 'purple'
+  },
+  {
+    id: 'smart-training-hall',
+    name: 'قاعة التدريب وورش العمل التفاعلية',
+    capacity: '100 مقعد',
+    type: 'قاعة تدريب تفاعلية',
+    location: 'مركز التطوير والتدريب',
+    features: ['شاشات تفاعلية ذكية', 'إنترنت فائق السرعة', 'أثاث مرن متعدد الترتيبات', 'أنظمة مؤتمرات واجتماعات مرئية'],
+    badge: 'تفاعلية ذكية',
+    badgeColor: 'emerald'
+  }
+];
+
+const STORAGE_HALL_BOOKINGS_KEY = 'theater_hall_bookings_v1';
+
+export function getHallBookings() {
+  try {
+    const saved = localStorage.getItem(STORAGE_HALL_BOOKINGS_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch (e) {
+    console.error('Error loading hall bookings', e);
+    return [];
+  }
+}
+
+export function saveHallBookings(bookings) {
+  try {
+    localStorage.setItem(STORAGE_HALL_BOOKINGS_KEY, JSON.stringify(bookings));
+  } catch (e) {
+    console.error('Error saving hall bookings', e);
+  }
+}
+
+export function submitHallBooking(requestData) {
+  const bookings = getHallBookings();
+  const id = 'HALL-' + Math.floor(1000 + Math.random() * 9000);
+  const newBooking = {
+    id,
+    createdAt: new Date().toISOString(),
+    status: 'pending', // pending, approved, rejected
+    ...requestData
+  };
+  bookings.unshift(newBooking);
+  saveHallBookings(bookings);
+  return { success: true, booking: newBooking };
+}
+

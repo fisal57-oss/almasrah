@@ -18,7 +18,8 @@ import {
   Phone, 
   ArrowRight,
   Globe,
-  Rocket
+  Rocket,
+  Building2
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import html2canvas from 'html2canvas';
@@ -26,6 +27,7 @@ import TheaterMap from './TheaterMap';
 import InvitationCard from './InvitationCard';
 import ElectronicInvitationModal from './ElectronicInvitationModal';
 import SeatCardModal from './SeatCardModal';
+import VenueBookingModal from './VenueBookingModal';
 import { formatArabicSeatCode } from '../utils/storage';
 
 export default function BeneficiaryPortal({ 
@@ -38,6 +40,7 @@ export default function BeneficiaryPortal({
   const [showFullCardModal, setShowFullCardModal] = useState(false);
   const [showInvitationModal, setShowInvitationModal] = useState(false);
   const [showSeatCardModal, setShowSeatCardModal] = useState(false);
+  const [showVenueModal, setShowVenueModal] = useState(false);
 
   // Filter booked seats only for guest lookup
   const bookedSeats = seats.filter(s => s.guest && s.status !== 'available');
@@ -81,16 +84,28 @@ export default function BeneficiaryPortal({
           </div>
         </div>
 
-        {/* Switch to Admin Mode if requested */}
-        {onSwitchToAdmin && (
+        {/* Actions Group */}
+        <div className="flex items-center gap-2 flex-wrap">
           <button
-            onClick={onSwitchToAdmin}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-cyan-300 text-xs font-bold border border-cyan-400/30 transition-all shadow-md"
+            onClick={() => setShowVenueModal(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500/20 via-yellow-400/20 to-amber-500/20 hover:from-amber-500/30 hover:to-yellow-400/30 text-amber-300 border border-amber-400/40 text-xs font-bold transition-all shadow-sm active:scale-95"
           >
-            <span>اللوحة الإدارية</span>
-            <ArrowRight className="w-4 h-4" />
+            <Building2 className="w-3.5 h-3.5 text-amber-400" />
+            <span>حجز القاعات والمسارح</span>
+            <span className="text-[9px] bg-amber-400 text-slate-950 font-black px-1.5 py-0.5 rounded-full hidden sm:inline-block">جديد</span>
           </button>
-        )}
+
+          {/* Switch to Admin Mode if requested */}
+          {onSwitchToAdmin && (
+            <button
+              onClick={onSwitchToAdmin}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-cyan-300 text-xs font-bold border border-cyan-400/30 transition-all shadow-md"
+            >
+              <span>اللوحة الإدارية</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </header>
 
       {/* Main Beneficiary Body Container */}
@@ -125,6 +140,31 @@ export default function BeneficiaryPortal({
               <span>{eventDetails.venue}</span>
             </div>
           </div>
+        </div>
+
+        {/* Hall & Theater Reservation Feature Card */}
+        <div className="glass-panel-luxury p-4 sm:p-5 rounded-3xl border border-amber-500/30 bg-gradient-to-r from-[#17203a]/90 via-[#0e182e]/90 to-[#17203a]/90 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
+          <div className="flex items-center gap-3.5 text-center sm:text-right">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-400 to-yellow-500 flex items-center justify-center text-slate-950 font-black shadow-lg shadow-amber-500/20 shrink-0">
+              <Building2 className="w-6 h-6 text-slate-950" />
+            </div>
+            <div>
+              <h3 className="text-sm sm:text-base font-black text-white flex items-center gap-2 justify-center sm:justify-start">
+                <span>خدمة حجز القاعات والمسارح الرسمية</span>
+                <span className="text-[10px] bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded-full font-bold">متاح للجهات</span>
+              </h3>
+              <p className="text-xs text-slate-300 mt-0.5">
+                يمكن للإدارات والمدارس والجهات الشريكة تقديم طلب حجز لمسارح وقاعات تعليم عسير إلكترونياً وبأعلى جاهزية.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowVenueModal(true)}
+            className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:brightness-110 text-slate-950 font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 shrink-0 active:scale-95"
+          >
+            <Building2 className="w-4 h-4 text-slate-950" />
+            <span>طلب حجز مسرح / قاعة 🏛️</span>
+          </button>
         </div>
 
         {/* Live Search Input Card */}
@@ -338,6 +378,13 @@ export default function BeneficiaryPortal({
           }}
         />
       )}
+
+      {/* Venue & Hall Booking Modal */}
+      <VenueBookingModal
+        isOpen={showVenueModal}
+        onClose={() => setShowVenueModal(false)}
+        eventDetails={eventDetails}
+      />
 
     </div>
   );
