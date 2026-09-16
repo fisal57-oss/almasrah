@@ -112,37 +112,6 @@ export default function BeneficiaryPortal({
 
       {/* Main Beneficiary Body Container */}
       <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
-        
-        {/* Welcome & Event Title Banner */}
-        <div className="glass-panel-luxury p-6 sm:p-8 rounded-3xl border border-cyan-500/30 text-center space-y-3 relative overflow-hidden shadow-2xl">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/15 text-cyan-300 text-xs font-bold border border-cyan-500/30">
-            <Sparkles className="w-4 h-4 text-cyan-400" />
-            <span>بوابة استعراض وتنزيل تذاكر الحضور الرسمية</span>
-          </div>
-
-          <h2 className="text-2xl sm:text-3xl font-black bg-gradient-to-r from-white via-cyan-100 to-cyan-300 bg-clip-text text-transparent">
-            {eventDetails.title}
-          </h2>
-
-          <p className="text-xs text-slate-300 max-w-xl mx-auto">
-            أهلاً وسهلاً بكم في مسرح الإدارة العامة للتعليم بمنطقة عسير. يمكنك البحث باسمك أو رقم جوالك لاستعراض تذكرتك الرسمية ومعرفة موقع مقعدك بالمسرح.
-          </p>
-
-          <div className="flex flex-wrap items-center justify-center gap-4 text-xs font-bold text-slate-300 pt-2 border-t border-white/10">
-            <div className="flex items-center gap-1.5">
-              <Calendar className="w-4 h-4 text-cyan-400" />
-              <span>{eventDetails.date}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-cyan-400" />
-              <span>{eventDetails.time}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <MapPin className="w-4 h-4 text-cyan-400" />
-              <span>{eventDetails.venue}</span>
-            </div>
-          </div>
-        </div>
 
         {/* Interactive Services & Halls Icon Grid */}
         <BeneficiaryServicesGrid

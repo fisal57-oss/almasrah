@@ -260,37 +260,6 @@ export default function BeneficiaryApp() {
 
       {/* Main Container */}
       <main className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
-        
-        {/* Welcome Event Banner */}
-        <div className="glass-panel-luxury p-6 sm:p-8 rounded-3xl border border-cyan-500/30 text-center space-y-3 relative overflow-hidden shadow-2xl bg-gradient-to-b from-[#0b1426] to-[#080E1A]">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-cyan-500/15 text-cyan-300 text-xs font-black border border-cyan-500/30 shadow-inner">
-            <Sparkles className="w-4 h-4 text-cyan-300" />
-            <span>منصة الحضور والتحقق الرقمي الرسمي</span>
-          </div>
-
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black bg-gradient-to-r from-white via-cyan-100 to-cyan-300 bg-clip-text text-transparent">
-            {eventDetails.title}
-          </h2>
-
-          <p className="text-xs sm:text-sm text-slate-300 max-w-2xl mx-auto leading-relaxed">
-            أهلاً وسهلاً بضيوفنا الكرام. تتيح لكم هذه البوابة الاستعلام عن تذاكركم الإلكترونية، معرفة مواقع مقاعدكم المحددة، أو اختيار مقعد متاح وحجزه مباشرة.
-          </p>
-
-          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-xs font-bold text-slate-300 pt-3 border-t border-white/10">
-            <div className="flex items-center gap-1.5 bg-slate-900/60 px-3 py-1.5 rounded-xl border border-white/5">
-              <Calendar className="w-4 h-4 text-cyan-400" />
-              <span>{eventDetails.date}</span>
-            </div>
-            <div className="flex items-center gap-1.5 bg-slate-900/60 px-3 py-1.5 rounded-xl border border-white/5">
-              <Clock className="w-4 h-4 text-cyan-400" />
-              <span>{eventDetails.time}</span>
-            </div>
-            <div className="flex items-center gap-1.5 bg-slate-900/60 px-3 py-1.5 rounded-xl border border-white/5">
-              <MapPin className="w-4 h-4 text-cyan-400" />
-              <span>{eventDetails.venue}</span>
-            </div>
-          </div>
-        </div>
 
         {/* Interactive Services & Halls Icon Grid */}
         <BeneficiaryServicesGrid
