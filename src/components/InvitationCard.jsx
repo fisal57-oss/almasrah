@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { exportElementToPng } from '../utils/exportImage';
-import { formatArabicSeatCode } from '../utils/storage';
+import { formatArabicSeatCode, buildInvitationQrUrl } from '../utils/storage';
 import ModernAttendanceCard from './ModernAttendanceCard';
 
 /**
@@ -122,7 +122,7 @@ export default function InvitationCard({
   if (!seat || !seat.guest) return null;
 
   const baseUrl = window.location.origin + window.location.pathname;
-  const invitationUrl = `${baseUrl}?invitation=${seat.guest.token}`;
+  const invitationUrl = buildInvitationQrUrl(seat, baseUrl);
   const seatDisplay = `${seat.row}${parseInt(seat.number, 10)}`;
   const barcodeNumber = `20261007${seat.row}${String(seat.number).padStart(3, '0')}`;
 

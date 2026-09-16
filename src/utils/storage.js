@@ -16,6 +16,33 @@ export const DEFAULT_EVENT = {
   note: 'يرجى إبراز بطاقة الحضور عند مدخل المسرح للتحقق عبر الـ QR Code.'
 };
 
+/**
+ * Build a self-contained QR code URL that guarantees instant ticket display
+ * on any mobile phone camera scan without relying on local storage.
+ */
+export function buildInvitationQrUrl(seat, customBaseUrl = '') {
+  if (!seat) return customBaseUrl || '';
+  const origin = customBaseUrl || (typeof window !== 'undefined' ? (window.location.origin + window.location.pathname) : '');
+  const params = new URLSearchParams();
+
+  const token = seat.guest?.token || seat.id || 'INV';
+  params.set('invitation', token);
+
+  if (seat.row) params.set('row', seat.row);
+  if (seat.number) params.set('seat', String(parseInt(seat.number, 10)));
+  if (seat.level) params.set('level', seat.level);
+  if (seat.sector) params.set('sec', seat.sector);
+  if (seat.gate) params.set('gate', seat.gate);
+
+  if (seat.guest) {
+    if (seat.guest.name) params.set('name', seat.guest.name);
+    if (seat.guest.jobTitle) params.set('role', seat.guest.jobTitle);
+    if (seat.guest.category) params.set('cat', seat.guest.category);
+  }
+
+  return `${origin}?${params.toString()}`;
+}
+
 const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
 /**

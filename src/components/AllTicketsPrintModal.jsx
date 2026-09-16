@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { MinistryOfEducationLogo } from './ModernAttendanceCard';
+import { buildInvitationQrUrl } from '../utils/storage';
 
 function BarcodeGraphic({ code = "20261007A001" }) {
   const bars = [];
@@ -166,9 +167,7 @@ export default function AllTicketsPrintModal({ seats, eventDetails, onClose }) {
               const seatDisplay = `${seat.row}${String(seat.number).padStart(2, '0')}`;
               const barcodeNumber = `20261007${seat.row}${String(seat.number).padStart(3, '0')}`;
               const baseUrl = window.location.origin + window.location.pathname;
-              const invitationUrl = seat.guest?.token 
-                ? `${baseUrl}?invitation=${seat.guest.token}` 
-                : `${baseUrl}?row=${seat.row}&seat=${seat.number}`;
+              const invitationUrl = buildInvitationQrUrl(seat, baseUrl);
 
               const guestName = seat.guest?.name || 'ضيف المسرح الكريم';
               const guestCategory = seat.guest?.category || (seat.isVip ? 'كبار الشخصيات VIP' : 'عام');

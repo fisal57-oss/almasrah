@@ -9,7 +9,7 @@ import {
   Calendar, 
   User 
 } from 'lucide-react';
-import { formatArabicSeatCode, getEventDetails } from '../utils/storage';
+import { formatArabicSeatCode, getEventDetails, buildInvitationQrUrl } from '../utils/storage';
 import aseerVerticalBg from '../assets/aseer_vertical_bg.png';
 import aseerSeatCardBg from '../assets/aseer_seat_card_bg.png';
 
@@ -242,11 +242,8 @@ export default function ModernAttendanceCard({
   const baseUrl = typeof window !== 'undefined' ? (window.location.origin + window.location.pathname) : '';
   const seatToken = seat.guest?.token || seat.id;
   
-  // Keep QR URL short and clean for easy scanning
-  // Use token if available, otherwise row+seat (minimal params = simpler QR = easier scan)
-  const qrUrl = seatToken
-    ? `${baseUrl}?invitation=${seatToken}`
-    : `${baseUrl}?row=${seat.row || ''}&seat=${seat.number || ''}`;
+  // Use robust, self-contained QR URL so ANY phone camera scan resolves the ticket immediately
+  const qrUrl = buildInvitationQrUrl(seat, baseUrl);
 
   // Active event details from props or fallback to storage
   const activeEvent = (eventDetails && (eventDetails.logoUrl || eventDetails.title)) 

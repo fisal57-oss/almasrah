@@ -42,12 +42,16 @@ import {
 } from './utils/storage';
 
 export default function App() {
-  const searchParams = new URLSearchParams(window.location.search);
+  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
   const invitationParam = searchParams.get('invitation');
   const rowParam    = searchParams.get('row');
   const seatParam   = searchParams.get('seat');
   const levelParam  = searchParams.get('level');
-  const sectorParam = searchParams.get('sector');
+  const sectorParam = searchParams.get('sec') || searchParams.get('sector');
+  const nameParam   = searchParams.get('name');
+  const roleParam   = searchParams.get('role');
+  const catParam    = searchParams.get('cat');
+  const gateParam   = searchParams.get('gate');
   const isBeneficiaryMode = searchParams.get('mode') === 'beneficiary' || 
                             searchParams.get('portal') === '1' || 
                             searchParams.get('guest') === '1' ||
@@ -162,8 +166,8 @@ export default function App() {
     setIsAdminAuthenticated(false);
   };
 
-  // 1. Guest Ticket View (if invitation token or seat params are present in URL)
-  if (guestViewToken || (rowParam && seatParam)) {
+  // 1. Guest Ticket View (if invitation token, seat params, or name are present in URL)
+  if (guestViewToken || (rowParam && seatParam) || nameParam) {
     return (
       <GuestTicketView
         token={guestViewToken}
@@ -173,6 +177,10 @@ export default function App() {
         seatParam={seatParam}
         levelParam={levelParam}
         sectorParam={sectorParam}
+        nameParam={nameParam}
+        roleParam={roleParam}
+        catParam={catParam}
+        gateParam={gateParam}
         onBackToDashboard={() => {
           setGuestViewToken(null);
           window.history.pushState({}, document.title, window.location.pathname);

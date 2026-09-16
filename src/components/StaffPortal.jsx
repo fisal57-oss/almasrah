@@ -47,7 +47,8 @@ import {
   formatArabicSeatCode, 
   saveSeats, 
   bookSeat, 
-  cancelBooking 
+  cancelBooking,
+  buildInvitationQrUrl 
 } from '../utils/storage';
 import { playSuccessSound, playWarningSound } from '../utils/audio';
 import { exportSeatsToExcel } from '../utils/excelUtils';
@@ -202,7 +203,7 @@ export default function StaffPortal() {
   const getWhatsAppMessageText = (seat) => {
     if (!seat.guest) return '';
     const baseUrl = window.location.origin + window.location.pathname.replace('staff.html', '').replace('beneficiary.html', '');
-    const invitationUrl = `${baseUrl}?invitation=${seat.guest.token}`;
+    const invitationUrl = buildInvitationQrUrl(seat, baseUrl);
     const seatDisplay = `${seat.row}${String(seat.number).padStart(2, '0')}`;
 
     if (whatsappTemplate === 'reminder') {

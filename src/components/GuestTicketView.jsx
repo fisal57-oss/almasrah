@@ -105,13 +105,17 @@ function BarcodeGraphic({ code = "20261007A007" }) {
 
 export default function GuestTicketView({ 
   token, 
-  seats, 
-  eventDetails, 
+  seats = [], 
+  eventDetails = {}, 
   onBackToDashboard,
   rowParam,
   seatParam,
   levelParam,
-  sectorParam
+  sectorParam,
+  nameParam,
+  roleParam,
+  catParam,
+  gateParam
 }) {
   const cardRef = useRef(null);
   const [showSeatCardModal, setShowSeatCardModal] = useState(false);
@@ -119,14 +123,110 @@ export default function GuestTicketView({
   const [copiedLink, setCopiedLink] = useState(false);
   const [walletAdded, setWalletAdded] = useState(false);
 
-  // Find seat: first by guest token, then by row+number from QR params
-  const seat = seats.find((s) => s.guest && s.guest.token === token)
-    || (rowParam && seatParam
-        ? seats.find((s) =>
-            String(s.row).toUpperCase() === String(rowParam).toUpperCase() &&
-            String(s.number) === String(parseInt(seatParam, 10))
-          )
-        : null);
+  // Extract from URL search params if not passed as direct props
+  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+  const activeToken = token || searchParams.get('invitation') || searchParams.get('token');
+  const activeRow = rowParam || searchParams.get('row');
+  const activeSeat = seatParam || searchParams.get('seat');
+  const activeLevel = levelParam || searchParams.get('level');
+  const activeSec = sectorParam || searchParams.get('sec') || searchParams.get('sector');
+  const activeName = nameParam || searchParams.get('name');
+  const activeRole = roleParam || searchParams.get('role');
+  const activeCat = catParam || searchParams.get('cat');
+  const activeGate = gateParam || searchParams.get('gate');
+
+  // 1. Try finding seat by guest token in seats array
+  let seat = (seats && seats.length > 0) 
+    ? (seats.find((s) => s.guest && s.guest.token === activeToken)
+       || seats.find((s) => s.id && String(s.id).toUpperCase() === String(activeToken).toUpperCase())
+       || (activeRow && activeSeat
+           ? seats.find((s) =>
+               String(s.row).toUpperCase() === String(activeRow).toUpperCase() &&
+               String(s.number) === String(parseInt(activeSeat, 10))
+             )
+           : null))
+    : null;
+
+  // 2. If seat found in seats, enrich with guest data if available from params
+  if (seat) {
+    if (!seat.guest) {
+      seat = {
+        ...seat,
+        status: 'reserved',
+        guest: {
+          name: activeName || 'ضيف مكرّم',
+          jobTitle: activeRole || '',
+          category: activeCat || (seat.isVip ? 'كبار الشخصيات VIP' : 'عام'),
+          token: activeToken || seat.id,
+          bookedAt: new Date().toISOString(),
+          checkedInAt: null
+        }
+      };
+    } else if (activeName && seat.guest.name !== activeName) {
+      seat = {
+        ...seat,
+        guest: {
+          ...seat.guest,
+          name: activeName,
+          jobTitle: activeRole || seat.guest.jobTitle,
+          category: activeCat || seat.guest.category
+        }
+      };
+    }
+  }
+
+  // 3. AUTONOMOUS MOBILE SCAN FALLBACK:
+  // When a guest scans on mobile, local storage on their phone does NOT have the PC's bookings.
+  // Construct a valid, beautiful seat object so the guest can immediately view their ticket!
+  if (!seat && (activeToken || activeRow || activeName)) {
+    let derivedRow = activeRow;
+    let derivedSeat = activeSeat ? parseInt(activeSeat, 10) : null;
+    let derivedLevel = activeLevel;
+
+    // If row/seat not explicitly given, try extracting from token (e.g. G-A-05, B-B-10, TKT-A05)
+    if (activeToken) {
+      const idMatch = String(activeToken).match(/([GB])-([A-U])-(\d+)/i);
+      if (idMatch) {
+        derivedLevel = idMatch[1].toUpperCase();
+        derivedRow = idMatch[2].toUpperCase();
+        derivedSeat = parseInt(idMatch[3], 10);
+      } else {
+        const rowMatch = String(activeToken).match(/([A-U])(\d+)/i);
+        if (rowMatch) {
+          derivedRow = rowMatch[1].toUpperCase();
+          derivedSeat = parseInt(rowMatch[2], 10);
+        }
+      }
+    }
+
+    derivedRow = derivedRow || 'A';
+    derivedSeat = derivedSeat || 1;
+    derivedLevel = derivedLevel || (activeToken && String(activeToken).startsWith('B') ? 'B' : 'G');
+
+    const isBalcony = derivedLevel === 'B' || derivedLevel === 'بلكونة';
+    const seatNumberStr = String(derivedSeat).padStart(2, '0');
+
+    seat = {
+      id: `${derivedLevel}-${derivedRow}-${seatNumberStr}`,
+      row: derivedRow,
+      number: seatNumberStr,
+      rawNumber: derivedSeat,
+      level: derivedLevel,
+      levelName: isBalcony ? 'الدور الثاني - البلكونة' : 'الدور الأرضي',
+      sector: activeSec || 'الوسط',
+      sectorKey: 'center',
+      status: 'reserved',
+      gate: activeGate || (isBalcony ? 'بوابة البلكونة 2' : 'المدخل الرئيسي 1'),
+      guest: {
+        name: activeName || 'ضيف مكرّم',
+        jobTitle: activeRole || '',
+        category: activeCat || 'كبار الشخصيات VIP',
+        token: activeToken || `TKT-${derivedRow}${seatNumberStr}`,
+        bookedAt: new Date().toISOString(),
+        checkedInAt: null
+      }
+    };
+  }
 
   if (!seat) {
     return (

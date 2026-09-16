@@ -15,7 +15,7 @@ import {
   Crown,
   Filter
 } from 'lucide-react';
-import { formatArabicSeatCode } from '../utils/storage';
+import { formatArabicSeatCode, buildInvitationQrUrl } from '../utils/storage';
 
 export default function InvitationsHub({
   seats,
@@ -62,7 +62,7 @@ export default function InvitationsHub({
 
   const handleCopyWhatsApp = (seat) => {
     const baseUrl = window.location.origin + window.location.pathname;
-    const invitationUrl = `${baseUrl}?invitation=${seat.guest.token}`;
+    const invitationUrl = buildInvitationQrUrl(seat, baseUrl);
     const seatDisplay = `${seat.row}${parseInt(seat.number, 10)}`;
 
     const text = `⚜️ *دعــوة خــاصــة ورسـمـيـة* ⚜️\n\n` +
