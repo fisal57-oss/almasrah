@@ -6,9 +6,7 @@ import {
   User, 
   Sparkles, 
   MapPin, 
-  Calendar, 
   Clock, 
-  KeyRound,
   CheckCircle2,
   Ticket
 } from 'lucide-react';
@@ -261,16 +259,16 @@ export default function OrganizerBadgeCard({
       <div className="relative z-10 px-2.5 my-1">
         <div className="bg-white/98 rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden divide-y divide-slate-100">
           
-          {/* الصف الأول: البوابة والموقع واسم المستخدم */}
-          <div className="grid grid-cols-3 divide-x divide-x-reverse divide-slate-100 py-1.5 px-1 text-center bg-slate-50/60">
+          {/* الصف الأول: البوابة والصلاحية */}
+          <div className="grid grid-cols-2 divide-x divide-x-reverse divide-slate-100 py-1.5 px-2 text-center bg-slate-50/70">
             
             {/* البوابة المخصصة */}
             <div className="flex flex-col items-center justify-center px-1">
               <div className="flex items-center justify-center gap-1 mb-0.5 text-blue-600">
                 <DoorClosed className="w-3.5 h-3.5" />
-                <span className="text-[9px] font-bold text-slate-700">البوابة</span>
+                <span className="text-[9px] font-bold text-slate-700">البوابة المخصصة</span>
               </div>
-              <span className="text-[9.5px] sm:text-[10px] font-black text-[#162a5c] leading-tight text-center">
+              <span className="text-[10px] sm:text-[10.5px] font-black text-[#162a5c] leading-tight text-center">
                 {staffGate}
               </span>
               <span className="text-[7px] text-slate-400 font-sans mt-0.5">Assigned Gate</span>
@@ -280,55 +278,26 @@ export default function OrganizerBadgeCard({
             <div className="flex flex-col items-center justify-center px-1">
               <div className="flex items-center justify-center gap-1 mb-0.5 text-emerald-600">
                 <ShieldCheck className="w-3.5 h-3.5" />
-                <span className="text-[9px] font-bold text-slate-700">الصلاحية</span>
+                <span className="text-[9px] font-bold text-slate-700">الصلاحية المعتمدة</span>
               </div>
-              <span className="text-[9.5px] sm:text-[10px] font-black text-emerald-700 leading-tight text-center">
-                فحص وإرشاد
+              <span className="text-[10px] sm:text-[10.5px] font-black text-emerald-700 leading-tight text-center">
+                فحص وإرشاد المنظمين
               </span>
               <span className="text-[7px] text-slate-400 font-sans mt-0.5">Staff Access</span>
             </div>
 
-            {/* المعرف */}
-            <div className="flex flex-col items-center justify-center px-1">
-              <div className="flex items-center justify-center gap-1 mb-0.5 text-blue-600">
-                <KeyRound className="w-3.5 h-3.5" />
-                <span className="text-[9px] font-bold text-slate-700">المستخدم</span>
-              </div>
-              <span className="font-mono text-[10px] sm:text-[11px] font-black text-[#162a5c] leading-none">
-                {staffUsername}
-              </span>
-              <span className="text-[7px] text-slate-400 font-sans mt-0.5">Username</span>
-            </div>
-
           </div>
 
-          {/* الصف الثاني: الموقع والفعالية */}
-          <div className="grid grid-cols-2 divide-x divide-x-reverse divide-slate-100 py-1.5 px-2 text-center bg-white">
-            
-            {/* الموقع والقاعة */}
-            <div className="flex flex-col items-center justify-center px-1">
-              <div className="flex items-center justify-center gap-1 mb-0.5 text-blue-600">
-                <MapPin className="w-3.5 h-3.5" />
-                <span className="text-[9px] font-bold text-slate-700">الموقع</span>
-              </div>
-              <span className="text-[9px] sm:text-[9.5px] font-black text-[#162a5c] leading-tight text-center truncate max-w-[130px]">
-                {eventVenue}
-              </span>
-              <span className="text-[7px] text-slate-400 font-sans mt-0.5">Theater Venue</span>
+          {/* الصف الثاني: الموقع والقاعة */}
+          <div className="py-1.5 px-3 text-center bg-white flex flex-col items-center justify-center">
+            <div className="flex items-center justify-center gap-1 mb-0.5 text-blue-600">
+              <MapPin className="w-3.5 h-3.5" />
+              <span className="text-[9px] font-bold text-slate-700">الموقع والقاعة</span>
             </div>
-
-            {/* تاريخ الفعالية */}
-            <div className="flex flex-col items-center justify-center px-1">
-              <div className="flex items-center justify-center gap-1 mb-0.5 text-blue-600">
-                <Calendar className="w-3.5 h-3.5" />
-                <span className="text-[9px] font-bold text-slate-700">التاريخ</span>
-              </div>
-              <span className="text-[9px] sm:text-[9.5px] font-black text-[#162a5c] leading-tight text-center">
-                {eventDate}
-              </span>
-              <span className="text-[7px] text-slate-400 font-sans mt-0.5">Event Date</span>
-            </div>
-
+            <span className="text-[9.5px] sm:text-[10px] font-black text-[#162a5c] leading-tight text-center">
+              {eventVenue}
+            </span>
+            <span className="text-[7px] text-slate-400 font-sans mt-0.5">Theater Venue</span>
           </div>
 
         </div>
