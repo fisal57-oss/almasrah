@@ -27,7 +27,8 @@ import {
   Share2,
   CheckCircle2,
   X,
-  Plus
+  Plus,
+  Printer
 } from 'lucide-react';
 import { 
   getEventDetails, 
@@ -41,6 +42,8 @@ import {
   deleteStaffAccount,
   toggleStaffAccountStatus
 } from '../utils/storage';
+import OrganizerBadgeModal from './OrganizerBadgeModal';
+import BatchOrganizerBadgesPrintModal from './BatchOrganizerBadgesPrintModal';
 
 export default function SettingsModal({ 
   onEventUpdated, 
@@ -70,6 +73,8 @@ export default function SettingsModal({
   const [visiblePasswords, setVisiblePasswords] = useState({});
   const [copiedStaffId, setCopiedStaffId] = useState(null);
   const [copiedAllStaff, setCopiedAllStaff] = useState(false);
+  const [selectedStaffForBadge, setSelectedStaffForBadge] = useState(null);
+  const [showBatchOrganizerBadgesModal, setShowBatchOrganizerBadgesModal] = useState(false);
 
   // Logo upload from local device (converts to base64 DataURL for offline storage)
   const handleLogoUpload = (e) => {
@@ -510,6 +515,16 @@ export default function SettingsModal({
               <span>{copiedAllStaff ? 'تم نسخ الكل!' : 'نسخ قائمة الحسابات'}</span>
             </button>
 
+            <button
+              type="button"
+              onClick={() => setShowBatchOrganizerBadgesModal(true)}
+              className="px-3 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-bold text-xs transition-all flex items-center gap-1.5 border border-emerald-400/40 shadow-sm"
+              title="طباعة بطاقات المنظمين بمقاس A4 جاهزة للقص والتعليق"
+            >
+              <Printer className="w-3.5 h-3.5 text-emerald-300" />
+              <span>🪪 طباعة البطاقات (A4)</span>
+            </button>
+
             <a
               href="staff.html"
               target="_blank"
@@ -691,6 +706,17 @@ export default function SettingsModal({
                       </button>
                     </div>
 
+                    {/* View / Print Organizer Badge */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedStaffForBadge(acc)}
+                      className="px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30"
+                      title="عرض وطباعة بطاقة هذا المنظم بهوية الدعوة الرسمية"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span className="text-[11px]">البطاقة</span>
+                    </button>
+
                     {/* Copy Credential for WhatsApp */}
                     <button
                       type="button"
@@ -804,6 +830,24 @@ export default function SettingsModal({
 
         </div>
       </div>
+
+      {/* Single Organizer Badge Modal */}
+      {selectedStaffForBadge && (
+        <OrganizerBadgeModal
+          staff={selectedStaffForBadge}
+          eventDetails={eventData}
+          onClose={() => setSelectedStaffForBadge(null)}
+        />
+      )}
+
+      {/* Batch Organizer Badges Print Modal (A4) */}
+      {showBatchOrganizerBadgesModal && (
+        <BatchOrganizerBadgesPrintModal
+          staffAccounts={staffAccounts}
+          eventDetails={eventData}
+          onClose={() => setShowBatchOrganizerBadgesModal(false)}
+        />
+      )}
 
     </div>
   );

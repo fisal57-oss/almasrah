@@ -62,6 +62,7 @@ import ElectronicInvitationModal from './ElectronicInvitationModal';
 import SeatCardModal from './SeatCardModal';
 import MobileCameraScannerModal from './MobileCameraScannerModal';
 import StaffLogin from './StaffLogin';
+import OrganizerBadgeModal from './OrganizerBadgeModal';
 
 export default function StaffPortal() {
   const [staffUser, setStaffUser] = useState(() => {
@@ -103,6 +104,7 @@ export default function StaffPortal() {
   const [showPrintLabelsModal, setShowPrintLabelsModal] = useState(false);
   const [guidedSeat, setGuidedSeat] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
+  const [showMyBadgeModal, setShowMyBadgeModal] = useState(false);
 
   useEffect(() => {
     refreshData();
@@ -337,13 +339,25 @@ export default function StaffPortal() {
 
           <div className="flex items-center gap-2">
             {staffUser && (
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-400/30 text-right">
-                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
-                <div className="text-[11px] leading-tight">
-                  <span className="font-bold text-cyan-300 block">{staffUser.name}</span>
-                  <span className="text-[9px] text-slate-400 font-medium">{staffUser.gate || staffUser.role}</span>
+              <>
+                <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-400/30 text-right">
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
+                  <div className="text-[11px] leading-tight">
+                    <span className="font-bold text-cyan-300 block">{staffUser.name}</span>
+                    <span className="text-[9px] text-slate-400 font-medium">{staffUser.gate || staffUser.role}</span>
+                  </div>
                 </div>
-              </div>
+
+                <button
+                  onClick={() => setShowMyBadgeModal(true)}
+                  title="عرض وتحميل بطاقتي التنظيمية الرسمية"
+                  className="px-2.5 sm:px-3 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 shadow-sm"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="hidden sm:inline">بطاقتي التنظيمية</span>
+                  <span className="sm:hidden text-[11px]">البطاقة</span>
+                </button>
+              </>
             )}
 
             <button
@@ -1245,6 +1259,15 @@ export default function StaffPortal() {
 
           </div>
         </div>
+      )}
+
+      {/* Organizer Badge Modal */}
+      {showMyBadgeModal && staffUser && (
+        <OrganizerBadgeModal
+          staff={staffUser}
+          eventDetails={eventDetails}
+          onClose={() => setShowMyBadgeModal(false)}
+        />
       )}
 
       {/* Mobile Camera Scanner Modal */}

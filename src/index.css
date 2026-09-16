@@ -460,5 +460,98 @@ body {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+
+  /* ==== SINGLE ORGANIZER BADGE PRINT MODE ==== */
+  body.is-printing-organizer-badge {
+    background: #ffffff !important;
+  }
+
+  body.is-printing-organizer-badge .fixed.inset-0 {
+    position: static !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    overflow: visible !important;
+    backdrop-filter: none !important;
+  }
+
+  body.is-printing-organizer-badge .printable-organizer-area {
+    margin: 0 auto !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+  }
+
+  body.is-printing-organizer-badge .organizer-badge-card {
+    width: 95mm !important;
+    max-width: 95mm !important;
+    height: 160mm !important;
+    max-height: 160mm !important;
+    margin: 8mm auto !important;
+    box-shadow: none !important;
+    border: 1.5px solid #0e2b5c !important;
+    border-radius: 18px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body.is-printing-organizer-badge .organizer-badge-card * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* ==== BATCH ORGANIZER BADGES (A4) PRINT MODE ==== */
+  body.is-printing-batch-organizers .fixed.inset-0 {
+    position: static !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    overflow: visible !important;
+    backdrop-filter: none !important;
+  }
+
+  body.is-printing-batch-organizers .batch-organizers-container {
+    display: block !important;
+    background: #ffffff !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  body.is-printing-batch-organizers .batch-organizers-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8mm !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+  }
+
+  body.is-printing-batch-organizers .single-organizer-badge-wrapper {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    box-shadow: none !important;
+    border: 1.5px dashed #94a3b8 !important;
+    background-color: #ffffff !important;
+    padding: 3mm !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body.is-printing-batch-organizers .organizer-badge-card {
+    box-shadow: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body.is-printing-batch-organizers * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
 }
+
 
