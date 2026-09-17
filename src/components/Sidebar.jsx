@@ -46,6 +46,18 @@ export default function Sidebar({
       badge: `${stats.reserved || 0} نشط`
     },
     { 
+      id: 'itqan', 
+      label: 'نظام إتقان لإدارة القاعات', 
+      icon: Building2, 
+      badge: 'إتقان 🏢'
+    },
+    { 
+      id: 'booking-form', 
+      label: 'استمارة حجز القاعات والمسارح', 
+      icon: FileSpreadsheet, 
+      badge: 'طلب حجز 📝'
+    },
+    { 
       id: 'map', 
       label: 'خريطة مقاعد المسرح', 
       icon: Armchair, 

@@ -36,6 +36,8 @@ export default function DashboardOverview({
   onNavigateToList,
   onNavigateToScanner,
   onNavigateToInvitations,
+  onNavigateToItqan,
+  onNavigateToBookingForm,
   onOpenPrintLabels,
   onOpenSeatManager,
   onOpenPrintAllTickets
@@ -365,6 +367,30 @@ export default function DashboardOverview({
                 </div>
                 <span>طباعة ملصقات المقاعد</span>
                 <span className="text-[9px] text-slate-400 font-normal">Print QR Labels</span>
+              </button>
+
+              {/* Action 7: Itqan System */}
+              <button
+                onClick={onNavigateToItqan}
+                className="p-4 rounded-2xl bg-gradient-to-br from-blue-600/25 to-indigo-700/30 hover:from-blue-600/35 hover:to-indigo-700/40 border border-blue-400/40 text-blue-200 font-bold text-xs flex flex-col items-center justify-center gap-2 shadow-lg transition-all hover:scale-[1.02] active:scale-95"
+              >
+                <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-300">
+                  <Building2 className="w-5 h-5" />
+                </div>
+                <span>نظام إتقان لإدارة القاعات</span>
+                <span className="text-[9px] text-blue-300 font-normal">Itqan Platform 🏢</span>
+              </button>
+
+              {/* Action 8: Digital Booking Form */}
+              <button
+                onClick={onNavigateToBookingForm}
+                className="p-4 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-600/30 hover:from-amber-500/30 hover:to-orange-600/40 border border-amber-400/40 text-amber-200 font-bold text-xs flex flex-col items-center justify-center gap-2 shadow-lg transition-all hover:scale-[1.02] active:scale-95"
+              >
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-300">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <span>استمارة حجز القاعات والمسارح</span>
+                <span className="text-[9px] text-amber-300 font-normal">Digital Booking Form 📝</span>
               </button>
 
             </div>
