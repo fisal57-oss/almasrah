@@ -1,4 +1,4 @@
-const ITGAN_BOOKING_URL = 'https://fisal57-oss.github.io/itgan/resources/app/booking_form_digital.html';
+const ITGAN_BOOKING_URL = 'https://fisal57-oss.github.io/itgan/resources/app/booking_receiver.html';
 
 function makeRequestId() {
   const now = new Date();
@@ -47,6 +47,8 @@ export function buildItganBookingUrl(booking) {
   url.searchParams.set('contactName', payload.applicant.name);
   url.searchParams.set('mobile', payload.applicant.mobile);
   url.searchParams.set('department', payload.applicant.department);
+  if (payload.event.timeSlot) url.searchParams.set('timeSlot', payload.event.timeSlot);
+  if (payload.event.expectedGuests) url.searchParams.set('expectedGuests', String(payload.event.expectedGuests));
   return url.toString();
 }
 
