@@ -1,0 +1,23 @@
+{
+  "short_name": "بوابة الموظف",
+  "name": "نظام حجز وتنظيم مقاعد المسرح",
+  "icons": [
+    {
+      "src": "/aseer_slogan_bg.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/aseer_slogan_bg.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/staff.html",
+  "background_color": "#060D1A",
+  "theme_color": "#00d2ff",
+  "display": "standalone",
+  "orientation": "portrait",
+  "dir": "rtl",
+  "lang": "ar"
+}

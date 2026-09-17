@@ -52,16 +52,3 @@ release/
 .tempmediaStorage/
 .user_uploaded/
 .cache/
-
-# Itqan Electron binaries and backups
-*.pak
-*.dll
-*.dat
-*.bin
-*.dat
-locales/
-LICENSES.chromium.html
-Itqan/locales/
-Itqan/Backups/
-Itqan/resources/app/Backups/
-Itqan/resources/app/itqan/
