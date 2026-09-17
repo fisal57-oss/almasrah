@@ -5,6 +5,14 @@ import { resolve } from 'path';
 export default defineConfig({
   base: './',
   plugins: [react()],
+  resolve: {
+    alias: [
+      {
+        find: '../utils/storage',
+        replacement: resolve(__dirname, 'src/utils/bookingStorage.js')
+      }
+    ]
+  },
   build: {
     rollupOptions: {
       input: {
