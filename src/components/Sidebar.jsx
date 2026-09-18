@@ -56,7 +56,7 @@ export default function Sidebar({
         },
         { 
           id: 'map', 
-          label: 'خريطة مقاعد المسرح (746)', 
+          label: 'خريطة مقاعد المسرح', 
           icon: Armchair, 
           badge: `${stats.available || 0} شاغر`,
           badgeType: 'emerald'
@@ -89,7 +89,7 @@ export default function Sidebar({
       items: [
         { 
           id: 'booking-form', 
-          label: 'استمارة حجز القاعات والمسارح', 
+          label: 'استمارة حجز القاعات', 
           icon: FileSpreadsheet, 
           badge: 'طلب جديد 📝',
           badgeType: 'amber'
@@ -149,7 +149,7 @@ export default function Sidebar({
       items: [
         { 
           id: 'staff-portal', 
-          label: 'بوابة الموظف والمنظمين', 
+          label: 'بوابة المنظمين والموظفين', 
           icon: ShieldCheck, 
           onClick: () => window.open('staff.html', '_blank'),
           isExternal: true
@@ -267,7 +267,7 @@ export default function Sidebar({
                             ? 'text-cyan-400' 
                             : 'text-slate-400 group-hover:text-cyan-400'
                         }`} />
-                        <span className="truncate text-[12px]">{item.label}</span>
+                        <span className="whitespace-nowrap text-[12.5px] tracking-tight">{item.label}</span>
                       </div>
                       
                       {item.badge && (
@@ -346,7 +346,7 @@ export default function Sidebar({
   return (
     <>
       {/* Desktop Persistent Sidebar */}
-      <aside className="hidden lg:flex w-64 bg-[#060D1A] border-l border-white/10 flex-col justify-between h-screen sticky top-0 shrink-0 select-none z-30 overflow-y-auto" dir="rtl">
+      <aside className="hidden lg:flex w-72 bg-[#060D1A] border-l border-white/10 flex-col justify-between h-screen sticky top-0 shrink-0 select-none z-30 overflow-y-auto" dir="rtl">
         {renderNavContent(false)}
       </aside>
 
