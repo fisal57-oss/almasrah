@@ -45,83 +45,107 @@ export default function Sidebar({
 
   const menuSections = [
     {
-      title: 'الرئيسية والمسرح',
+      title: 'إدارة المسرح والفعالية',
       items: [
         { 
           id: 'dashboard', 
           label: 'لوحة القيادة والمؤشرات', 
           icon: LayoutDashboard,
-          badge: `${stats.reserved || 0} نشط`
+          badge: `${stats.reserved || 0} نشط`,
+          badgeType: 'cyan'
         },
         { 
           id: 'map', 
           label: 'خريطة مقاعد المسرح (746)', 
           icon: Armchair, 
-          badge: `${stats.available || 0} شاغر`
-        },
-        { 
-          id: 'booking-form', 
-          label: 'استمارة حجز القاعات والمسارح', 
-          icon: FileSpreadsheet, 
-          badge: 'طلب حجز 📝'
-        },
-        { 
-          id: 'invitations', 
-          label: 'مركز الدعوات والبطاقات', 
-          icon: Mail, 
-          badge: `${stats.reserved || 0} دعوة`
+          badge: `${stats.available || 0} شاغر`,
+          badgeType: 'emerald'
         },
         { 
           id: 'list', 
           label: 'كشف الضيوف والحجوزات', 
           icon: Calendar, 
-          badge: `${stats.reserved || 0} ضيف`
+          badge: `${stats.reserved || 0} ضيف`,
+          badgeType: 'amber'
+        },
+        { 
+          id: 'invitations', 
+          label: 'مركز الدعوات والبطاقات', 
+          icon: Mail, 
+          badge: `${stats.reserved || 0} دعوة`,
+          badgeType: 'cyan'
         },
         { 
           id: 'scanner', 
           label: 'ماسح الباركود عند الباب', 
           icon: QrCode,
-          badge: `${stats.checkedIn || 0} حاضر`
+          badge: `${stats.checkedIn || 0} حاضر`,
+          badgeType: 'purple'
         }
       ]
     },
     {
-      title: 'إدارة القاعات والمقرات',
+      title: 'إدارة القاعات والفعاليات',
       items: [
         { 
+          id: 'booking-form', 
+          label: 'استمارة حجز القاعات والمسارح', 
+          icon: FileSpreadsheet, 
+          badge: 'طلب جديد 📝',
+          badgeType: 'amber'
+        },
+        { 
           id: 'itqan-rooms', 
-          label: 'صفحة القاعات والمقرات', 
-          icon: DoorClosed,
-          badge: 'القاعات'
+          label: 'القاعات والمقرات المتاحة', 
+          icon: DoorClosed
         },
         { 
           id: 'itqan-calendar', 
           label: 'التقويم وجدولة الفعاليات', 
-          icon: Calendar,
-          badge: 'التقويم'
+          icon: Calendar
         },
         { 
           id: 'itqan-bookings', 
-          label: 'إدارة الحجوزات والطلبات', 
-          icon: FileSpreadsheet,
-          badge: 'الحجوزات'
+          label: 'سجل الحجوزات والطلبات', 
+          icon: Layers
         },
         { 
           id: 'itqan-equipment', 
-          label: 'المعدات والعهدة', 
-          icon: Wrench,
-          badge: 'المعدات'
+          label: 'المعدات والعهدة التشغيلية', 
+          icon: Wrench
         },
         { 
           id: 'itqan-reports', 
-          label: 'التقارير التحليلية', 
-          icon: BarChart3,
-          badge: 'تقارير'
+          label: 'التقارير التحليلية والإحصاء', 
+          icon: BarChart3
         }
       ]
     },
     {
-      title: 'البوابات الذكية والأدوات',
+      title: 'أدوات المقاعد والطباعة',
+      items: [
+        { 
+          id: 'seat-manager', 
+          label: 'تخصيص وإدارة المقاعد', 
+          icon: PlusCircle, 
+          onClick: onOpenSeatManager
+        },
+        { 
+          id: 'labels', 
+          label: 'طباعة ملصقات المقاعد QR', 
+          icon: QrCode, 
+          onClick: onOpenPrintLabels 
+        },
+        { 
+          id: 'print-all-tickets', 
+          label: 'طباعة تذاكر الحضور دفعة واحدة', 
+          icon: Printer, 
+          onClick: onOpenPrintAllTickets
+        }
+      ]
+    },
+    {
+      title: 'البوابات الإلكترونية السريعة',
       items: [
         { 
           id: 'staff-portal', 
@@ -136,30 +160,6 @@ export default function Sidebar({
           icon: Users, 
           onClick: onOpenBeneficiaryPortal,
           isExternal: true
-        },
-        { 
-          id: 'print-all-tickets', 
-          label: 'طباعة جميع تذاكر الحضور', 
-          icon: Printer, 
-          onClick: onOpenPrintAllTickets
-        },
-        { 
-          id: 'seat-manager', 
-          label: 'تخصيص وإدارة المقاعد', 
-          icon: PlusCircle, 
-          onClick: onOpenSeatManager
-        },
-        { 
-          id: 'labels', 
-          label: 'طباعة ملصقات المقاعد QR', 
-          icon: Printer, 
-          onClick: onOpenPrintLabels 
-        },
-        { 
-          id: 'settings', 
-          label: 'إعدادات الفعالية والمسرح', 
-          icon: Settings, 
-          onClick: onOpenSettings
         }
       ]
     }
@@ -176,11 +176,28 @@ export default function Sidebar({
     }
   };
 
+  const getBadgeStyle = (type, isActive) => {
+    if (isActive) {
+      return 'bg-cyan-400 text-slate-950 font-black shadow-sm';
+    }
+    switch (type) {
+      case 'emerald':
+        return 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30';
+      case 'purple':
+        return 'bg-purple-500/15 text-purple-300 border border-purple-500/30';
+      case 'amber':
+        return 'bg-amber-500/15 text-amber-300 border border-amber-500/30';
+      case 'cyan':
+      default:
+        return 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30';
+    }
+  };
+
   const renderNavContent = (isDrawer = false) => (
     <>
-      <div>
+      <div className="flex-1 flex flex-col min-h-0">
         {/* Top Logo & App Title */}
-        <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between">
+        <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between shrink-0 bg-[#060D1A]/80 backdrop-blur-md">
           <div className="flex items-center gap-3">
             {activeLogo ? (
               <img 
@@ -190,15 +207,15 @@ export default function Sidebar({
                 className="h-10 sm:h-11 max-h-11 max-w-[120px] object-contain rounded-xl p-1 bg-white/10 backdrop-blur-md border border-white/20 shadow-md shrink-0"
               />
             ) : (
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 text-white font-black shrink-0">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 text-white font-black shrink-0 border border-white/15">
                 <Crown className="w-5 h-5 text-amber-300" />
               </div>
             )}
             <div>
-              <h1 className="text-sm sm:text-base font-black tracking-wide text-white">
+              <h1 className="text-sm sm:text-base font-black tracking-wide text-white leading-tight">
                 منظومة المسارح والقاعات
               </h1>
-              <p className="text-[10px] text-cyan-400 font-bold tracking-wider uppercase">
+              <p className="text-[10px] text-cyan-400 font-bold tracking-wider uppercase mt-0.5">
                 لوحة التحكم الموحدة
               </p>
             </div>
@@ -216,15 +233,20 @@ export default function Sidebar({
           )}
         </div>
 
-        {/* Navigation Items List */}
-        <nav className="p-3 space-y-4 mt-2">
+        {/* Navigation Items List - with sleek smooth scroll */}
+        <nav className="p-3 space-y-4 flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin">
           {menuSections.map((section, sIdx) => (
             <div key={sIdx} className="space-y-1">
-              <div className="text-[10px] font-black text-slate-400 px-3 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
-                <span>{section.title}</span>
+              {/* Section Header */}
+              <div className="flex items-center justify-between px-2.5 py-1 text-[11px] font-black text-slate-400 uppercase tracking-wider border-b border-white/[0.04] mb-1.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]"></span>
+                  <span className="text-slate-300 font-bold">{section.title}</span>
+                </div>
               </div>
-              <div className="space-y-1">
+
+              {/* Items in section */}
+              <div className="space-y-0.5">
                 {section.items.map((item) => {
                   const Icon = item.icon;
                   const isActive = currentTab === item.id;
@@ -233,35 +255,29 @@ export default function Sidebar({
                     <button
                       key={item.id}
                       onClick={() => handleItemClick(item)}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-2xl text-xs font-bold transition-all duration-200 ${
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all duration-150 group text-right ${
                         isActive
-                          ? 'bg-gradient-to-l from-cyan-500 to-blue-600 text-slate-950 shadow-lg shadow-cyan-500/25 scale-[1.01] font-black'
-                          : 'text-slate-300 hover:text-white hover:bg-white/5'
+                          ? 'bg-gradient-to-l from-cyan-500/20 via-blue-600/15 to-transparent text-cyan-200 border-r-[3px] border-cyan-400 font-black shadow-sm shadow-cyan-500/10'
+                          : 'text-slate-300 hover:text-white hover:bg-white/[0.06] font-medium border-r-[3px] border-transparent'
                       }`}
                     >
-                      <div className="flex items-center gap-2.5">
-                        <Icon className={`w-4 h-4 ${isActive ? 'text-slate-950' : 'text-cyan-400'}`} />
-                        <span>{item.label}</span>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Icon className={`w-4 h-4 shrink-0 transition-colors ${
+                          isActive 
+                            ? 'text-cyan-400' 
+                            : 'text-slate-400 group-hover:text-cyan-400'
+                        }`} />
+                        <span className="truncate text-[12px]">{item.label}</span>
                       </div>
                       
                       {item.badge && (
-                        <span className={`text-[9px] font-mono px-2 py-0.5 rounded-full font-bold ${
-                          isActive 
-                            ? 'bg-slate-950/20 text-slate-950 font-black' 
-                            : item.id === 'map'
-                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                            : item.id === 'scanner'
-                            ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-                            : item.id.startsWith('itqan')
-                            ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                            : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                        }`}>
+                        <span className={`text-[9.5px] font-mono px-2 py-0.5 rounded-md font-bold shrink-0 mr-1.5 transition-all ${getBadgeStyle(item.badgeType, isActive)}`}>
                           {item.badge}
                         </span>
                       )}
 
                       {item.isExternal && (
-                        <ExternalLink className="w-3 h-3 text-slate-400" />
+                        <ExternalLink className="w-3 h-3 text-slate-400 group-hover:text-cyan-400 shrink-0 mr-1.5" />
                       )}
                     </button>
                   );
@@ -272,8 +288,34 @@ export default function Sidebar({
         </nav>
       </div>
 
-      {/* Bottom Footer: Stats & Lock */}
-      <div className="p-3 border-t border-white/10 space-y-2">
+      {/* Dedicated Settings Button & Bottom Footer */}
+      <div className="p-3 border-t border-white/10 space-y-2 bg-[#060D1A]/95 shrink-0">
+        {/* Settings Button */}
+        <button
+          onClick={() => {
+            if (onOpenSettings) onOpenSettings();
+            if (onCloseMobile) onCloseMobile();
+          }}
+          className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 border ${
+            currentTab === 'settings'
+              ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-black border-cyan-400 shadow-lg shadow-cyan-500/25 scale-[1.01]'
+              : 'bg-white/[0.03] hover:bg-cyan-500/10 text-slate-200 hover:text-white border-white/10 hover:border-cyan-500/30 font-bold group'
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            <div className={`p-1 rounded-lg ${currentTab === 'settings' ? 'bg-slate-950/20 text-slate-950' : 'bg-cyan-500/15 text-cyan-400 group-hover:scale-110 transition-transform'}`}>
+              <Settings className="w-4 h-4" />
+            </div>
+            <span className="text-[12px]">إعدادات الفعالية والمسرح</span>
+          </div>
+          <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold ${
+            currentTab === 'settings' ? 'bg-slate-950/20 text-slate-950' : 'bg-white/5 text-slate-400 border border-white/10'
+          }`}>
+            تخصيص
+          </span>
+        </button>
+
+        {/* Stats Widget */}
         <div className="bg-white/5 border border-white/10 rounded-2xl p-3 flex items-center justify-between text-xs">
           <div className="space-y-0.5">
             <span className="text-[10px] text-slate-400 block">إجمالي المقاعد</span>
