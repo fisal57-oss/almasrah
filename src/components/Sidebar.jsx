@@ -91,9 +91,7 @@ export default function Sidebar({
         { 
           id: 'booking-form', 
           label: 'استمارة حجز القاعات', 
-          icon: FileSpreadsheet, 
-          badge: 'طلب جديد 📝',
-          badgeType: 'amber'
+          icon: FileSpreadsheet
         },
         { 
           id: 'itqan-rooms', 
@@ -113,9 +111,7 @@ export default function Sidebar({
         { 
           id: 'itqan-blacklist', 
           label: 'القائمة السوداء للمحظورين', 
-          icon: Ban,
-          badge: 'حظر تلقائي 🚫',
-          badgeType: 'rose'
+          icon: Ban
         },
         { 
           id: 'itqan-equipment', 
