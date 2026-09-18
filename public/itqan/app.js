@@ -1,12 +1,77 @@
+// Browser Polyfill for running as a Web App
+if (!window.electronAPI) {
+    window.electronAPI = {
+        syncDigitalForm: async (data) => {
+            try {
+                localStorage.setItem('itqan_synced_rooms', JSON.stringify(data.rooms));
+            } catch (e) {}
+            return { success: true };
+        },
+        updateTitle: (title) => {
+            document.title = title;
+        },
+        openExternal: (url) => {
+            window.open(url, '_blank');
+        },
+        backupProject: async () => {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
+            const dlAnchorElem = document.createElement('a');
+            dlAnchorElem.setAttribute("href", dataStr);
+            dlAnchorElem.setAttribute("download", `itqan_backup_${new Date().toISOString().split('T')[0]}.json`);
+            dlAnchorElem.click();
+            return { success: true, name: `itqan_backup_${new Date().toISOString().split('T')[0]}.json`, path: 'مجلد التنزيلات (Downloads)' };
+        },
+        exportData: async (data) => {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
+            const dlAnchorElem = document.createElement('a');
+            dlAnchorElem.setAttribute("href", dataStr);
+            dlAnchorElem.setAttribute("download", `itqan_data_${new Date().toISOString().split('T')[0]}.json`);
+            dlAnchorElem.click();
+            return { success: true, path: 'مجلد التنزيلات (Downloads)' };
+        },
+        importData: () => {
+            return new Promise((resolve) => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json';
+                input.onchange = (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return resolve({ error: 'لم يتم اختيار ملف' });
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        try {
+                            const parsed = JSON.parse(event.target.result);
+                            resolve({ success: true, data: parsed });
+                        } catch (err) {
+                            resolve({ error: 'الملف غير صالح أو تالف' });
+                        }
+                    };
+                    reader.readAsText(file);
+                };
+                input.click();
+            });
+        },
+        exportForm: async () => {
+            window.open('booking_form_digital.html', '_blank');
+            return { success: true, path: 'booking_form_digital.html' };
+        },
+        openPath: (path) => {
+            alert('تم حفظ الملف في: ' + path);
+        }
+    };
+}
+
 // Default State (Demo Data)
 const defaultState = {
     currentView: 'dashboard',
-    currentDate: new Date(2026, 3, 16),
+    currentDate: new Date(),
     appSettings: {
         logo: null,
         orgName: 'إدارة التعليم بمنطقة عسير',
         deptName: 'إدارة الاتصال المؤسسي',
+        deptHeadName: '',
         stamp: null,
+        signature: null,
         contactNumber: '0582233500 - 0590504047'
     },
     rooms: [
@@ -25,8 +90,49 @@ const defaultState = {
         { id: 1, name: 'ميكروفون لاسلكي Sony Pro', status: 'available', quantity: 4, icon: 'fa-microphone' },
         { id: 2, name: 'جهاز عرض 4K Epson Smart', status: 'available', quantity: 2, icon: 'fa-video' }
     ],
-    bookingsSortCriteria: 'priority'
+    bookingsSortCriteria: 'priority',
+    bookingsStatusFilter: 'all',
+    bookingsDateFilter: 'all',
+    bookingsStartDate: '',
+    bookingsEndDate: ''
 };
+
+// ===== Custom Cancellation Prompt (works in Electron with contextIsolation) =====
+window._cancellationPromptCallback = null;
+
+window.showCancellationPrompt = function() {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('custom-prompt-modal');
+        const input = document.getElementById('custom-prompt-input');
+        if (!modal || !input) { resolve(null); return; }
+        
+        input.value = '';
+        modal.style.display = 'flex';
+        setTimeout(() => input.focus(), 100);
+        
+        window._cancellationPromptCallback = resolve;
+    });
+};
+
+window.confirmCustomPrompt = function() {
+    const modal = document.getElementById('custom-prompt-modal');
+    const input = document.getElementById('custom-prompt-input');
+    modal.style.display = 'none';
+    if (window._cancellationPromptCallback) {
+        window._cancellationPromptCallback(input.value.trim() || 'لم يتم تحديد سبب');
+        window._cancellationPromptCallback = null;
+    }
+};
+
+window.cancelCustomPrompt = function() {
+    const modal = document.getElementById('custom-prompt-modal');
+    modal.style.display = 'none';
+    if (window._cancellationPromptCallback) {
+        window._cancellationPromptCallback(null); // null = cancelled
+        window._cancellationPromptCallback = null;
+    }
+};
+// ===== End Custom Prompt =====
 
 function startLiveClock() {
     const timeEl = document.getElementById('live-time');
@@ -62,11 +168,20 @@ function saveState() {
     }
 }
 
-function syncRoomsWithDigitalForm() {
+function syncRoomsWithDigitalForm(showToastNotify = false) {
     if (window.electronAPI && window.electronAPI.syncDigitalForm) {
-        window.electronAPI.syncDigitalForm(state.rooms);
+        window.electronAPI.syncDigitalForm({ rooms: state.rooms, appSettings: state.appSettings }).then(() => {
+            if (showToastNotify && typeof showToast === 'function') {
+                showToast('✅ تم تحديث ومزامنة استمارة الحجز الرقمية بنجاح!', 'success');
+            }
+        });
+    } else {
+        if (showToastNotify && typeof showToast === 'function') {
+            showToast('✅ تم تحديث ومزامنة استمارة الحجز الرقمية في النظام!', 'success');
+        }
     }
 }
+window.syncRoomsWithDigitalForm = syncRoomsWithDigitalForm;
 
 function loadState() {
     try {
@@ -107,9 +222,13 @@ function loadState() {
             if (!Array.isArray(newState.bookings)) newState.bookings = defaultState.bookings;
             if (!Array.isArray(newState.equipment)) newState.equipment = defaultState.equipment;
 
-            // Date objects need to be re-instantiated
-            newState.currentDate = new Date(newState.currentDate || new Date()); if (isNaN(newState.currentDate.getTime())) newState.currentDate = new Date();
+            // Date objects need to be re-instantiated (Always default to live current OS date)
+            newState.currentDate = new Date();
             newState.bookingsSortCriteria = newState.bookingsSortCriteria || 'priority';
+            newState.bookingsStatusFilter = newState.bookingsStatusFilter || 'all';
+            newState.bookingsDateFilter = newState.bookingsDateFilter || 'all';
+            newState.bookingsStartDate = newState.bookingsStartDate || '';
+            newState.bookingsEndDate = newState.bookingsEndDate || '';
             
             return newState;
         }
@@ -126,8 +245,311 @@ let navLinks = document.querySelectorAll('.nav-links li');
 let views = document.querySelectorAll('.view');
 const roomGridMini = document.querySelector('.room-grid-mini');
 
+// ==========================================================================
+// Authentication & Security System (نظام المصادقة والأمان)
+// ==========================================================================
+const DEFAULT_AUTH_CREDS = {
+    username: 'admin',
+    password: 'admin123',
+    name: 'المدير العام'
+};
+
+function getStoredAuthCreds() {
+    try {
+        const stored = localStorage.getItem('itqan_auth_creds');
+        if (stored) {
+            return JSON.parse(stored);
+        }
+    } catch (e) {
+        console.error('Error reading auth creds:', e);
+    }
+    return DEFAULT_AUTH_CREDS;
+}
+
+function getActiveAuthSession() {
+    try {
+        const session = localStorage.getItem('itqan_auth_session') || sessionStorage.getItem('itqan_auth_session');
+        if (session) {
+            return JSON.parse(session);
+        }
+    } catch (e) {
+        console.error('Error reading auth session:', e);
+    }
+    return null;
+}
+
+function initAuthSystem() {
+    const session = getActiveAuthSession();
+    const loginScreen = document.getElementById('login-screen');
+    const appContainer = document.querySelector('.app-container');
+    const activeUserDisplay = document.getElementById('active-username-display');
+
+    if (session && session.isLoggedIn) {
+        // User is logged in
+        if (loginScreen) {
+            loginScreen.classList.add('hidden');
+            loginScreen.style.display = 'none';
+        }
+        if (appContainer) {
+            appContainer.style.display = 'flex';
+        }
+        if (activeUserDisplay) {
+            activeUserDisplay.textContent = session.name || session.username || 'المدير العام';
+        }
+    } else {
+        // User is not logged in
+        if (loginScreen) {
+            loginScreen.classList.remove('hidden');
+            loginScreen.style.display = 'flex';
+            setTimeout(() => {
+                const usernameInput = document.getElementById('login-username');
+                if (usernameInput) usernameInput.focus();
+            }, 200);
+        }
+        if (appContainer) {
+            appContainer.style.display = 'none';
+        }
+    }
+}
+
+window.handleLogin = function() {
+    const usernameInput = document.getElementById('login-username');
+    const passwordInput = document.getElementById('login-password');
+    const rememberCheckbox = document.getElementById('login-remember');
+    const errorMsg = document.getElementById('login-error-msg');
+    const errorText = document.getElementById('login-error-text');
+    const submitBtn = document.getElementById('login-submit-btn');
+
+    if (!usernameInput || !passwordInput) return;
+
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value;
+    const remember = rememberCheckbox ? rememberCheckbox.checked : true;
+
+    if (errorMsg) errorMsg.style.display = 'none';
+
+    // UI Loading state
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        const btnText = submitBtn.querySelector('.btn-text');
+        const btnIcon = submitBtn.querySelector('.btn-icon');
+        const btnSpinner = submitBtn.querySelector('.btn-spinner');
+        if (btnText) btnText.textContent = 'جاري التحقق...';
+        if (btnIcon) btnIcon.style.display = 'none';
+        if (btnSpinner) btnSpinner.style.display = 'inline-block';
+    }
+
+    setTimeout(() => {
+        const creds = getStoredAuthCreds();
+
+        if (username.toLowerCase() === creds.username.toLowerCase() && password === creds.password) {
+            // Success
+            const sessionData = {
+                isLoggedIn: true,
+                username: creds.username,
+                name: creds.name || 'المدير العام',
+                loginTime: new Date().toISOString()
+            };
+
+            if (remember) {
+                localStorage.setItem('itqan_auth_session', JSON.stringify(sessionData));
+            } else {
+                sessionStorage.setItem('itqan_auth_session', JSON.stringify(sessionData));
+            }
+
+            const loginScreen = document.getElementById('login-screen');
+            const appContainer = document.querySelector('.app-container');
+            const activeUserDisplay = document.getElementById('active-username-display');
+
+            if (activeUserDisplay) {
+                activeUserDisplay.textContent = sessionData.name;
+            }
+
+            if (appContainer) {
+                appContainer.style.display = 'flex';
+                appContainer.style.opacity = '0';
+                setTimeout(() => {
+                    appContainer.style.transition = 'opacity 0.4s ease';
+                    appContainer.style.opacity = '1';
+                }, 50);
+            }
+
+            if (loginScreen) {
+                loginScreen.classList.add('hidden');
+                setTimeout(() => {
+                    loginScreen.style.display = 'none';
+                }, 500);
+            }
+
+            // Reset inputs
+            usernameInput.value = '';
+            passwordInput.value = '';
+
+            if (typeof showToast === 'function') {
+                showToast(`مرحباً بك، ${sessionData.name}! تم تسجيل الدخول بنجاح.`, 'success');
+            }
+        } else {
+            // Failed
+            if (errorMsg) {
+                errorMsg.style.display = 'flex';
+                if (errorText) errorText.textContent = 'اسم المستخدم أو كلمة المرور غير صحيحة!';
+            }
+            passwordInput.focus();
+            passwordInput.select();
+        }
+
+        // Restore button state
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            const btnText = submitBtn.querySelector('.btn-text');
+            const btnIcon = submitBtn.querySelector('.btn-icon');
+            const btnSpinner = submitBtn.querySelector('.btn-spinner');
+            if (btnText) btnText.textContent = 'تسجيل الدخول';
+            if (btnIcon) btnIcon.style.display = 'inline-block';
+            if (btnSpinner) btnSpinner.style.display = 'none';
+        }
+    }, 400);
+};
+
+window.handleLogout = function() {
+    if (!confirm('هل أنت متأكد من رغبتك في تسجيل الخروج؟')) return;
+
+    localStorage.removeItem('itqan_auth_session');
+    sessionStorage.removeItem('itqan_auth_session');
+
+    const loginScreen = document.getElementById('login-screen');
+    const appContainer = document.querySelector('.app-container');
+
+    if (appContainer) {
+        appContainer.style.display = 'none';
+    }
+
+    if (loginScreen) {
+        loginScreen.style.display = 'flex';
+        loginScreen.classList.remove('hidden');
+        const usernameInput = document.getElementById('login-username');
+        if (usernameInput) {
+            usernameInput.value = '';
+            usernameInput.focus();
+        }
+        const passwordInput = document.getElementById('login-password');
+        if (passwordInput) passwordInput.value = '';
+        const errorMsg = document.getElementById('login-error-msg');
+        if (errorMsg) errorMsg.style.display = 'none';
+    }
+
+    if (typeof showToast === 'function') {
+        showToast('تم تسجيل الخروج بنجاح.', 'info');
+    }
+};
+
+window.togglePasswordVisibility = function(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (!input || !btn) return;
+    const icon = btn.querySelector('i');
+    if (input.type === 'password') {
+        input.type = 'text';
+        if (icon) {
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        }
+    } else {
+        input.type = 'password';
+        if (icon) {
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    }
+};
+
+window.updateAuthCredentials = function() {
+    const currentPassInput = document.getElementById('setting-current-pass');
+    const newUsernameInput = document.getElementById('setting-new-username');
+    const newPassInput = document.getElementById('setting-new-pass');
+    const confirmPassInput = document.getElementById('setting-confirm-pass');
+
+    if (!currentPassInput) return;
+
+    const currentPass = currentPassInput.value;
+    const creds = getStoredAuthCreds();
+
+    if (!currentPass) {
+        if (typeof showToast === 'function') {
+            showToast('يرجى إدخال كلمة المرور الحالية للتأكيد.', 'error');
+        } else {
+            alert('يرجى إدخال كلمة المرور الحالية للتأكيد.');
+        }
+        currentPassInput.focus();
+        return;
+    }
+
+    if (currentPass !== creds.password) {
+        if (typeof showToast === 'function') {
+            showToast('كلمة المرور الحالية غير صحيحة!', 'error');
+        } else {
+            alert('كلمة المرور الحالية غير صحيحة!');
+        }
+        currentPassInput.focus();
+        return;
+    }
+
+    const newUsername = newUsernameInput ? newUsernameInput.value.trim() : '';
+    const newPass = newPassInput ? newPassInput.value : '';
+    const confirmPass = confirmPassInput ? confirmPassInput.value : '';
+
+    if (newPass && newPass !== confirmPass) {
+        if (typeof showToast === 'function') {
+            showToast('كلمة المرور الجديدة غير متطابقة مع التأكيد!', 'error');
+        } else {
+            alert('كلمة المرور الجديدة غير متطابقة مع التأكيد!');
+        }
+        if (confirmPassInput) confirmPassInput.focus();
+        return;
+    }
+
+    // Update credentials
+    if (newUsername) {
+        creds.username = newUsername;
+        creds.name = newUsername === 'admin' ? 'المدير العام' : newUsername;
+    }
+    if (newPass) {
+        creds.password = newPass;
+    }
+
+    localStorage.setItem('itqan_auth_creds', JSON.stringify(creds));
+
+    // Update active session if exists
+    const session = getActiveAuthSession();
+    if (session) {
+        session.username = creds.username;
+        session.name = creds.name;
+        if (localStorage.getItem('itqan_auth_session')) {
+            localStorage.setItem('itqan_auth_session', JSON.stringify(session));
+        } else {
+            sessionStorage.setItem('itqan_auth_session', JSON.stringify(session));
+        }
+        const activeUserDisplay = document.getElementById('active-username-display');
+        if (activeUserDisplay) {
+            activeUserDisplay.textContent = creds.name;
+        }
+    }
+
+    // Clear settings form inputs
+    currentPassInput.value = '';
+    if (newUsernameInput) newUsernameInput.value = '';
+    if (newPassInput) newPassInput.value = '';
+    if (confirmPassInput) confirmPassInput.value = '';
+
+    if (typeof showToast === 'function') {
+        showToast('✅ تم تحديث بيانات الأمان وكلمة المرور بنجاح!', 'success');
+    } else {
+        alert('تم تحديث بيانات الأمان وكلمة المرور بنجاح!');
+    }
+};
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
+    initAuthSystem();
     setupNavigation();
     renderDashboard();
     applySystemBranding();
@@ -135,6 +557,27 @@ document.addEventListener('DOMContentLoaded', () => {
     updateStampPreview();
     startLiveClock();
     updateNotifications();
+    window.loadBlacklist();
+
+    // Embedded Mode Support
+    const isEmbedded = (window.self !== window.top) || window.location.search.includes('embed=clean');
+    if (isEmbedded) {
+        document.body.classList.add('is-embedded');
+    }
+
+    // Handle view switch from parent window via postMessage
+    window.addEventListener('message', (e) => {
+        if (e.data && e.data.action === 'switchView' && e.data.view) {
+            switchView(e.data.view);
+        }
+    });
+
+    // Handle initial view via URL parameter ?view=xyz
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialView = urlParams.get('view');
+    if (initialView) {
+        setTimeout(() => switchView(initialView), 50);
+    }
 });
 
 // Navigation logic (Updated to include click listeners for dynamically added tabs if any, though handled by navLinks selector)
@@ -153,7 +596,6 @@ function setupNavigation() {
 }
 
 function switchView(viewId) {
-    // Re-query if views list is empty or stale (defensive)
     if (!views || views.length === 0) {
         views = document.querySelectorAll('.view');
     }
@@ -186,12 +628,16 @@ function switchView(viewId) {
     if (viewId === 'rooms') renderFullRoomGrid();
     if (viewId === 'calendar') renderCalendar();
     if (viewId === 'equipment') renderEquipmentGrid();
-    if (viewId === 'bookings-list') renderBookingsList();
+    if (viewId === 'bookings-list') {
+        populateBookingsRoomSelector();
+        renderBookingsList();
+    }
     if (viewId === 'reports') {
         populateReportRoomSelector();
         updateReportFilter('all');
     }
     if (viewId === 'settings') syncSettingsUI();
+    if (viewId === 'blacklist') window.renderBlacklistTable();
 }
 
 // Logo and Branding Logic
@@ -261,9 +707,55 @@ function updateStampPreview() {
         noStampText.style.display = 'block';
     }
 }
+
+window.handleSignatureUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+        if (file.size > 2 * 1024 * 1024) {
+            showToast('حجم الصورة كبير جداً. يرجى اختيار صورة أقل من 2 ميجابايت.', 'error');
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            state.appSettings.signature = e.target.result;
+            saveState();
+            syncSettingsUI();
+            applySystemBranding();
+            showToast('تم رفع صورة التوقيع بنجاح.', 'success');
+        };
+        reader.readAsDataURL(file);
+    }
+};
+
+window.resetSignature = () => {
+    if (confirm('هل أنت متأكد من حذف توقيع رئيس القسم؟')) {
+        state.appSettings.signature = null;
+        saveState();
+        syncSettingsUI();
+        applySystemBranding();
+        showToast('تم حذف التوقيع بنجاح.', 'info');
+    }
+};
+
+function updateSignaturePreview() {
+    const previewImg = document.getElementById('signature-preview-img');
+    const noSigText = document.getElementById('no-signature-text');
+    if (!previewImg || !noSigText) return;
+
+    if (state.appSettings.signature) {
+        previewImg.src = state.appSettings.signature;
+        previewImg.style.display = 'block';
+        noSigText.style.display = 'none';
+    } else {
+        previewImg.style.display = 'none';
+        noSigText.style.display = 'block';
+    }
+}
+
 window.saveGeneralSettings = () => {
     const orgName = document.getElementById('setting-org-name').value;
     const deptName = document.getElementById('setting-dept-name').value;
+    const deptHeadName = document.getElementById('setting-dept-head-name') ? document.getElementById('setting-dept-head-name').value : '';
     const contactNumber = document.getElementById('setting-contact-number').value;
     
     if (!orgName || !deptName || !contactNumber) {
@@ -273,6 +765,7 @@ window.saveGeneralSettings = () => {
 
     state.appSettings.orgName = orgName;
     state.appSettings.deptName = deptName;
+    state.appSettings.deptHeadName = deptHeadName;
     state.appSettings.contactNumber = contactNumber;
     saveState();
     applySystemBranding();
@@ -371,8 +864,11 @@ function renderFilteredAgenda(bookings) {
 
 function applySystemBranding() {
     const logoBase64 = state.appSettings.logo;
+    const stampBase64 = state.appSettings.stamp;
+    const signatureBase64 = state.appSettings.signature;
     const orgName = state.appSettings.orgName || 'إدارة التعليم بمنطقة عسير';
     const deptName = state.appSettings.deptName || 'قسم الاتصال المؤسسي';
+    const deptHeadName = state.appSettings.deptHeadName || '';
     const contactNumber = state.appSettings.contactNumber || '0582233500 - 0590504047';
 
     // 1. Dashboard / Header UI
@@ -399,12 +895,39 @@ function applySystemBranding() {
     }
 
     // 2. Apply to ALL Print Templates and UI Slots
-    const templates = ['booking-request-print-template', 'all-bookings-print-template', 'calendar-print-template', 'short-report-print-template', 'event-notification-print-template'];
+    const templates = ['booking-request-print-template', 'all-bookings-print-template', 'calendar-print-template', 'short-report-print-template', 'event-notification-print-template', 'event-cancellation-print-template', 'blacklist-print-template', 'single-ban-print-template', 'room-report-print-template'];
     
-    // Update Org/Dept Names everywhere (UI and Templates)
+    // Update Org/Dept/Head Names everywhere (UI and Templates)
     document.querySelectorAll('.dynamic-org-name').forEach(el => el.textContent = orgName);
     document.querySelectorAll('.dynamic-dept-name').forEach(el => el.textContent = deptName);
+    document.querySelectorAll('.dynamic-dept-head-name').forEach(el => el.textContent = deptHeadName || '....................');
     document.querySelectorAll('.dynamic-contact-number').forEach(el => el.textContent = contactNumber);
+
+    // Update Signature images
+    document.querySelectorAll('.dynamic-print-signature-img, #req-signature-img').forEach(sigImg => {
+        const sigPlace = sigImg.nextElementSibling || (sigImg.parentElement ? sigImg.parentElement.querySelector('.signature-placeholder') : null);
+        if (signatureBase64) {
+            sigImg.src = signatureBase64;
+            sigImg.style.display = 'block';
+            if (sigPlace) sigPlace.style.display = 'none';
+        } else {
+            sigImg.style.display = 'none';
+            if (sigPlace) sigPlace.style.display = 'block';
+        }
+    });
+
+    // Update Stamp images
+    document.querySelectorAll('.dynamic-print-stamp-img, #req-stamp-img').forEach(stampImg => {
+        const stampPlace = stampImg.nextElementSibling || (stampImg.parentElement ? stampImg.parentElement.querySelector('.print-stamp-placeholder, #stamp-placeholder') : null);
+        if (stampBase64) {
+            stampImg.src = stampBase64;
+            stampImg.style.display = 'block';
+            if (stampPlace) stampPlace.style.display = 'none';
+        } else {
+            stampImg.style.display = 'none';
+            if (stampPlace) stampPlace.style.display = 'block';
+        }
+    });
 
     templates.forEach(tid => {
         const t = document.getElementById(tid);
@@ -419,31 +942,22 @@ function applySystemBranding() {
                 el.innerHTML = '<div style="width: 80px; height: 80px; border: 1px dashed #ccc; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; color: #aaa;">شعار</div>';
             }
         });
-
-        // Update Stamp (Special handling for templates that have stamp containers)
-        const stampImg = t.querySelector('#req-stamp-img');
-        const stampPlace = t.querySelector('#stamp-placeholder');
-        if (stampImg && stampPlace) {
-            if (state.appSettings.stamp) {
-                stampImg.src = state.appSettings.stamp;
-                stampImg.style.display = 'block';
-                stampPlace.style.display = 'none';
-            } else {
-                stampImg.style.display = 'none';
-                stampPlace.style.display = 'block';
-            }
-        }
     });
 }
 
 function syncSettingsUI() {
     const orgInput = document.getElementById('setting-org-name');
     const deptInput = document.getElementById('setting-dept-name');
+    const deptHeadInput = document.getElementById('setting-dept-head-name');
     const contactInput = document.getElementById('setting-contact-number');
+
     if (orgInput) orgInput.value = state.appSettings.orgName || '';
     if (deptInput) deptInput.value = state.appSettings.deptName || '';
+    if (deptHeadInput) deptHeadInput.value = state.appSettings.deptHeadName || '';
     if (contactInput) contactInput.value = state.appSettings.contactNumber || '';
+
     updateStampPreview();
+    updateSignaturePreview();
 }
 
 // Dashboard Rendering
@@ -475,9 +989,9 @@ function renderAgendaListToContainer(bookings, container, isSearch = false) {
         <div class="agenda-list" style="display: flex; flex-direction: column; gap: 12px; max-height: 400px; overflow-y: auto; padding-right: 5px;">
             ${bookings.map(book => {
                 const room = state.rooms.find(r => r.id === book.roomId);
-                const statusColor = book.status === 'confirmed' ? 'var(--accent)' : book.status === 'executed' ? '#6366f1' : book.status === 'pending' ? 'var(--warning)' : 'var(--danger)';
+                const statusColor = book.status === 'confirmed' ? 'var(--accent)' : book.status === 'executed' ? '#6366f1' : book.status === 'pending' ? 'var(--warning)' : book.status === 'maintenance' ? '#f97316' : 'var(--danger)';
                 return `
-                    <div class="agenda-item" style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 15px; display: flex; align-items: center; gap: 15px; border-right: 4px solid ${statusColor}; animation: slideInRight 0.4s ease;">
+                    <div class="agenda-item" onclick="openViewModal(${book.id})" style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 15px; display: flex; align-items: center; gap: 15px; border-right: 4px solid ${statusColor}; animation: slideInRight 0.4s ease; cursor: pointer; transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;" onmouseover="this.style.transform='translateX(-5px)'; this.style.background='rgba(255,255,255,0.06)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.2)';" onmouseout="this.style.transform='none'; this.style.background='rgba(255,255,255,0.03)'; this.style.boxShadow='none';">
                         <div class="agenda-time" style="text-align: center; min-width: 85px; border-left: 1px solid var(--glass-border); padding-left: 15px;">
                             <div style="font-size: 0.75rem; color: var(--primary-light); font-weight: 600;">${book.date}</div>
                             <div style="font-weight: 700; font-size: 1.1rem;">${formatTime12h(book.time)}</div>
@@ -488,7 +1002,7 @@ function renderAgendaListToContainer(bookings, container, isSearch = false) {
                             <p style="font-size: 0.8rem; color: var(--text-muted);"><i class="fas fa-location-dot"></i> ${room ? room.name : 'قاعة غير معروفة'}</p>
                         </div>
                         <div class="agenda-status" style="font-size: 0.7rem; padding: 4px 10px; border-radius: 20px; background: ${statusColor}1A; color: ${statusColor}; font-weight: 600;">
-                            ${book.status === 'confirmed' ? 'مؤكد' : book.status === 'executed' ? 'تم التنفيذ' : book.status === 'pending' ? 'قيد الانتظار' : 'ملغي'}
+                            ${book.status === 'confirmed' ? 'مؤكد' : book.status === 'executed' ? 'تم التنفيذ' : book.status === 'pending' ? 'قيد الانتظار' : book.status === 'maintenance' ? 'صيانة' : 'ملغي'}
                         </div>
                     </div>
                 `;
@@ -617,7 +1131,7 @@ function renderRoomListToContainer(rooms, container) {
                 <button class="btn-primary" onclick="openBookingModal(${room.id})">
                     حجز الموعد
                 </button>
-                <button class="btn-secondary">التفاصيل</button>
+                <button class="btn-secondary" onclick="viewRoomDetails(${room.id})">التفاصيل</button>
             </div>
         </div>
     `).join('');
@@ -699,16 +1213,16 @@ function renderBookingsTableToContainer(bookings, container) {
                 ${bookings.map(book => {
                     const room = state.rooms.find(r => r.id === book.roomId);
                     const hasEval = book.positives || book.negatives || book.recommendations;
-                    const statusColor = book.status === 'confirmed' ? 'var(--accent)' : book.status === 'executed' ? '#6366f1' : book.status === 'pending' ? 'var(--warning)' : 'var(--danger)';
+                    const statusColor = book.status === 'confirmed' ? 'var(--accent)' : book.status === 'executed' ? '#6366f1' : book.status === 'pending' ? 'var(--warning)' : book.status === 'maintenance' ? '#f97316' : 'var(--danger)';
                     return `
                         <tr style="animation: fadeIn 0.3s ease;">
                             <td style="font-weight: 600; color: var(--primary-light);">${room ? room.name : 'قاعة محذوفة'}</td>
                             <td>${book.title}</td>
-                            <td>${book.date}</td>
+                            <td>${formatBookingDateRange(book)}</td>
                             <td>${formatTime12h(book.time)} ${book.timePeriod}</td>
                             <td>
                                 <span style="font-size: 0.75rem; padding: 4px 10px; border-radius: 20px; background: ${statusColor}1A; color: ${statusColor}; font-weight: 600; border: 1px solid ${statusColor}33;">
-                                    ${book.status === 'confirmed' ? 'مؤكد' : book.status === 'executed' ? 'تم التنفيذ' : book.status === 'pending' ? 'انتظار' : 'ملغي'}
+                                    ${book.status === 'confirmed' ? 'مؤكد' : book.status === 'executed' ? 'تم التنفيذ' : book.status === 'pending' ? 'انتظار' : book.status === 'maintenance' ? 'صيانة' : 'ملغي'}
                                 </span>
                             </td>
                             <td>
@@ -719,6 +1233,12 @@ function renderBookingsTableToContainer(bookings, container) {
                                     <button class="booking-action-btn action-letter" data-tooltip="خطاب الفعالية" onclick="event.stopPropagation(); printEventNotification(${book.id})">
                                         <i class="fas fa-envelope-open-text" style="color: #6366f1;"></i>
                                     </button>
+                                    <button class="booking-action-btn action-cancel-letter" data-tooltip="خطاب إلغاء الفعالية" onclick="event.stopPropagation(); printEventCancellation(${book.id})">
+                                        <i class="fas fa-calendar-times" style="color: #ef4444;"></i>
+                                    </button>
+                                    <button class="booking-action-btn" data-tooltip="${book.status === 'cancelled' ? 'إرسال إشعار إلغاء واتساب' : 'إرسال تأكيد واتساب'}" onclick="event.stopPropagation(); ${book.status === 'cancelled' ? `sendWhatsAppCancellation(${book.id})` : `sendWhatsAppConfirmation(${book.id})`}" style="border-color: rgba(37, 211, 102, 0.3);">
+                                        <i class="fab fa-whatsapp" style="color: #25D366;"></i>
+                                    </button>
                                     <button class="booking-action-btn action-eval" data-tooltip="التقييم والاتقان" onclick="event.stopPropagation(); openViewModal(${book.id})">
                                         <i class="fas fa-star" style="color: ${hasEval ? '#fbbf24' : 'inherit'};"></i>
                                     </button>
@@ -727,6 +1247,9 @@ function renderBookingsTableToContainer(bookings, container) {
                                     </button>
                                     <button class="booking-action-btn action-rpt" data-tooltip="تقرير الإتقان" onclick="event.stopPropagation(); printAchievementDirectly(${book.id})">
                                         <i class="fas fa-certificate"></i>
+                                    </button>
+                                    <button class="booking-action-btn action-ban" data-tooltip="حظر وإدراج في القائمة السوداء" onclick="event.stopPropagation(); window.openAddBlacklistModalFromBooking(${book.id})">
+                                        <i class="fas fa-user-slash"></i>
                                     </button>
                                     <button class="booking-action-btn action-del" data-tooltip="حذف نهائي" onclick="event.stopPropagation(); deleteBooking(${book.id})">
                                         <i class="fas fa-trash"></i>
@@ -749,7 +1272,7 @@ window.handleBookingsSort = (criteria) => {
 
 function sortBookingsArray(bookings, criteria) {
     let sorted = [...bookings];
-    const weights = { 'pending': 1, 'confirmed': 2, 'executed': 3, 'cancelled': 4 };
+    const weights = { 'pending': 1, 'confirmed': 2, 'executed': 3, 'cancelled': 4, 'maintenance': 5 };
 
     if (criteria === 'priority') {
         sorted.sort((a, b) => {
@@ -778,48 +1301,99 @@ function sortBookingsArray(bookings, criteria) {
     return sorted;
 }
 
-window.printShortReport = () => {
-    const bookId = document.getElementById('evaluation-book-id').value;
-    const booking = state.bookings.find(b => b.id == bookId);
-    if (!booking) return;
 
-    // Fill template fields
-    document.getElementById('rpt-title').textContent = booking.title;
-    document.getElementById('rpt-entity').textContent = booking.entityName || 'غير محدد';
-    document.getElementById('rpt-date').textContent = booking.date;
+function getFilteredBookings() {
+    let filtered = [...state.bookings];
     
-    const todayStr = new Date().toLocaleDateString('ar-SA');
-    document.getElementById('rpt-today').textContent = todayStr;
-    const todayFooter = document.getElementById('rpt-today-footer');
-    if (todayFooter) todayFooter.textContent = todayStr;
-
-    document.getElementById('rpt-positives').textContent = booking.positives || 'لا يوجد ملاحظات';
-    document.getElementById('rpt-negatives').textContent = booking.negatives || 'لا يوجد ملاحظات';
-    document.getElementById('rpt-recommendations').textContent = booking.recommendations || 'لا يوجد ملاحظات';
-
-    // Handle Stamp
-    const stampImg = document.getElementById('rpt-stamp-img');
-    const stampPlaceholder = document.getElementById('rpt-stamp-placeholder');
-    if (stampImg && state.settings?.stamp) {
-        stampImg.src = state.settings.stamp;
-        stampImg.style.display = 'block';
-        if (stampPlaceholder) stampPlaceholder.style.display = 'none';
-    } else if (stampImg) {
-        stampImg.style.display = 'none';
-        if (stampPlaceholder) stampPlaceholder.style.display = 'block';
+    // Sync custom date inputs with state in case change event hasn't fired yet
+    const startInput = document.getElementById('bookings-start-date');
+    const endInput = document.getElementById('bookings-end-date');
+    if (startInput) state.bookingsStartDate = startInput.value;
+    if (endInput) state.bookingsEndDate = endInput.value;
+    
+    // 1. Status Filter
+    const statusFilter = state.bookingsStatusFilter || 'all';
+    if (statusFilter !== 'all') {
+        filtered = filtered.filter(b => b.status === statusFilter);
     }
-
-    // Trigger Print
-    const printContent = document.getElementById('short-report-print-template').innerHTML;
-    const originalContent = document.body.innerHTML;
-
-    document.body.innerHTML = printContent;
-    window.print();
-    document.body.innerHTML = originalContent;
     
-    // Re-initialize app to restore listeners
-    location.reload(); 
-};
+    // 2. Date Filter
+    const dateFilter = state.bookingsDateFilter || 'all';
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    
+    if (dateFilter === 'today') {
+        const todayStr = today.toISOString().split('T')[0];
+        filtered = filtered.filter(b => b.date === todayStr);
+    } else if (dateFilter === 'week') {
+        // Current week (Sunday to Saturday)
+        const currentDay = today.getDay();
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - currentDay);
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        
+        filtered = filtered.filter(b => {
+            if (!b.date) return false;
+            const bDate = new Date(b.date);
+            bDate.setHours(0,0,0,0);
+            return bDate >= startOfWeek && bDate <= endOfWeek;
+        });
+    } else if (dateFilter === 'next-week') {
+        // Next week (Sunday to Saturday)
+        const currentDay = today.getDay();
+        const startOfNextWeek = new Date(today);
+        startOfNextWeek.setDate(today.getDate() - currentDay + 7);
+        const endOfNextWeek = new Date(startOfNextWeek);
+        endOfNextWeek.setDate(startOfNextWeek.getDate() + 6);
+        
+        filtered = filtered.filter(b => {
+            if (!b.date) return false;
+            const bDate = new Date(b.date);
+            bDate.setHours(0,0,0,0);
+            return bDate >= startOfNextWeek && bDate <= endOfNextWeek;
+        });
+    } else if (dateFilter === 'month') {
+        const currentMonth = today.getMonth();
+        const currentYear = today.getFullYear();
+        filtered = filtered.filter(b => {
+            if (!b.date) return false;
+            const bDate = new Date(b.date);
+            return bDate.getMonth() === currentMonth && bDate.getFullYear() === currentYear;
+        });
+    } else if (dateFilter === 'custom') {
+        const startDateStr = state.bookingsStartDate || '';
+        const endDateStr = state.bookingsEndDate || '';
+        if (startDateStr) {
+            const startDate = new Date(startDateStr);
+            startDate.setHours(0,0,0,0);
+            filtered = filtered.filter(b => {
+                if (!b.date) return false;
+                const bDate = new Date(b.date);
+                bDate.setHours(0,0,0,0);
+                return bDate >= startDate;
+            });
+        }
+        if (endDateStr) {
+            const endDate = new Date(endDateStr);
+            endDate.setHours(0,0,0,0);
+            filtered = filtered.filter(b => {
+                if (!b.date) return false;
+                const bDate = new Date(b.date);
+                bDate.setHours(0,0,0,0);
+                return bDate <= endDate;
+            });
+        }
+    }
+    
+    // 3. Room Filter
+    const roomFilter = state.bookingsRoomFilter || 'all';
+    if (roomFilter !== 'all') {
+        filtered = filtered.filter(b => String(b.roomId) === String(roomFilter));
+    }
+    
+    return filtered;
+}
 
 function renderBookingsList() {
     const container = document.getElementById('bookings-table-container');
@@ -828,9 +1402,118 @@ function renderBookingsList() {
     const sortSelect = document.getElementById('bookings-sort-select');
     if (sortSelect) sortSelect.value = state.bookingsSortCriteria || 'priority';
 
-    const sortedBookings = sortBookingsArray(state.bookings, state.bookingsSortCriteria || 'priority');
+    const statusFilterSelect = document.getElementById('bookings-status-filter');
+    if (statusFilterSelect) statusFilterSelect.value = state.bookingsStatusFilter || 'all';
+
+    const roomFilterSelect = document.getElementById('bookings-room-filter');
+    if (roomFilterSelect) roomFilterSelect.value = state.bookingsRoomFilter || 'all';
+
+    const dateFilterSelect = document.getElementById('bookings-date-filter');
+    if (dateFilterSelect) dateFilterSelect.value = state.bookingsDateFilter || 'all';
+
+    const customRangeContainer = document.getElementById('bookings-custom-range-container');
+    if (customRangeContainer) {
+        customRangeContainer.style.display = (state.bookingsDateFilter === 'custom') ? 'flex' : 'none';
+    }
+
+    const startInput = document.getElementById('bookings-start-date');
+    if (startInput) startInput.value = state.bookingsStartDate || '';
+
+    const endInput = document.getElementById('bookings-end-date');
+    if (endInput) endInput.value = state.bookingsEndDate || '';
+
+    // Update print button label on render
+    const printBtn = document.getElementById('print-bookings-btn');
+    if (printBtn) {
+        const status = state.bookingsStatusFilter || 'all';
+        const dateF = state.bookingsDateFilter || 'all';
+        
+        const statusTexts = {
+            all: 'كافة الحجوزات',
+            confirmed: 'الحجوزات المعتمدة',
+            pending: 'الحجوزات قيد الانتظار',
+            executed: 'الحجوزات المنفذة',
+            maintenance: 'جدول الصيانة',
+            cancelled: 'الحجوزات الملغية'
+        };
+        
+        const dateTexts = {
+            all: '',
+            today: ' اليوم',
+            week: ' هذا الأسبوع',
+            'next-week': ' الأسبوع القادم',
+            month: ' هذا الشهر',
+            custom: ' للفترة المحددة'
+        };
+        
+        let printLabel = `طباعة ${statusTexts[status] || 'الحجوزات'}${dateTexts[dateF] || ''}`;
+        const roomFilter = state.bookingsRoomFilter || 'all';
+        if (roomFilter !== 'all') {
+            const room = state.rooms.find(r => r.id === roomFilter);
+            if (room) {
+                printLabel += ` - مقر ${room.name}`;
+            }
+        }
+        printBtn.innerHTML = `<i class="fas fa-print"></i> ${printLabel}`;
+    }
+
+    const filteredBookings = getFilteredBookings();
+    const sortedBookings = sortBookingsArray(filteredBookings, state.bookingsSortCriteria || 'priority');
     renderBookingsTableToContainer(sortedBookings, container);
 }
+
+window.handleBookingsStatusFilter = (status) => {
+    state.bookingsStatusFilter = status;
+    saveState();
+    renderBookingsList();
+};
+
+window.handleBookingsDateFilter = (value) => {
+    state.bookingsDateFilter = value;
+    const container = document.getElementById('bookings-custom-range-container');
+    if (container) {
+        container.style.display = value === 'custom' ? 'flex' : 'none';
+    }
+    saveState();
+    renderBookingsList();
+};
+
+window.handleBookingsCustomDateChange = () => {
+    const startInput = document.getElementById('bookings-start-date');
+    const endInput = document.getElementById('bookings-end-date');
+    if (startInput) state.bookingsStartDate = startInput.value;
+    if (endInput) state.bookingsEndDate = endInput.value;
+    saveState();
+    renderBookingsList();
+};
+
+function populateBookingsRoomSelector() {
+    const selector = document.getElementById('bookings-room-filter');
+    if (!selector) return;
+    
+    const currentVal = selector.value;
+    
+    selector.innerHTML = '<option value="all" style="background: #1e293b;">كافة المقرات (الكل)</option>';
+    state.rooms.forEach(room => {
+        const opt = document.createElement('option');
+        opt.value = room.id;
+        opt.style.background = '#1e293b';
+        opt.textContent = room.name;
+        selector.appendChild(opt);
+    });
+    
+    if (currentVal && Array.from(selector.options).some(opt => opt.value === currentVal)) {
+        selector.value = currentVal;
+    } else {
+        selector.value = state.bookingsRoomFilter || 'all';
+    }
+}
+
+window.handleBookingsRoomFilter = (roomId) => {
+    state.bookingsRoomFilter = roomId;
+    saveState();
+    renderBookingsList();
+};
 
 function renderFilteredBookings(bookings) {
     const container = document.getElementById('bookings-table-container');
@@ -872,6 +1555,45 @@ function getHijriDateString(dateObj) {
     }
 }
 
+window.openItqanBookingLetter = function(bookingId) {
+    if (!bookingId) {
+        const activeBookings = state.bookings.filter(b => b.status !== 'cancelled');
+        if (activeBookings.length > 0) {
+            printEventNotification(activeBookings[activeBookings.length - 1].id);
+            return;
+        } else if (state.bookings.length > 0) {
+            printEventNotification(state.bookings[state.bookings.length - 1].id);
+            return;
+        }
+    } else {
+        printEventNotification(bookingId);
+        return;
+    }
+
+    // Fallback: If no bookings exist at all, print clean sample confirmation letter
+    window.currentPrintContext = 'portrait';
+    if (document.getElementById('notif-entity-name')) document.getElementById('notif-entity-name').textContent = 'الجهة المنظمة / قسم التنسيق';
+    if (document.getElementById('notif-event-title')) document.getElementById('notif-event-title').textContent = 'فعالية / برنامج رسمي';
+    if (document.getElementById('notif-room-name')) document.getElementById('notif-room-name').textContent = state.rooms.length > 0 ? state.rooms[0].name : 'المقر المحدد';
+    if (document.getElementById('notif-date-g')) document.getElementById('notif-date-g').textContent = new Date().toISOString().split('T')[0];
+    if (document.getElementById('notif-date-h')) document.getElementById('notif-date-h').textContent = '----/--/-- هـ';
+    if (document.getElementById('notif-time')) document.getElementById('notif-time').textContent = '08:00';
+    if (document.getElementById('notif-period')) document.getElementById('notif-period').textContent = 'صباحاً';
+
+    applySystemBranding();
+
+    const previewContainer = document.getElementById('paper-preview-container');
+    if (previewContainer) {
+        previewContainer.style.width = '210mm';
+        previewContainer.innerHTML = document.getElementById('event-notification-print-template').innerHTML;
+    }
+
+    const modal = document.getElementById('report-preview-modal');
+    if (modal) modal.classList.add('active');
+
+    showToast('تم فتح تجهيز خطاب إتقان لتأكيد واعتماد الحجز', 'success');
+};
+
 window.printEventNotification = (id) => {
     window.currentPrintContext = 'portrait';
     const book = state.bookings.find(b => b.id === id);
@@ -889,7 +1611,7 @@ window.printEventNotification = (id) => {
     document.getElementById('notif-entity-name').textContent = book.entityName;
     document.getElementById('notif-event-title').textContent = book.title;
     document.getElementById('notif-room-name').textContent = room ? room.name : 'المقر المحدد';
-    document.getElementById('notif-date-g').textContent = book.date;
+    document.getElementById('notif-date-g').textContent = formatBookingDateRange(book);
     document.getElementById('notif-date-h').textContent = hijriDate;
     document.getElementById('notif-time').textContent = formatTime12h(book.time);
     document.getElementById('notif-period').textContent = book.timePeriod;
@@ -897,6 +1619,40 @@ window.printEventNotification = (id) => {
     // Clone to Paper Preview Container
     window.currentBookingForSharing = book;
     document.getElementById('paper-preview-container').innerHTML = document.getElementById('event-notification-print-template').innerHTML;
+
+    // Show Preview Modal
+    document.getElementById('report-preview-modal').classList.add('active');
+};
+
+window.printEventCancellation = (id) => {
+    window.currentPrintContext = 'portrait';
+    const book = state.bookings.find(b => b.id === id);
+    if (!book) return;
+
+    const room = state.rooms.find(r => r.id === book.roomId);
+    
+    // Formatting Hijri Date if not stored
+    let hijriDate = book.dateHijri;
+    if (!hijriDate || hijriDate.includes('---')) {
+        hijriDate = getHijriDateString(new Date(book.date));
+    }
+
+    // Populate the cancellation template
+    document.getElementById('cancel-entity-name').textContent = book.entityName;
+    document.getElementById('cancel-event-title').textContent = book.title;
+    document.getElementById('cancel-room-name').textContent = room ? room.name : 'المقر المحدد';
+    document.getElementById('cancel-date-g').textContent = book.date;
+    document.getElementById('cancel-date-h').textContent = hijriDate;
+    document.getElementById('cancel-time').textContent = formatTime12h(book.time);
+    document.getElementById('cancel-period').textContent = book.timePeriod;
+    const cancelReasonEl = document.getElementById('cancel-reason');
+    if (cancelReasonEl) {
+        cancelReasonEl.textContent = book.cancellationReason || 'لم يتم تحديد سبب';
+    }
+
+    // Clone to Paper Preview Container
+    window.currentBookingForSharing = book;
+    document.getElementById('paper-preview-container').innerHTML = document.getElementById('event-cancellation-print-template').innerHTML;
 
     // Show Preview Modal
     document.getElementById('report-preview-modal').classList.add('active');
@@ -1144,34 +1900,210 @@ window.openBookingModal = (id = null) => {
     const now = new Date();
     const gregToday = now.toISOString().split('T')[0];
     document.getElementById('book-date').value = gregToday;
+    if (document.getElementById('book-end-date')) document.getElementById('book-end-date').value = gregToday;
+    if (document.getElementById('book-days-count')) document.getElementById('book-days-count').value = 1;
 
-    // Intelligent Hijri calculation
+    calculateBookingDaysAndHijri();
+};
+
+window.formatBookingDateRange = function(book) {
+    if (!book) return '---';
+    const startDate = book.date || '';
+    const endDate = book.endDate || book.date || '';
+    const days = parseInt(book.daysCount) || 1;
+    
+    if (endDate && endDate !== startDate && days > 1) {
+        return `${startDate} إلى ${endDate} (${days} أيام)`;
+    }
+    return startDate;
+};
+
+window.calculateBookingDaysAndHijri = function() {
+    const startDateInput = document.getElementById('book-date');
+    const endDateInput = document.getElementById('book-end-date');
+    const daysCountInput = document.getElementById('book-days-count');
+    const hijriInput = document.getElementById('book-date-hijri');
+    if (!startDateInput || !endDateInput || !daysCountInput) return;
+
+    let startDateVal = startDateInput.value;
+    let endDateVal = endDateInput.value;
+
+    if (!startDateVal) return;
+
+    if (!endDateVal || new Date(endDateVal) < new Date(startDateVal)) {
+        endDateVal = startDateVal;
+        endDateInput.value = startDateVal;
+    }
+
+    const startD = new Date(startDateVal);
+    const endD = new Date(endDateVal);
+    const diffTime = Math.abs(endD - startD);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    daysCountInput.value = diffDays;
+
+    // Hijri calculation
     try {
         const hijriFormatter = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-uma', {
             day: 'numeric', month: 'long', year: 'numeric'
         });
-        document.getElementById('book-date-hijri').value = hijriFormatter.format(now);
+        const startHijri = hijriFormatter.format(startD);
+        if (diffDays > 1) {
+            const endHijri = hijriFormatter.format(endD);
+            if (hijriInput) hijriInput.value = `${startHijri} - ${endHijri}`;
+        } else {
+            if (hijriInput) hijriInput.value = startHijri;
+        }
     } catch (e) {
         console.warn('Hijri calculation failed', e);
     }
+};
 
-    // Add listener for live update when user changes date manually
-    const dateInput = document.getElementById('book-date');
-    if (dateInput) {
-        dateInput.onchange = (e) => {
-            const selectedDate = new Date(e.target.value);
-            if (!isNaN(selectedDate)) {
-                try {
-                    const formatter = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-uma', {
-                        day: 'numeric', month: 'long', year: 'numeric'
-                    });
-                    document.getElementById('book-date-hijri').value = formatter.format(selectedDate);
-                } catch (err) {
-                    console.warn('Hijri live update failed', err);
-                }
-            }
-        };
+window.handleBookingDaysCountChange = function() {
+    const startDateInput = document.getElementById('book-date');
+    const endDateInput = document.getElementById('book-end-date');
+    const daysCountInput = document.getElementById('book-days-count');
+    if (!startDateInput || !endDateInput || !daysCountInput) return;
+
+    const startDateVal = startDateInput.value;
+    let days = parseInt(daysCountInput.value) || 1;
+    if (days < 1) {
+        days = 1;
+        daysCountInput.value = 1;
     }
+
+    if (startDateVal) {
+        const startD = new Date(startDateVal);
+        startD.setDate(startD.getDate() + (days - 1));
+        const endDateStr = startD.toISOString().split('T')[0];
+        endDateInput.value = endDateStr;
+        calculateBookingDaysAndHijri();
+    }
+};
+
+window.openMaintenanceFormModal = () => {
+    const modal = document.getElementById('maintenance-form-modal');
+    if (!modal) return;
+    
+    // Clear and set room options
+    const roomSelect = document.getElementById('maint-room-id');
+    if (roomSelect) {
+        if (state.rooms.length === 0) {
+            alert("يرجى إضافة قاعة أولاً لتتمكن من جدولة الصيانة.");
+            return;
+        }
+        
+        roomSelect.innerHTML = [...state.rooms].sort((a, b) => b.id - a.id).map(r => 
+            `<option value="${r.id}">${r.name}</option>`
+        ).join('');
+    }
+    
+    // Reset form fields
+    const form = document.getElementById('maintenance-form');
+    if (form) {
+        form.reset();
+    }
+    
+    // Pre-fill today's date
+    const maintDateInput = document.getElementById('maint-date');
+    if (maintDateInput) {
+        maintDateInput.value = new Date().toISOString().split('T')[0];
+    }
+    
+    // Reset hidden ID
+    const maintIdField = document.getElementById('maint-id');
+    if (maintIdField) maintIdField.value = '';
+    
+    modal.classList.add('active');
+};
+
+window.closeMaintenanceFormModal = () => {
+    const modal = document.getElementById('maintenance-form-modal');
+    if (modal) modal.classList.remove('active');
+};
+
+window.handleMaintenanceFormSubmit = (e) => {
+    e.preventDefault();
+    
+    const roomId = parseInt(document.getElementById('maint-room-id').value);
+    const maintType = document.getElementById('maint-type').value;
+    const maintDate = document.getElementById('maint-date').value;
+    const maintPeriod = document.querySelector('input[name="maint-period"]:checked').value;
+    const maintPriority = document.getElementById('maint-priority').value;
+    const maintTechnician = document.getElementById('maint-technician').value;
+    const maintTechMobile = document.getElementById('maint-tech-mobile').value;
+    const maintDesc = document.getElementById('maint-desc').value;
+    
+    const maintIdField = document.getElementById('maint-id');
+    const isEdit = maintIdField && maintIdField.value !== '';
+    const maintId = isEdit ? parseInt(maintIdField.value) : null;
+    
+    // Conflict Check
+    const isConflict = state.bookings.some(b => 
+        b.id !== maintId &&
+        b.roomId === roomId && 
+        b.date === maintDate && 
+        (b.timePeriod === (maintPeriod === 'morning' ? 'صباحاً' : 'مساءً'))
+    );
+    
+    if (isConflict) {
+        const room = state.rooms.find(r => r.id === roomId);
+        alert(`⚠️ تعارض: المقر "${room ? room.name : 'مجهول'}" لديه حجز أو أعمال صيانة مجدولة بالفعل في هذا التوقيت.`);
+        return;
+    }
+    
+    const typeTranslations = {
+        audio: 'صيانة الصوتيات والأنظمة الصوتية',
+        screens: 'صيانة شاشات العرض والبروجكتر',
+        ac: 'صيانة التكييف والتهوية',
+        electrical: 'صيانة الإضاءة والكهرباء',
+        furniture: 'صيانة الأثاث والمقاعد والديكور',
+        cleaning: 'أعمال نظافة وتهيئة عامة',
+        other: 'أعمال صيانة وتجهيز أخرى'
+    };
+    const maintTypeName = typeTranslations[maintType] || 'أعمال صيانة عامة';
+    const priorityText = maintPriority === 'urgent' ? '⚠️ عاجل جداً' : maintPriority === 'medium' ? 'متوسط' : 'عادي';
+    
+    const bookingData = {
+        id: isEdit ? maintId : Date.now(),
+        roomId: roomId,
+        title: `صيانة: ${maintTypeName}`,
+        entityType: 'management',
+        entityName: 'إدارة الصيانة والتشغيل',
+        coordName: maintTechnician,
+        coordMobile: maintTechMobile,
+        date: maintDate,
+        dateHijri: getHijriDateString(new Date(maintDate)),
+        time: maintPeriod === 'morning' ? '08:00' : '16:00',
+        timePeriod: maintPeriod === 'morning' ? 'صباحاً' : 'مساءً',
+        status: 'maintenance',
+        duration: '4',
+        audienceType: 'mixed',
+        audienceCount: 0,
+        actualCount: 0,
+        eventTypes: ['other'],
+        otherEventType: 'صيانة ومتابعة',
+        vipGuest: `الأولوية: ${priorityText}`,
+        activities: maintDesc,
+        needs: [],
+        otherNeedsText: ''
+    };
+    
+    if (isEdit) {
+        const idx = state.bookings.findIndex(b => b.id === maintId);
+        if (idx !== -1) {
+            state.bookings[idx] = bookingData;
+        }
+    } else {
+        state.bookings.push(bookingData);
+    }
+    
+    saveState();
+    closeMaintenanceFormModal();
+    if (state.currentView === 'calendar') renderCalendar();
+    if (state.currentView === 'bookings-list') renderBookingsList();
+    renderDashboard();
+    
+    showToast(isEdit ? 'تم تحديث طلب الصيانة بنجاح' : 'تم جدولة أعمال الصيانة وحظر المقر بنجاح', 'success');
 };
 
 window.closeBookingModal = () => {
@@ -1196,26 +2128,78 @@ function updateNotifications() {
     const twoDaysLater = new Date(now);
     twoDaysLater.setDate(now.getDate() + 2);
 
+    const parseBookingDate = (dateStr) => {
+        if (!dateStr) return null;
+        let d;
+        if (dateStr.includes('-')) {
+            d = new Date(dateStr);
+        } else if (dateStr.includes('/')) {
+            const parts = dateStr.split('/');
+            if (parts[0].length === 4) { // YYYY/MM/DD
+                d = new Date(parts[0], parts[1]-1, parts[2]);
+            } else { // DD/MM/YYYY
+                d = new Date(parts[2], parts[1]-1, parts[0]);
+            }
+        } else {
+            d = new Date(dateStr);
+        }
+        if (!d || isNaN(d.getTime())) return null;
+        d.setHours(0,0,0,0);
+        return d;
+    };
+
+    // 1. Upcoming Bookings (Today and Next 2 Days)
     const upcoming = state.bookings.filter(b => {
-        const bDate = new Date(b.date);
-        bDate.setHours(0,0,0,0);
+        const bDate = parseBookingDate(b.date);
+        if (!bDate) return false;
         return bDate >= now && bDate <= twoDaysLater && b.status !== 'cancelled';
     });
 
+    // 2. Past Unevaluated Bookings (Date before today, not cancelled, and no evaluation fields filled)
+    const unevaluated = state.bookings.filter(b => {
+        const bDate = parseBookingDate(b.date);
+        if (!bDate) return false;
+        const isPast = bDate < now;
+        const hasNoEvaluation = !b.positives && !b.negatives && !b.recommendations;
+        return isPast && b.status !== 'cancelled' && hasNoEvaluation;
+    });
+
+    const totalCount = upcoming.length + unevaluated.length;
+
+    let html = '';
+    
     if (upcoming.length > 0) {
-        badge.textContent = upcoming.length;
-        badge.style.display = 'block';
-        list.innerHTML = upcoming.map(b => `
-            <div class="notification-item" onclick="switchView('bookings-list'); handleGlobalSearch('${b.title}')" style="padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; border-right: 3px solid var(--primary); cursor: pointer; transition: background 0.2s;">
-                <div style="font-weight: 600; font-size: 0.85rem; margin-bottom: 3px;">${b.title}</div>
+        html += `<div style="font-size: 0.75rem; color: var(--primary-light); font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid var(--glass-border); padding-bottom: 3px;"><i class="fas fa-calendar-day"></i> فعاليات قادمة</div>`;
+        html += upcoming.map(b => `
+            <div class="notification-item" onclick="openViewModal(${b.id})" style="padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; border-right: 3px solid var(--primary); cursor: pointer; transition: background 0.2s; margin-bottom: 8px;">
+                <div style="font-weight: 600; font-size: 0.85rem; margin-bottom: 3px; color: white;">${b.title}</div>
                 <div style="font-size: 0.75rem; color: var(--text-muted);">
                     <i class="fas fa-calendar-day"></i> ${b.date} | <i class="fas fa-clock"></i> ${b.time}
                 </div>
             </div>
         `).join('');
+    }
+
+    if (unevaluated.length > 0) {
+        html += `<div style="font-size: 0.75rem; color: #fbbf24; font-weight: bold; margin-top: 10px; margin-bottom: 8px; border-bottom: 1px solid var(--glass-border); padding-bottom: 3px;"><i class="fas fa-exclamation-triangle"></i> فعاليات لم يتم تقييمها</div>`;
+        html += unevaluated.map(b => `
+            <div class="notification-item" onclick="openViewModal(${b.id})" style="padding: 10px; background: rgba(251,191,36,0.03); border-radius: 8px; border-right: 3px solid #fbbf24; cursor: pointer; transition: background 0.2s; margin-bottom: 8px; border: 1px solid rgba(251,191,36,0.1); border-right: 3px solid #fbbf24;">
+                <div style="font-weight: 600; font-size: 0.85rem; margin-bottom: 3px; color: white;"><i class="fas fa-star" style="color: rgba(251,191,36,0.4); font-size: 0.75rem;"></i> ${b.title}</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center;">
+                    <span><i class="fas fa-calendar-alt"></i> ${b.date}</span>
+                    <span style="color: #fbbf24; font-size: 0.7rem; background: rgba(251,191,36,0.1); padding: 1px 6px; border-radius: 4px;">اضغط للتقييم</span>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    if (totalCount > 0) {
+        badge.textContent = totalCount;
+        badge.style.display = 'block';
+        list.innerHTML = `<div style="max-height: 350px; overflow-y: auto; padding-left: 5px;">${html}</div>`;
     } else {
         badge.style.display = 'none';
-        list.innerHTML = '<p style="font-size: 0.8rem; color: var(--text-muted); text-align: center;">لا يوجد تنبيهات قريبة</p>';
+        list.innerHTML = '<p style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 10px 0;">لا يوجد تنبيهات حالياً</p>';
     }
 }
 
@@ -1266,13 +2250,171 @@ window.sendWhatsAppMessageFromForm = () => {
         mobile = '966' + mobile; 
     }
 
-    const message = `*مرحباً أ/ ${coordName}*،
-تم تأكيد حجزكم في نظام إتقان بنجاح:
+    // Get Status
+    const statusVal = document.getElementById('book-status').value;
+    const statusLabels = { confirmed: '✅ مؤكد', pending: '🟡 قيد الانتظار', executed: '🟢 تحت التنفيذ', cancelled: '🔴 ملغي', maintenance: '🟠 صيانة' };
+    const statusLabel = statusLabels[statusVal] || '⚪ غير محدد';
+
+    let statusHeading = 'تم تأكيد حجزكم في نظام إتقان بنجاح:';
+    if (statusVal === 'pending') {
+        statusHeading = 'حجزكم في نظام إتقان قيد الانتظار حالياً:';
+    } else if (statusVal === 'executed') {
+        statusHeading = 'تم تنفيذ حجزكم في نظام إتقان بنجاح:';
+    } else if (statusVal === 'maintenance') {
+        statusHeading = 'تمت جدولة صيانة للمقر في نظام إتقان:';
+    } else if (statusVal === 'cancelled') {
+        statusHeading = 'تم إلغاء حجزكم في نظام إتقان بنجاح:';
+    }
+
+    let message = '';
+    if (statusVal === 'cancelled') {
+        message = `*مرحباً أ/ ${coordName}*،
+${statusHeading}
 
 📌 *الفعالية:* ${title}
 📌 *المقر:* ${roomNameStr}
 📌 *التاريخ:* ${dateHijri} (${date})
 📌 *الوقت:* ${time} (${timePeriod})
+📌 *الحالة:* ${statusLabel}
+📌 *ونرفق لكم استمارة الحجز PDF*
+
+نتمنى لكم فعالية ناجحة وموفقة. في حالة الإلغاء يرجى التواصل مع ${state.appSettings.deptName || 'إدارة الاتصال المؤسسي'}.`;
+    } else {
+        message = `*مرحباً أ/ ${coordName}*،
+${statusHeading}
+
+📌 *الفعالية:* ${title}
+📌 *المقر:* ${roomNameStr}
+📌 *التاريخ:* ${dateHijri} (${date})
+📌 *الوقت:* ${time} (${timePeriod})
+📌 *الحالة:* ${statusLabel}
+📌 *ونرفق لكم استمارة الحجز PDF*
+
+نتمنى لكم فعالية ناجحة وموفقة.`;
+    }
+
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/${mobile}?text=${encodedMessage}`;
+    
+    try {
+        require('electron').shell.openExternal(whatsappUrl);
+    } catch(e) {
+        window.open(whatsappUrl, '_blank');
+    }
+};
+
+window.sendWhatsAppCancellation = (id) => {
+    const book = state.bookings.find(b => b.id === id);
+    if (!book) {
+        showToast('لم يتم العثور على بيانات الحجز.', 'error');
+        return;
+    }
+
+    const room = state.rooms.find(r => r.id === book.roomId);
+    const roomName = room ? room.name : 'المقر المحدد';
+    const coordName = book.coordName || 'المنسق الكريم';
+
+    // Formatting Hijri Date
+    let hijriDate = book.dateHijri;
+    if (!hijriDate || hijriDate.includes('---')) {
+        try {
+            hijriDate = getHijriDateString(new Date(book.date));
+        } catch(e) {
+            hijriDate = '';
+        }
+    }
+
+    let mobile = book.coordMobile || '';
+    if (!mobile) {
+        showToast('لا يوجد رقم جوال مسجل للمنسق. يرجى تعديل الحجز وإضافة رقم الجوال.', 'error');
+        return;
+    }
+
+    // Clean and format mobile number for WhatsApp
+    mobile = mobile.replace(/[^\d]/g, '');
+    if (mobile.startsWith('0')) {
+        mobile = '966' + mobile.substring(1);
+    } else if (!mobile.startsWith('966')) {
+        mobile = '966' + mobile;
+    }
+
+    const message = `*مرحباً أ/ ${coordName}*،
+تم الغاء حجزكم في نظام إتقان بنجاح:
+
+📌 *الفعالية:* ${book.title}
+📌 *المقر:* ${roomName}
+📌 *التاريخ:* ${hijriDate ? hijriDate + ' هـ' : ''} (${book.date})
+📌 *الوقت:* ${book.time} (${book.timePeriod})
+📌 *الحالة:* 🔴 ملغي
+📌 *ونرفق لكم استمارة الحجز PDF*
+
+نتمنى لكم فعالية ناجحة وموفقة. في حالة الالغاء يرجى التواصل مع ${state.appSettings.deptName || 'إدارة الاتصال المؤسسي'}.`;
+
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/${mobile}?text=${encodedMessage}`;
+    
+    try {
+        require('electron').shell.openExternal(whatsappUrl);
+    } catch(e) {
+        window.open(whatsappUrl, '_blank');
+    }
+};
+
+window.sendWhatsAppConfirmation = (id) => {
+    const book = state.bookings.find(b => b.id === id);
+    if (!book) {
+        showToast('لم يتم العثور على بيانات الحجز.', 'error');
+        return;
+    }
+
+    const room = state.rooms.find(r => r.id === book.roomId);
+    const roomName = room ? room.name : 'المقر المحدد';
+    const coordName = book.coordName || 'المنسق الكريم';
+
+    // Formatting Hijri Date
+    let hijriDate = book.dateHijri;
+    if (!hijriDate || hijriDate.includes('---')) {
+        try {
+            hijriDate = getHijriDateString(new Date(book.date));
+        } catch(e) {
+            hijriDate = '';
+        }
+    }
+
+    let mobile = book.coordMobile || '';
+    if (!mobile) {
+        showToast('لا يوجد رقم جوال مسجل للمنسق. يرجى تعديل الحجز وإضافة رقم الجوال.', 'error');
+        return;
+    }
+
+    // Clean and format mobile number for WhatsApp
+    mobile = mobile.replace(/[^\d]/g, '');
+    if (mobile.startsWith('0')) {
+        mobile = '966' + mobile.substring(1);
+    } else if (!mobile.startsWith('966')) {
+        mobile = '966' + mobile;
+    }
+
+    const statusLabels = { confirmed: '✅ مؤكد', pending: '🟡 قيد الانتظار', executed: '🟢 تحت التنفيذ', cancelled: '🔴 ملغي', maintenance: '🟠 صيانة' };
+    const statusLabel = statusLabels[book.status] || '⚪ غير محدد';
+
+    let statusHeading = 'تم تأكيد حجزكم في نظام إتقان بنجاح:';
+    if (book.status === 'pending') {
+        statusHeading = 'حجزكم في نظام إتقان قيد الانتظار حالياً:';
+    } else if (book.status === 'executed') {
+        statusHeading = 'تم تنفيذ حجزكم في نظام إتقان بنجاح:';
+    } else if (book.status === 'maintenance') {
+        statusHeading = 'تمت جدولة صيانة للمقر في نظام إتقان:';
+    }
+
+    const message = `*مرحباً أ/ ${coordName}*،
+${statusHeading}
+
+📌 *الفعالية:* ${book.title}
+📌 *المقر:* ${roomName}
+📌 *التاريخ:* ${hijriDate ? hijriDate + ' هـ' : ''} (${book.date})
+📌 *الوقت:* ${book.time} (${book.timePeriod})
+📌 *الحالة:* ${statusLabel}
 📌 *ونرفق لكم استمارة الحجز PDF*
 
 نتمنى لكم فعالية ناجحة وموفقة.`;
@@ -1287,8 +2429,17 @@ window.sendWhatsAppMessageFromForm = () => {
     }
 };
 
-window.handleBookingSubmit = (e) => {
+window.handleBookingSubmit = async (e) => {
     e.preventDefault();
+    
+    // Check Blacklist
+    const entityName = document.getElementById('book-entity-name').value;
+    const coordName = document.getElementById('book-coord-name').value;
+    const blacklistMatch = window.checkBlacklist(entityName, coordName);
+    if (blacklistMatch) {
+        alert(`🚨 حظر نظامي: لا يمكن إتمام هذا الحجز!\n\nاسم الكيان/الشخص: "${blacklistMatch.value}"\nنوع الحظر: ${blacklistMatch.type === 'entity' ? 'حظر جهة كاملة' : 'حظر منسق محدد'}\nسبب الحظر المدرج في القائمة السوداء:\n[ ${blacklistMatch.reason} ]`);
+        return;
+    }
     
     // Get all selected room IDs
     let selectedRoomIds = [];
@@ -1310,28 +2461,52 @@ window.handleBookingSubmit = (e) => {
     
     const timePeriod = document.querySelector('input[name="time-period"]:checked').value;
     const bookingDate = document.getElementById('book-date').value;
+    const bookingEndDate = (document.getElementById('book-end-date') && document.getElementById('book-end-date').value) ? document.getElementById('book-end-date').value : bookingDate;
+    const bookingDaysCount = document.getElementById('book-days-count') ? (parseInt(document.getElementById('book-days-count').value) || 1) : 1;
     const bookingIdField = document.getElementById('book-id');
     const isEdit = bookingIdField && bookingIdField.value !== '';
     const bookingId = isEdit ? parseInt(bookingIdField.value) : null;
 
-    // Validation loop
+    const newStart = new Date(bookingDate);
+    const newEnd = new Date(bookingEndDate);
+
+    // Validation loop with date range overlap check
     for (const rid of selectedRoomIds) {
-        const isConflict = state.bookings.some(b => 
-            b.id !== bookingId &&
-            b.roomId === rid && 
-            b.date === bookingDate && 
-            (b.timePeriod === (timePeriod === 'morning' ? 'صباحاً' : 'مساءً'))
-        );
+        const isConflict = state.bookings.some(b => {
+            if (b.id === bookingId || b.roomId !== rid) return false;
+            if (b.status === 'cancelled') return false;
+
+            const targetPeriod = (timePeriod === 'morning' ? 'صباحاً' : 'مساءً');
+            if (b.timePeriod !== targetPeriod) return false;
+
+            const bStart = new Date(b.date);
+            const bEnd = new Date(b.endDate || b.date);
+
+            return (bStart <= newEnd) && (bEnd >= newStart);
+        });
 
         if (isConflict) {
             const room = state.rooms.find(r => r.id === rid);
-            alert(`⚠️ تعارض: المقر "${room ? room.name : 'مجهول'}" محجوز بالفعل في هذا التوقيت.`);
+            alert(`⚠️ تعارض: المقر "${room ? room.name : 'مجهول'}" محجوز بالفعل في هذا التوقيت والفترة الأيام.`);
             return;
         }
     }
 
     // Process bookings
     let successCount = 0;
+    let cancellationReason = '';
+    const statusVal = document.getElementById('book-status').value;
+    if (statusVal === 'cancelled') {
+        const existingBook = isEdit ? state.bookings.find(b => b.id === bookingId) : null;
+        if (existingBook && existingBook.status === 'cancelled') {
+            cancellationReason = existingBook.cancellationReason || 'لم يتم تحديد سبب';
+        } else {
+            const promptReason = await window.showCancellationPrompt();
+            if (promptReason === null) return; // User cancelled the submission
+            cancellationReason = promptReason || 'لم يتم تحديد سبب';
+        }
+    }
+
     selectedRoomIds.forEach((rid, index) => {
         const newBookingData = {
             id: isEdit && index === 0 ? bookingId : Date.now() + index,
@@ -1342,6 +2517,8 @@ window.handleBookingSubmit = (e) => {
             coordName: document.getElementById('book-coord-name').value,
             coordMobile: document.getElementById('book-coord-mobile').value,
             date: document.getElementById('book-date').value,
+            endDate: bookingEndDate,
+            daysCount: bookingDaysCount,
             dateHijri: document.getElementById('book-date-hijri').value,
             time: document.getElementById('book-time').value,
             timePeriod: timePeriod === 'morning' ? 'صباحاً' : 'مساءً',
@@ -1355,8 +2532,10 @@ window.handleBookingSubmit = (e) => {
             otherEventType: document.getElementById('book-other-event-type').value,
             vipGuest: document.getElementById('book-vip-guest').value,
             activities: document.getElementById('book-activities').value,
+            reason: document.getElementById('book-reason') ? document.getElementById('book-reason').value : '',
             needs: Array.from(document.querySelectorAll('input[name="need"]:checked')).map(cb => cb.value),
-            otherNeedsText: document.getElementById('book-other-needs-text').value
+            otherNeedsText: document.getElementById('book-other-needs-text').value,
+            cancellationReason: statusVal === 'cancelled' ? cancellationReason : ''
         };
 
         if (isEdit && index === 0) {
@@ -1365,6 +2544,10 @@ window.handleBookingSubmit = (e) => {
                 newBookingData.positives = state.bookings[idx].positives;
                 newBookingData.negatives = state.bookings[idx].negatives;
                 newBookingData.recommendations = state.bookings[idx].recommendations;
+                // Preserve cancellationReason if they didn't change status to cancelled just now
+                if (statusVal === 'cancelled' && !cancellationReason) {
+                    newBookingData.cancellationReason = state.bookings[idx].cancellationReason || 'لم يتم تحديد سبب';
+                }
                 state.bookings[idx] = newBookingData;
             }
         } else {
@@ -1386,6 +2569,54 @@ window.editBooking = (id) => {
     const book = state.bookings.find(b => b.id === id);
     if (!book) return;
 
+    if (book.status === 'maintenance') {
+        openMaintenanceFormModal();
+        
+        // Fill maintenance specific fields
+        document.getElementById('maint-id').value = book.id;
+        document.getElementById('maint-room-id').value = book.roomId;
+        document.getElementById('maint-date').value = book.date;
+        document.getElementById('maint-technician').value = book.coordName || 'فريق الصيانة والتشغيل';
+        document.getElementById('maint-tech-mobile').value = book.coordMobile || '05XXXXXXXX';
+        document.getElementById('maint-desc').value = book.activities || '';
+        
+        // Match period radio button
+        const maintPeriodRadios = document.querySelectorAll('input[name="maint-period"]');
+        maintPeriodRadios.forEach(r => {
+            r.checked = (r.value === (book.timePeriod === 'صباحاً' ? 'morning' : 'evening'));
+        });
+        
+        // Infer maintenance type
+        const titleStr = book.title || '';
+        const typeTranslationsInverse = {
+            'صيانة الصوتيات والأنظمة الصوتية': 'audio',
+            'صيانة شاشات العرض والبروجكتر': 'screens',
+            'صيانة التكييف والتهوية': 'ac',
+            'صيانة الإضاءة والكهرباء': 'electrical',
+            'صيانة الأثاث والمقاعد والديكور': 'furniture',
+            'أعمال نظافة وتهيئة عامة': 'cleaning',
+            'أعمال صيانة وتجهيز أخرى': 'other'
+        };
+        let inferredType = 'other';
+        for (const [key, val] of Object.entries(typeTranslationsInverse)) {
+            if (titleStr.includes(key)) {
+                inferredType = val;
+                break;
+            }
+        }
+        document.getElementById('maint-room-id').value = book.roomId; // safeguard
+        document.getElementById('maint-type').value = inferredType;
+        
+        // Infer priority
+        const priorityStr = book.vipGuest || '';
+        let inferredPriority = 'normal';
+        if (priorityStr.includes('عاجل')) inferredPriority = 'urgent';
+        else if (priorityStr.includes('متوسط')) inferredPriority = 'medium';
+        document.getElementById('maint-priority').value = inferredPriority;
+        
+        return; // Halt and exit standard booking edit
+    }
+
     openBookingModal(book.roomId);
     
     // Fill the form
@@ -1396,7 +2627,10 @@ window.editBooking = (id) => {
     document.getElementById('book-coord-name').value = book.coordName;
     document.getElementById('book-coord-mobile').value = book.coordMobile;
     document.getElementById('book-date').value = book.date;
+    if (document.getElementById('book-end-date')) document.getElementById('book-end-date').value = book.endDate || book.date;
+    if (document.getElementById('book-days-count')) document.getElementById('book-days-count').value = book.daysCount || 1;
     document.getElementById('book-date-hijri').value = book.dateHijri || '';
+    calculateBookingDaysAndHijri();
     document.getElementById('book-time').value = book.time;
     document.getElementById('book-duration').value = book.duration;
     document.getElementById('book-status').value = book.status || 'pending';
@@ -1514,6 +2748,7 @@ window.handleJSONImport = async (event) => {
                 audienceType: rawData.audienceGender === 'boys' ? 'boys' : rawData.audienceGender === 'girls' ? 'girls' : 'mixed',
                 eventTypes: rawData.eventTypes || [],
                 activities: rawData.activities || '',
+                reason: rawData.reason || rawData.bookingReason || '',
                 needs: rawData.needs || [],
                 otherEventType: rawData.otherEventType || ''
             };
@@ -1608,6 +2843,7 @@ function parseBookingText(text) {
     data.vipGuest = smartExtract(['الضيف / الراعي', 'الضيف', 'الراعي']);
     data.duration = smartExtract(['مدة الفعالية']);
     data.audienceCount = smartExtract(['العدد المتوقع', 'العدد الكلي', 'عدد الحضور']);
+    data.reason = smartExtract(['سبب الحجز', 'الهدف من الحجز', 'الهدف من الفعالية', 'سبب أو هدف الحجز']);
     
     // Date extraction - more robust
     const dateMatch = text.match(/(\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{4})/);
@@ -1738,10 +2974,18 @@ function fillBookingForm(data) {
     }
 }
 
-window.updateBookingStatusDirectly = (newStatus) => {
+window.updateBookingStatusDirectly = async (newStatus) => {
     const id = parseInt(document.getElementById('evaluation-book-id').value);
     const book = state.bookings.find(b => b.id === id);
     if (book) {
+        if (newStatus === 'cancelled') {
+            const reason = await window.showCancellationPrompt();
+            if (reason === null) return; // User clicked Cancel on prompt
+            book.cancellationReason = reason || 'لم يتم تحديد سبب';
+        } else {
+            // If status is changed from cancelled to something else, clear cancellation reason
+            book.cancellationReason = '';
+        }
         book.status = newStatus;
         saveState();
         showToast('تم تحديث حالة الحجز بنجاح', 'success');
@@ -1751,6 +2995,7 @@ window.updateBookingStatusDirectly = (newStatus) => {
         renderDashboard();
     }
 };
+
 
 window.openViewModal = (id) => {
     const book = state.bookings.find(b => b.id === id);
@@ -1780,13 +3025,19 @@ window.openViewModal = (id) => {
             <div class="detail-row"><span class="detail-label">المسؤول/الجوال:</span> <span class="detail-value">${book.coordName} (${book.coordMobile})</span></div>
             <div class="detail-row"><span class="detail-label">عدد الحضور (المتوقع):</span> <span class="detail-value">${book.audienceCount || 0}</span></div>
             <div class="detail-row"><span class="detail-label">عدد الحضور (الفعلي):</span> <span class="detail-value">${book.actualCount || '---'}</span></div>
+            <div class="detail-row"><span class="detail-label">سبب/هدف الحجز:</span> <span class="detail-value">${book.reason || 'غير محدد'}</span></div>
+            ${book.status === 'cancelled' ? `
+            <div class="detail-row" style="color: #ef4444; font-weight: bold; background: rgba(239, 68, 68, 0.05); padding: 8px; border-radius: 6px; border-right: 3px solid #ef4444; margin-top: 10px;">
+                <span class="detail-label" style="color: #ef4444;">سبب إلغاء الحجز:</span> 
+                <span class="detail-value" style="color: #ef4444;">${book.cancellationReason || 'لم يتم تحديد سبب'}</span>
+            </div>` : ''}
         </div>
         <div class="form-section">
             <h3 class="section-title">التوقيت والمقر</h3>
             <div class="detail-row"><span class="detail-label">المقر (القاعة):</span> <span class="detail-value">${room ? room.name : 'قاعة محذوفة'}</span></div>
-            <div class="detail-row"><span class="detail-label">التاريخ:</span> <span class="detail-value">${book.date} م (${book.dateHijri || '---'} هـ)</span></div>
+            <div class="detail-row"><span class="detail-label">تاريخ الفعالية:</span> <span class="detail-value">${formatBookingDateRange(book)} م (${book.dateHijri || '---'} هـ)</span></div>
             <div class="detail-row"><span class="detail-label">الوقت:</span> <span class="detail-value">${formatTime12h(book.time)} ${book.timePeriod}</span></div>
-            <div class="detail-row"><span class="detail-label">المدة:</span> <span class="detail-value">${book.duration} ساعة</span></div>
+            <div class="detail-row"><span class="detail-label">المدة:</span> <span class="detail-value">${book.duration} ساعة يومياً ${book.daysCount && book.daysCount > 1 ? `(المدة: ${book.daysCount} أيام)` : ''}</span></div>
         </div>
         <div class="form-section">
             <h3 class="section-title">التصنيفات والاحتياجات</h3>
@@ -1803,6 +3054,12 @@ window.openViewModal = (id) => {
     document.getElementById('book-positives').value = book.positives || '';
     document.getElementById('book-negatives').value = book.negatives || '';
     document.getElementById('book-recommendations').value = book.recommendations || '';
+
+    // Load event evidence
+    window.currentEventEvidence = book.evidence || [];
+    const fileInput = document.getElementById('event-evidence-upload');
+    if (fileInput) fileInput.value = '';
+    renderEventEvidenceThumbnails();
 };
 window.saveEventSummary = () => {
     const id = parseInt(document.getElementById('evaluation-book-id').value);
@@ -1811,6 +3068,7 @@ window.saveEventSummary = () => {
         book.positives = document.getElementById('book-positives').value;
         book.negatives = document.getElementById('book-negatives').value;
         book.recommendations = document.getElementById('book-recommendations').value;
+        book.evidence = window.currentEventEvidence || [];
         saveState();
         alert('✅ تم حفظ تعديلات التقييم والإتقان بنجاح!');
         closeEvaluationModal();
@@ -1848,24 +3106,33 @@ window.printShortReport = () => {
     if (negativesEl) negativesEl.textContent = book.negatives || 'لا يوجد ملاحظات';
     if (recommendationsEl) recommendationsEl.textContent = book.recommendations || 'لا يوجد ملاحظات';
 
-    // Handle Stamp in template
-    const stampContainer = document.getElementById('rpt-stamp-container');
-    const stampImg = document.getElementById('rpt-stamp-img');
-    const stampPlaceholder = document.getElementById('rpt-stamp-placeholder');
-    
-    if (stampContainer && stampImg && state.appSettings?.stamp) {
-        stampImg.src = state.appSettings.stamp;
-        stampImg.style.display = 'block';
-        stampContainer.style.display = 'flex';
-        if (stampPlaceholder) stampPlaceholder.style.display = 'none';
-    } else if (stampContainer) {
-        stampContainer.style.display = 'none';
+    // Populate evidence in printed report
+    const evidenceSection = document.getElementById('rpt-evidence-section');
+    const evidenceGrid = document.getElementById('rpt-evidence-grid');
+    if (evidenceSection && evidenceGrid) {
+        if (book.evidence && book.evidence.length > 0) {
+            evidenceSection.style.display = 'block';
+            evidenceGrid.innerHTML = book.evidence.map(img => `
+                <div style="border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; height: 180px; display: flex; align-items: center; justify-content: center; background: #f8fafc;">
+                    <img src="${img}" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                </div>
+            `).join('');
+        } else {
+            evidenceSection.style.display = 'none';
+            evidenceGrid.innerHTML = '';
+        }
     }
 
+    // Handle Stamp in template - disabled for evaluations
+    const stampContainer = document.getElementById('rpt-stamp-container');
+    if (stampContainer) {
+        stampContainer.style.display = 'none';
+    }
     // 2. Clone to Paper Preview Container
     const sourceHTML = document.getElementById('short-report-print-template').innerHTML;
     const previewContainer = document.getElementById('paper-preview-container');
     if (previewContainer) {
+        previewContainer.style.width = '210mm';
         previewContainer.innerHTML = sourceHTML;
     }
 
@@ -1971,7 +3238,11 @@ window.printCurrentBookingForm = () => {
     }
 
     // 6. Clone to Paper Preview Container
-    document.getElementById('paper-preview-container').innerHTML = document.getElementById('booking-request-print-template').innerHTML;
+    const previewContainer = document.getElementById('paper-preview-container');
+    if (previewContainer) {
+        previewContainer.style.width = '210mm';
+        previewContainer.innerHTML = document.getElementById('booking-request-print-template').innerHTML;
+    }
     
     // 7. Toggle Approval Row in Preview
     const showApproval = document.getElementById('book-show-approval').checked;
@@ -2009,6 +3280,76 @@ window.printCurrentBookingForm = () => {
     document.getElementById('report-preview-modal').classList.add('active');
 };
 
+window.printBlankBookingRequestPDF = function() {
+    window.currentPrintContext = 'portrait';
+    
+    // Fill template with clean blank underlines
+    const lineFull = '_______________________________________________________';
+    const lineHalf = '_______________________________';
+
+    if (document.getElementById('req-title')) document.getElementById('req-title').textContent = lineFull;
+    if (document.getElementById('req-entity')) document.getElementById('req-entity').textContent = lineFull;
+    if (document.getElementById('req-entity-type')) document.getElementById('req-entity-type').textContent = lineHalf;
+    if (document.getElementById('req-coord')) document.getElementById('req-coord').textContent = lineHalf;
+    if (document.getElementById('req-mobile')) document.getElementById('req-mobile').textContent = '...................................';
+    if (document.getElementById('req-room')) document.getElementById('req-room').textContent = lineFull;
+    if (document.getElementById('req-date')) document.getElementById('req-date').textContent = 'من: ..... / ..... / 144... هـ  إلى: ..... / ..... / 144... هـ';
+    if (document.getElementById('req-period')) document.getElementById('req-period').textContent = '(  ) صباحاً   (  ) مساءً   - الساعة: ............';
+    if (document.getElementById('req-duration')) document.getElementById('req-duration').textContent = 'عدد الأيام: ( ..... ) - المدة اليومية: ( ..... ) ساعات';
+    if (document.getElementById('req-audience')) document.getElementById('req-audience').textContent = '(  ) بنين   (  ) بنات   (  ) عام';
+    if (document.getElementById('req-expected')) document.getElementById('req-expected').textContent = '...................';
+    if (document.getElementById('req-vip')) document.getElementById('req-vip').textContent = lineFull;
+    if (document.getElementById('req-activities')) document.getElementById('req-activities').textContent = lineFull;
+    
+    const reqReasonEl = document.getElementById('req-reason');
+    if (reqReasonEl) reqReasonEl.textContent = lineFull;
+    
+    if (document.getElementById('req-print-date')) {
+        document.getElementById('req-print-date').textContent = new Date().toLocaleString('ar-SA-u-nu-latn');
+    }
+
+    const typesContainer = document.getElementById('req-types-list');
+    if (typesContainer) {
+        typesContainer.innerHTML = `
+            <div style="display: flex; gap: 20px; flex-wrap: wrap; font-size: 0.95rem; line-height: 1.8;">
+                <span>[  ] برنامج وزاري</span>
+                <span>[  ] برنامج داخلي</span>
+                <span>[  ] ورشة عمل</span>
+                <span>[  ] لقاء</span>
+                <span>[  ] زيارة وفد</span>
+                <span>[  ] حفل / افتتاح</span>
+            </div>
+        `;
+    }
+
+    const needsContainer = document.getElementById('req-needs-list');
+    if (needsContainer) {
+        needsContainer.innerHTML = `
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; font-size: 0.95rem; line-height: 1.8;">
+                <span>[  ] شاشات عرض</span>
+                <span>[  ] صوتيات وميكروفونات</span>
+                <span>[  ] أجهزة كمبيوتر</span>
+                <span>[  ] تصوير توثيقي</span>
+                <span>[  ] تنظيم وضيافة</span>
+                <span>[  ] بث مباشر</span>
+            </div>
+        `;
+    }
+
+    applySystemBranding();
+
+    const previewContainer = document.getElementById('paper-preview-container');
+    if (previewContainer) {
+        previewContainer.style.width = '210mm';
+        previewContainer.innerHTML = document.getElementById('booking-request-print-template').innerHTML;
+    }
+
+    const modal = document.getElementById('report-preview-modal');
+    if (modal) modal.classList.add('active');
+
+    showToast('تم تجهيز استمارة الطلب المفرغة للطباعة والتصدير كـ PDF', 'success');
+};
+
 window.printBookingRequest = (id) => {
     window.currentPrintContext = 'portrait';
     const book = state.bookings.find(b => b.id === id);
@@ -2034,6 +3375,10 @@ window.printBookingRequest = (id) => {
     document.getElementById('req-expected').textContent = book.audienceCount || 0;
     document.getElementById('req-vip').textContent = book.vipGuest || 'لا يوجد';
     document.getElementById('req-activities').textContent = book.activities || 'لا توجد';
+    
+    const reqReasonEl = document.getElementById('req-reason');
+    if (reqReasonEl) reqReasonEl.textContent = book.reason || 'لا يوجد';
+    
     document.getElementById('req-print-date').textContent = new Date().toLocaleString('ar-SA-u-nu-latn');
 
     // Handle Checkboxes HTML
@@ -2045,7 +3390,11 @@ window.printBookingRequest = (id) => {
     document.getElementById('req-needs-list').innerHTML = needsHTML.length > 0 ? needsHTML.join('') : 'لا يوجد احتياجات خاصة';
 
     // Clone to Paper Preview
-    document.getElementById('paper-preview-container').innerHTML = document.getElementById('booking-request-print-template').innerHTML;
+    const previewContainer = document.getElementById('paper-preview-container');
+    if (previewContainer) {
+        previewContainer.style.width = '210mm';
+        previewContainer.innerHTML = document.getElementById('booking-request-print-template').innerHTML;
+    }
     
     // Toggle Approval Row in Preview
     const approvalRow = document.querySelector('#paper-preview-container #print-dept-approval-row');
@@ -2075,17 +3424,95 @@ window.printBookingRequest = (id) => {
 
 window.printAllBookings = () => {
     window.currentPrintContext = 'landscape';
-    if (state.bookings.length === 0) {
-        alert('لا توجد حجوزات مسجلة لطباعتها.');
+    
+    const bookingsToPrint = getFilteredBookings();
+    
+    if (bookingsToPrint.length === 0) {
+        alert('لا توجد حجوزات تطابق الفلاتر المحددة لطباعتها.');
         return;
     }
 
     // 1. Sort bookings by date 
-    const sorted = [...state.bookings].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const sorted = bookingsToPrint.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // 2. Build Table Body
+    // 2. Map status to print title parts
+    const statusFilter = state.bookingsStatusFilter || 'all';
+    const statusTitles = {
+        all: 'تقرير بكافة الحجوزات والفعاليات المسجلة',
+        confirmed: 'تقرير بالحجوزات والفعاليات المعتمدة والمؤكدة',
+        pending: 'تقرير بالحجوزات والفعاليات قيد الانتظار',
+        executed: 'تقرير بالحجوزات والفعاليات التي تم تنفيذها',
+        maintenance: 'جدول وأعمال الصيانة المخططة للمقرات',
+        cancelled: 'سجل الحجوزات والفعاليات الملغية'
+    };
+    
+    const dateFilter = state.bookingsDateFilter || 'all';
+    const dateTitles = {
+        all: '',
+        today: ' (اليوم)',
+        week: ' (للأسبوع الحالي)',
+        'next-week': ' (للأسبوع القادم)',
+        month: ' (للشهر الحالي)'
+    };
+    
+    let printTitle = statusTitles[statusFilter] || 'تقرير بالحجوزات والفعاليات';
+    if (dateFilter === 'custom') {
+        const startText = state.bookingsStartDate ? state.bookingsStartDate.split('-').reverse().join('-') : '';
+        const endText = state.bookingsEndDate ? state.bookingsEndDate.split('-').reverse().join('-') : '';
+        if (startText && endText) {
+            printTitle += ` للفترة من ${startText} إلى ${endText}`;
+        } else if (startText) {
+            printTitle += ` من تاريخ ${startText}`;
+        } else if (endText) {
+            printTitle += ` حتى تاريخ ${endText}`;
+        }
+    } else {
+        printTitle += dateTitles[dateFilter] || '';
+    }
+    
+    const roomFilter = state.bookingsRoomFilter || 'all';
+    if (roomFilter !== 'all') {
+        const room = state.rooms.find(r => r.id === roomFilter);
+        if (room) {
+            printTitle += ` - مقر: ${room.name}`;
+        }
+    }
+    
+    // 3. Update title in source template
+    const printTitleEl = document.getElementById('all-bookings-print-title');
+    if (printTitleEl) {
+        printTitleEl.textContent = printTitle;
+    }
+
+    // 4. Build Table Body with a nice status column if printing "all"
+    const hasStatusColumn = statusFilter === 'all';
+    
+    // We should also adapt the table headers dynamically in the template first
+    const printTemplateDiv = document.getElementById('all-bookings-print-template');
+    if (printTemplateDiv) {
+        const tableHeader = printTemplateDiv.querySelector('thead tr');
+        if (tableHeader) {
+            tableHeader.innerHTML = `
+                <th style="padding: 12px; border: 1px solid #ddd; text-align: right;">التاريخ</th>
+                <th style="padding: 12px; border: 1px solid #ddd; text-align: right;">الوقت</th>
+                <th style="padding: 12px; border: 1px solid #ddd; text-align: right;">الفعالية</th>
+                <th style="padding: 12px; border: 1px solid #ddd; text-align: right;">المقر / القاعة</th>
+                <th style="padding: 12px; border: 1px solid #ddd; text-align: right;">الجهة المنظمة</th>
+                ${hasStatusColumn ? '<th style="padding: 12px; border: 1px solid #ddd; text-align: right;">الحالة</th>' : ''}
+            `;
+        }
+    }
+
     const tableHtml = sorted.map(b => {
         const room = state.rooms.find(r => r.id === b.roomId);
+        const statusTranslations = {
+            confirmed: 'مؤكد',
+            pending: 'انتظار',
+            executed: 'تم التنفيذ',
+            maintenance: 'صيانة',
+            cancelled: 'ملغي'
+        };
+        const statusText = statusTranslations[b.status] || b.status;
         return `
             <tr style="border-bottom: 1px solid #eee;">
                 <td style="padding: 10px; border: 1px solid #ddd;">${b.date}</td>
@@ -2093,6 +3520,7 @@ window.printAllBookings = () => {
                 <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">${b.title}</td>
                 <td style="padding: 10px; border: 1px solid #ddd;">${room ? room.name : 'قاعة محذوفة'}</td>
                 <td style="padding: 10px; border: 1px solid #ddd;">${b.entityName}</td>
+                ${hasStatusColumn ? `<td style="padding: 10px; border: 1px solid #ddd;">${statusText}</td>` : ''}
             </tr>
         `;
     }).join('');
@@ -2100,9 +3528,13 @@ window.printAllBookings = () => {
     document.getElementById('all-bookings-count').textContent = sorted.length;
     document.getElementById('all-bookings-gen-date').textContent = new Date().toLocaleString('ar-SA-u-nu-latn');
 
-    // 3. Inject and Show Preview
+    // 5. Inject and Show Preview
     document.getElementById('all-bookings-table-body').innerHTML = tableHtml;
-    document.getElementById('paper-preview-container').innerHTML = document.getElementById('all-bookings-print-template').innerHTML;
+    const previewContainer = document.getElementById('paper-preview-container');
+    if (previewContainer) {
+        previewContainer.style.width = '297mm';
+        previewContainer.innerHTML = document.getElementById('all-bookings-print-template').innerHTML;
+    }
     document.getElementById('report-preview-modal').classList.add('active');
 };
 
@@ -2125,11 +3557,16 @@ window.printCalendar = () => {
 
     // 3. Inject into Template
     document.getElementById('cal-print-title').textContent = monthTitle;
-    document.getElementById('cal-print-date').textContent = new Date().toLocaleString('ar-SA-u-nu-latn');
+    const printDateEl = document.getElementById('rpt-print-date');
+    if (printDateEl) printDateEl.textContent = new Date().toLocaleString('ar-SA-u-nu-latn');
     document.getElementById('cal-print-grid-container').innerHTML = printGridHtml;
 
     // 4. Show Preview
-    document.getElementById('paper-preview-container').innerHTML = document.getElementById('calendar-print-template').innerHTML;
+    const previewContainer = document.getElementById('paper-preview-container');
+    if (previewContainer) {
+        previewContainer.style.width = '297mm';
+        previewContainer.innerHTML = document.getElementById('calendar-print-template').innerHTML;
+    }
     document.getElementById('report-preview-modal').classList.add('active');
 };
 
@@ -2150,10 +3587,21 @@ window.confirmFinalPrint = () => {
         window.electronAPI.updateTitle(reportTitle);
     }
     
-    // 3. Set Active States
+    // 3. Set Active States and Inject Dynamic Page Style for margins
     document.body.classList.add('is-printing');
+    
+    let printStyle = document.getElementById('dynamic-print-page-style');
+    if (!printStyle) {
+        printStyle = document.createElement('style');
+        printStyle.id = 'dynamic-print-page-style';
+        document.head.appendChild(printStyle);
+    }
+    
     if (window.currentPrintContext === 'landscape') {
         document.body.classList.add('print-landscape');
+        printStyle.textContent = `@page { size: landscape; margin: 0; }`;
+    } else {
+        printStyle.textContent = `@page { size: portrait; margin: 0; }`;
     }
     
     // 4. Trigger Print after a LONGER stabilization delay for the OS to sync the title
@@ -2165,6 +3613,11 @@ window.confirmFinalPrint = () => {
             document.body.classList.remove('is-printing');
             document.body.classList.remove('print-landscape');
             printArea.innerHTML = '';
+            
+            // Clean up dynamic page style
+            const styleEl = document.getElementById('dynamic-print-page-style');
+            if (styleEl) styleEl.remove();
+            
             // document.title = originalTitle; 
             // if (titleTag) titleTag.textContent = originalTitle;
             closeReportPreview();
@@ -2315,8 +3768,27 @@ window.shareToWhatsApp = () => {
         return;
     }
     
-    const statusText = book.status === 'executed' ? '✅ تم التنفيذ' : '⏳ تحت التنفيذ';
-    const text = `*🔔 إشعار فعالية من نظام إتقان*\n\n` +
+    const statusLabels = {
+        confirmed: '✅ مؤكد',
+        pending: '🟡 قيد الانتظار',
+        executed: '🟢 تحت التنفيذ',
+        cancelled: '🔴 ملغي',
+        maintenance: '🟠 صيانة'
+    };
+    const statusText = statusLabels[book.status] || '⚪ غير محدد';
+    
+    let statusHeading = 'إشعار فعالية من نظام إتقان';
+    if (book.status === 'pending') {
+        statusHeading = 'إشعار فعالية قيد الانتظار من نظام إتقان';
+    } else if (book.status === 'executed') {
+        statusHeading = 'إشعار إنجاز فعالية من نظام إتقان';
+    } else if (book.status === 'maintenance') {
+        statusHeading = 'إشعار صيانة مقر من نظام إتقان';
+    } else if (book.status === 'cancelled') {
+        statusHeading = 'إشعار إلغاء فعالية من نظام إتقان';
+    }
+
+    const text = `*🔔 ${statusHeading}*\n\n` +
                  `*الفعالية:* ${book.title}\n` +
                  `*الجهة المنظمة:* ${book.entityName || 'غير محدد'}\n` +
                  `*التاريخ:* ${book.date}\n` +
@@ -2324,7 +3796,15 @@ window.shareToWhatsApp = () => {
                  `--------------------------\n` +
                  `_تم الإرسال آلياً عبر نظام إتقان لإدارة الموارد_`;
     
-    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    let mobile = book.coordMobile || '';
+    mobile = mobile.replace(/[^\d]/g, '');
+    if (mobile.startsWith('0')) {
+        mobile = '966' + mobile.substring(1);
+    } else if (mobile && !mobile.startsWith('966')) {
+        mobile = '966' + mobile;
+    }
+
+    const url = mobile ? `https://wa.me/${mobile}?text=${encodeURIComponent(text)}` : `https://wa.me/?text=${encodeURIComponent(text)}`;
     
     if (window.electronAPI && window.electronAPI.openExternal) {
         window.electronAPI.openExternal(url);
@@ -2361,7 +3841,11 @@ window.printBlankRequest = () => {
     }
 
     // 3. Show Modal
-    document.getElementById('paper-preview-container').innerHTML = document.getElementById('booking-request-print-template').innerHTML;
+    const previewContainer = document.getElementById('paper-preview-container');
+    if (previewContainer) {
+        previewContainer.style.width = '210mm';
+        previewContainer.innerHTML = document.getElementById('booking-request-print-template').innerHTML;
+    }
     document.getElementById('report-preview-modal').classList.add('active');
 };
 
@@ -2761,10 +4245,28 @@ window.viewRoomDetails = (id) => {
     const room = state.rooms.find(r => r.id === id);
     if (!room) return;
 
+    // Initialize evidence array
+    window.currentRoomEvidence = [];
+    
+    // Clear input element
+    const fileInput = document.getElementById('room-evidence-upload');
+    if (fileInput) fileInput.value = '';
+
     const modal = document.getElementById('room-details-modal');
     const infoDisplay = document.getElementById('room-info-display');
     const scheduleList = document.getElementById('room-schedule-list');
     const bookBtn = document.getElementById('book-now-from-details');
+    const printReportBtn = document.getElementById('print-room-report-btn');
+    const printMonthlyReportBtn = document.getElementById('print-room-monthly-report-btn');
+
+    // Set default value for month select to current month
+    const monthSelect = document.getElementById('print-room-month-select');
+    if (monthSelect) {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        monthSelect.value = `${yyyy}-${mm}`;
+    }
 
     // 1. Info
     const bookingsCount = state.bookings.filter(b => b.roomId === id).length;
@@ -2773,7 +4275,7 @@ window.viewRoomDetails = (id) => {
             <div>
                 <h4 style="margin: 0; color: var(--primary-light); font-size: 1.2rem;">${room.name}</h4>
                 <p style="margin: 5px 0 0; font-size: 0.85rem; color: var(--text-muted);">
-                    <i class="fas ${room.icon}"></i> التصنيف: ${room.type === 'theater' ? 'مسرح' : room.type === 'office' ? 'مكتب' : 'قاعة'}
+                    <i class="fas ${room.icon}"></i> التصنيف: ${room.type === 'theater' ? 'مسرح' : room.type === 'office' ? 'مكتب' : room.type === 'council' ? 'مجلس' : 'قاعة'}
                 </p>
             </div>
             <div style="text-align: left;">
@@ -2805,17 +4307,591 @@ window.viewRoomDetails = (id) => {
         `).join('');
     }
 
+    // Render evidence thumbnails (should be empty now)
+    renderRoomEvidenceThumbnails();
+
     // 3. Action
     bookBtn.onclick = () => {
         closeRoomDetailsModal();
         openBookingModal(id);
     };
 
+    if (printReportBtn) {
+        printReportBtn.onclick = () => {
+            printRoomReport(id, null);
+        };
+    }
+    if (printMonthlyReportBtn) {
+        printMonthlyReportBtn.onclick = () => {
+            const selectedMonth = monthSelect ? monthSelect.value : null;
+            printRoomReport(id, selectedMonth);
+        };
+    }
+
     modal.classList.add('active');
 };
 
 window.closeRoomDetailsModal = () => {
     document.getElementById('room-details-modal').classList.remove('active');
+};
+
+window.handleRoomEvidenceUpload = (event) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    if (!window.currentRoomEvidence) {
+        window.currentRoomEvidence = [];
+    }
+
+    let loadedCount = 0;
+    const targetLength = files.length;
+    
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.size > 5 * 1024 * 1024) {
+            showToast('حجم الصورة كبير جداً. يرجى اختيار صور أقل من 5 ميجابايت.', 'error');
+            loadedCount++;
+            continue;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            window.currentRoomEvidence.push(e.target.result);
+            loadedCount++;
+            if (loadedCount === targetLength) {
+                renderRoomEvidenceThumbnails();
+                showToast('✅ تم إرفاق الشواهد بنجاح!', 'success');
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+};
+
+window.removeRoomEvidence = (index) => {
+    if (window.currentRoomEvidence) {
+        window.currentRoomEvidence.splice(index, 1);
+        renderRoomEvidenceThumbnails();
+        showToast('تمت إزالة الصورة من الشواهد', 'info');
+    }
+};
+
+window.renderRoomEvidenceThumbnails = () => {
+    const container = document.getElementById('room-evidence-thumbnails');
+    if (!container) return;
+
+    if (!window.currentRoomEvidence || window.currentRoomEvidence.length === 0) {
+        container.innerHTML = '<span style="font-size: 0.8rem; color: var(--text-muted);">لا توجد شواهد مرفقة حالياً</span>';
+        return;
+    }
+
+    container.innerHTML = window.currentRoomEvidence.map((img, index) => `
+        <div style="position: relative; width: 75px; height: 75px; border-radius: 8px; overflow: hidden; border: 2px solid var(--glass-border); background: rgba(0,0,0,0.2);">
+            <img src="${img}" style="width: 100%; height: 100%; object-fit: cover;">
+            <button onclick="removeRoomEvidence(${index})" style="position: absolute; top: 2px; left: 2px; background: rgba(239, 68, 68, 0.85); border: none; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.85rem; line-height: 1; outline: none;">&times;</button>
+        </div>
+    `).join('');
+};
+
+window.printRoomReport = (roomId, targetMonth = null) => {
+    const room = state.rooms.find(r => r.id === roomId);
+    if (!room) return;
+
+    window.currentPrintContext = 'portrait';
+
+    const categoryMap = {
+        theater: 'مسرح / قاعة احتفالات',
+        hall: 'قاعة تدريب / ورش',
+        office: 'مكتب / غرفة اجتماعات',
+        council: 'مجلس'
+    };
+
+    // 1. Populate room general info
+    document.getElementById('room-rpt-name').textContent = room.name;
+    document.getElementById('room-rpt-category').textContent = categoryMap[room.type] || 'قاعة / مقر';
+    document.getElementById('room-rpt-date').textContent = new Date().toLocaleDateString('ar-SA-u-nu-latn');
+
+    // 2. Populate bookings table
+    let bookings = state.bookings.filter(b => b.roomId === roomId);
+
+    let isMonthly = false;
+    let monthNameGregorian = '';
+
+    if (targetMonth && targetMonth !== 'all') {
+        isMonthly = true;
+        const [year, month] = targetMonth.split('-').map(Number);
+        
+        bookings = bookings.filter(b => {
+            const bDate = new Date(b.date);
+            return (bDate.getMonth() + 1) === month && bDate.getFullYear() === year;
+        });
+
+        // Get Gregorian month name in Arabic (e.g. "يونيو 2026")
+        try {
+            const dateObj = new Date(year, month - 1, 1);
+            monthNameGregorian = dateObj.toLocaleDateString('ar-EG', { month: 'long', year: 'numeric' });
+        } catch (e) {
+            monthNameGregorian = `${month}-${year}`;
+        }
+    }
+
+    // Update titles and badges dynamically
+    const titleBadge = document.getElementById('room-rpt-title-badge');
+    if (titleBadge) {
+        titleBadge.textContent = isMonthly ? `تقرير المقر والحجوزات لشهر ${monthNameGregorian}` : 'تقرير المقر والحجوزات الشامل';
+    }
+
+    const tableTitleEl = document.getElementById('room-rpt-table-title');
+    if (tableTitleEl) {
+        tableTitleEl.innerHTML = `<i class="fas fa-calendar-alt"></i> ` + (isMonthly ? `جدول الفعاليات والحجوزات لشهر ${monthNameGregorian}` : 'جدول الفعاليات والحجوزات القادمة');
+    }
+
+    bookings.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    const tableBody = document.getElementById('room-rpt-bookings-table-body');
+    if (tableBody) {
+        if (bookings.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="4" style="text-align: center; padding: 12px; color: #64748b; border: 1px solid #cbd5e1;">${isMonthly ? 'لا توجد حجوزات مجدولة لهذا الشهر في هذا المقر.' : 'لا توجد حجوزات مجدولة مسبقاً لهذا المقر.'}</td>
+                </tr>
+            `;
+        } else {
+            tableBody.innerHTML = bookings.map(b => `
+                <tr>
+                    <td style="padding: 8px; border: 1px solid #cbd5e1;">${b.date}</td>
+                    <td style="padding: 8px; border: 1px solid #cbd5e1;">${b.timePeriod} (${formatTime12h(b.time)})</td>
+                    <td style="padding: 8px; border: 1px solid #cbd5e1; font-weight: bold; color: #1e3a8a;">${b.title}</td>
+                    <td style="padding: 8px; border: 1px solid #cbd5e1;">${b.entityName}</td>
+                </tr>
+            `).join('');
+        }
+    }
+
+    // 3. Populate evidence grid
+    const evidenceSection = document.getElementById('room-rpt-evidence-section');
+    const evidenceGrid = document.getElementById('room-rpt-evidence-grid');
+    if (evidenceSection && evidenceGrid) {
+        if (window.currentRoomEvidence && window.currentRoomEvidence.length > 0) {
+            evidenceSection.style.display = 'block';
+            evidenceGrid.innerHTML = window.currentRoomEvidence.map(img => `
+                <div style="border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; height: 180px; display: flex; align-items: center; justify-content: center; background: #f8fafc;">
+                    <img src="${img}" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                </div>
+            `).join('');
+        } else {
+            evidenceSection.style.display = 'none';
+            evidenceGrid.innerHTML = '';
+        }
+    }
+
+    // Apply system branding
+    applySystemBranding();
+
+    // 4. Inject template into preview container
+    const previewContainer = document.getElementById('paper-preview-container');
+    if (previewContainer) {
+        previewContainer.style.width = '210mm';
+        previewContainer.innerHTML = document.getElementById('room-report-print-template').innerHTML;
+    }
+
+    // Open print preview modal
+    const reportTitleText = isMonthly ? `تقرير مقر لشهر ${monthNameGregorian} - ${room.name}` : `تقرير مقر - ${room.name}`;
+    window.currentReportTitle = reportTitleText;
+    document.title = reportTitleText;
+    
+    closeRoomDetailsModal();
+    document.getElementById('report-preview-modal').classList.add('active');
+};
+
+window.printComprehensiveReport = () => {
+    window.currentPrintContext = 'portrait';
+    
+    const logoBase64 = state.appSettings.logo;
+    const orgName = state.appSettings.orgName || 'إدارة التعليم بمنطقة عسير';
+    const deptName = state.appSettings.deptName || 'قسم الاتصال المؤسسي';
+    
+    const logoHtml = logoBase64 
+        ? `<img src="${logoBase64}" style="max-width: 100%; max-height: 100%; object-fit: contain;">`
+        : `<div style="width: 80px; height: 80px; border: 1px dashed #ccc; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; color: #aaa;">شعار</div>`;
+
+    const bookings = [...state.bookings].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const totalBookingsCount = bookings.length;
+    const totalRoomsCount = state.rooms.length;
+    
+    const bookingsTableRows = bookings.length === 0 
+        ? `<tr><td colspan="6" style="text-align: center; padding: 12px; color: #64748b; border: 1px solid #cbd5e1;">لا توجد حجوزات مسجلة في النظام حالياً.</td></tr>`
+        : bookings.map(b => {
+            const room = state.rooms.find(r => r.id === b.roomId);
+            const statusTranslations = {
+                confirmed: 'مؤكد',
+                pending: 'انتظار',
+                executed: 'تم التنفيذ',
+                maintenance: 'صيانة',
+                cancelled: 'ملغي'
+            };
+            const statusText = statusTranslations[b.status] || b.status;
+            return `
+                <tr>
+                    <td style="padding: 8px; border: 1px solid #cbd5e1;">${b.date}</td>
+                    <td style="padding: 8px; border: 1px solid #cbd5e1;">${formatTime12h(b.time)}</td>
+                    <td style="padding: 8px; border: 1px solid #cbd5e1; font-weight: bold; color: #1e3a8a;">${b.title}</td>
+                    <td style="padding: 8px; border: 1px solid #cbd5e1;">${room ? room.name : 'قاعة محذوفة'}</td>
+                    <td style="padding: 8px; border: 1px solid #cbd5e1;">${b.entityName}</td>
+                    <td style="padding: 8px; border: 1px solid #cbd5e1;">${statusText}</td>
+                </tr>
+            `;
+        }).join('');
+
+    let comprehensiveHtml = `
+        <div class="print-page-unified print-theme-blue" style="min-height: 297mm; display: flex; flex-direction: column; box-sizing: border-box;">
+            <div class="print-header-unified">
+                <div class="header-right-info" style="width: 38%; text-align: right; font-weight: bold; line-height: 1.6; font-size: 1.05rem; color: #1e293b;">
+                    المملكة العربية السعودية<br>
+                    وزارة التعليم<br>
+                    <span>${orgName}</span><br>
+                    <span>${deptName}</span>
+                </div>
+                <div class="header-center-logo-place"></div>
+                <div class="header-left-logo-container dynamic-print-logo-container" style="width: 130px; height: 130px; display: flex; align-items: center; justify-content: flex-end;">
+                    ${logoHtml}
+                </div>
+            </div>
+
+            <div class="print-title-badge-container" style="text-align: center; margin-bottom: 30px; width: 100%;">
+                <div class="print-title-badge-unified" style="font-size: 1.35rem; font-weight: 800; color: #3b82f6; border: 2px solid #3b82f6; padding: 8px 35px; border-radius: 50px; display: inline-block; background: #eff6ff;">
+                    التقرير الشامل للحجوزات والفعاليات والمقرات
+                </div>
+            </div>
+
+            <div class="print-info-box-unified" style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 22px; margin-bottom: 30px;">
+                <table class="print-info-table-unified" style="width: 100%; border-collapse: collapse; font-size: 1.1rem; color: #1e293b;">
+                    <tr style="border-bottom: 1.5px solid #edf2f7;">
+                        <td class="label" style="font-weight: 800; width: 200px; color: #475569; padding: 12px 10px;">إجمالي المقرات المسجلة:</td>
+                        <td class="value" style="font-weight: 600; padding: 12px 10px;">${totalRoomsCount} مقر / قاعة</td>
+                        <td class="label" style="font-weight: 800; width: 200px; color: #475569; padding: 12px 10px;">إجمالي الفعاليات المسجلة:</td>
+                        <td class="value" style="font-weight: 600; padding: 12px 10px;">${totalBookingsCount} فعالية</td>
+                    </tr>
+                    <tr>
+                        <td class="label" style="font-weight: 800; width: 200px; color: #475569; padding: 12px 10px;">تاريخ استخراج التقرير:</td>
+                        <td class="value" style="font-weight: 600; padding: 12px 10px;" colspan="3">${new Date().toLocaleString('ar-SA-u-nu-latn')}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="print-section-unified" style="margin-bottom: 25px; width: 100%;">
+                <div class="print-section-title-unified" style="background: #f8fafc; padding: 10px 15px; border-right: 5px solid #3b82f6; font-size: 1.1rem; font-weight: 800; margin-bottom: 15px; color: #1e293b; border-radius: 0 4px 4px 0; border-left: 1px solid #e2e8f0; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0;">
+                    <i class="fas fa-clipboard-list"></i> جدول الفعاليات الشامل بجميع المقرات والقاعات
+                </div>
+                <table class="print-table-unified" style="width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 15px; color: #1e293b;">
+                    <thead>
+                        <tr>
+                            <th style="background: #f8fafc; border: 1px solid #cbd5e1; border-bottom: 2.5px solid #3b82f6; padding: 10px; text-align: right; font-weight: 800;">التاريخ</th>
+                            <th style="background: #f8fafc; border: 1px solid #cbd5e1; border-bottom: 2.5px solid #3b82f6; padding: 10px; text-align: right; font-weight: 800;">الوقت</th>
+                            <th style="background: #f8fafc; border: 1px solid #cbd5e1; border-bottom: 2.5px solid #3b82f6; padding: 10px; text-align: right; font-weight: 800;">الفعالية</th>
+                            <th style="background: #f8fafc; border: 1px solid #cbd5e1; border-bottom: 2.5px solid #3b82f6; padding: 10px; text-align: right; font-weight: 800;">المقر / القاعة</th>
+                            <th style="background: #f8fafc; border: 1px solid #cbd5e1; border-bottom: 2.5px solid #3b82f6; padding: 10px; text-align: right; font-weight: 800;">الجهة المنظمة</th>
+                            <th style="background: #f8fafc; border: 1px solid #cbd5e1; border-bottom: 2.5px solid #3b82f6; padding: 10px; text-align: right; font-weight: 800;">الحالة</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${bookingsTableRows}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="print-footer-unified" style="margin-top: auto; border-top: 1.5px solid #edf2f7; padding-top: 18px; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: #64748b; width: 100%;">
+                <div>نظام إتقان - إدارة الموارد والفعاليات</div>
+                <div class="footer-left-info" style="font-style: italic;">صفحة 1 من ${totalRoomsCount + 1}</div>
+            </div>
+        </div>
+    `;
+
+    const categoryMap = {
+        theater: 'مسرح / قاعة احتفالات',
+        hall: 'قاعة تدريب / ورش',
+        office: 'مكتب / غرفة اجتماعات',
+        council: 'مجلس'
+    };
+
+    state.rooms.forEach((room, roomIdx) => {
+        const roomBookings = bookings.filter(b => b.roomId === room.id);
+        const roomBookingsCount = roomBookings.length;
+        
+        const roomBookingsTableRows = roomBookingsCount === 0 
+            ? `<tr><td colspan="4" style="text-align: center; padding: 12px; color: #64748b; border: 1px solid #cbd5e1;">لا توجد حجوزات مجدولة مسبقاً لهذا المقر.</td></tr>`
+            : roomBookings.map(b => `
+                <tr>
+                    <td style="padding: 8px; border: 1px solid #cbd5e1;">${b.date}</td>
+                    <td style="padding: 8px; border: 1px solid #cbd5e1;">${b.timePeriod || '---'} (${formatTime12h(b.time)})</td>
+                    <td style="padding: 8px; border: 1px solid #cbd5e1; font-weight: bold; color: #1e3a8a;">${b.title}</td>
+                    <td style="padding: 8px; border: 1px solid #cbd5e1;">${b.entityName}</td>
+                </tr>
+            `).join('');
+
+        comprehensiveHtml += `
+            <div class="print-page-unified print-theme-blue" style="min-height: 297mm; display: flex; flex-direction: column; box-sizing: border-box; page-break-before: always; break-before: page;">
+                <div class="print-header-unified">
+                    <div class="header-right-info" style="width: 38%; text-align: right; font-weight: bold; line-height: 1.6; font-size: 1.05rem; color: #1e293b;">
+                        المملكة العربية السعودية<br>
+                        وزارة التعليم<br>
+                        <span>${orgName}</span><br>
+                        <span>${deptName}</span>
+                    </div>
+                    <div class="header-center-logo-place"></div>
+                    <div class="header-left-logo-container dynamic-print-logo-container" style="width: 130px; height: 130px; display: flex; align-items: center; justify-content: flex-end;">
+                        ${logoHtml}
+                    </div>
+                </div>
+
+                <div class="print-title-badge-container" style="text-align: center; margin-bottom: 30px; width: 100%;">
+                    <div class="print-title-badge-unified" style="font-size: 1.35rem; font-weight: 800; color: #3b82f6; border: 2px solid #3b82f6; padding: 8px 35px; border-radius: 50px; display: inline-block; background: #eff6ff;">
+                        تقرير المقر والحجوزات الشامل
+                    </div>
+                </div>
+
+                <div class="print-info-box-unified" style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 22px; margin-bottom: 30px;">
+                    <table class="print-info-table-unified" style="width: 100%; border-collapse: collapse; font-size: 1.1rem; color: #1e293b;">
+                        <tr style="border-bottom: 1.5px solid #edf2f7;">
+                            <td class="label" style="font-weight: 800; width: 160px; color: #475569; padding: 12px 10px;">اسم المقر:</td>
+                            <td class="value" style="font-weight: 600; padding: 12px 10px; font-weight: bold;">${room.name}</td>
+                            <td class="label" style="font-weight: 800; width: 160px; color: #475569; padding: 12px 10px;">تصنيف المقر:</td>
+                            <td class="value" style="font-weight: 600; padding: 12px 10px;">${categoryMap[room.type] || 'قاعة / مقر'}</td>
+                        </tr>
+                        <tr>
+                            <td class="label" style="font-weight: 800; width: 160px; color: #475569; padding: 12px 10px;">تاريخ التقرير:</td>
+                            <td class="value" style="font-weight: 600; padding: 12px 10px;">${new Date().toLocaleDateString('ar-SA-u-nu-latn')}</td>
+                            <td class="label" style="font-weight: 800; width: 160px; color: #475569; padding: 12px 10px;">عدد الفعاليات:</td>
+                            <td class="value" style="font-weight: 600; padding: 12px 10px;">${roomBookingsCount} فعالية مسجلة</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div class="print-section-unified" style="margin-bottom: 25px; width: 100%;">
+                    <div class="print-section-title-unified" style="background: #f8fafc; padding: 10px 15px; border-right: 5px solid #3b82f6; font-size: 1.1rem; font-weight: 800; margin-bottom: 15px; color: #1e293b; border-radius: 0 4px 4px 0; border-left: 1px solid #e2e8f0; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0;">
+                        <i class="fas fa-calendar-alt"></i> جدول الفعاليات والحجوزات القادمة للمقر
+                    </div>
+                    <table class="print-table-unified" style="width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 15px; color: #1e293b;">
+                        <thead>
+                            <tr>
+                                <th style="width: 20%; padding: 8px; text-align: right; background: #e2e8f0; color: #1e293b; border: 1px solid #cbd5e1; font-weight: 800;">التاريخ</th>
+                                <th style="width: 20%; padding: 8px; text-align: right; background: #e2e8f0; color: #1e293b; border: 1px solid #cbd5e1; font-weight: 800;">الفترة</th>
+                                <th style="width: 35%; padding: 8px; text-align: right; background: #e2e8f0; color: #1e293b; border: 1px solid #cbd5e1; font-weight: 800;">الفعالية</th>
+                                <th style="width: 25%; padding: 8px; text-align: right; background: #e2e8f0; color: #1e293b; border: 1px solid #cbd5e1; font-weight: 800;">الجهة المنظمة</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${roomBookingsTableRows}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="print-footer-unified" style="margin-top: auto; border-top: 1.5px solid #edf2f7; padding-top: 18px; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: #64748b; width: 100%;">
+                    <div>نظام إتقان - إدارة الموارد والفعاليات</div>
+                    <div class="footer-left-info" style="font-style: italic;">صفحة ${roomIdx + 2} من ${totalRoomsCount + 1}</div>
+                </div>
+            </div>
+        `;
+    });
+
+    const previewContainer = document.getElementById('paper-preview-container');
+    if (previewContainer) {
+        previewContainer.style.width = '210mm';
+        previewContainer.innerHTML = comprehensiveHtml;
+    }
+
+    const reportTitleText = 'التقرير الشامل للمقرات والفعاليات';
+    window.currentReportTitle = reportTitleText;
+    document.title = reportTitleText;
+    document.getElementById('report-preview-modal').classList.add('active');
+};
+
+window.printAllEvaluations = () => {
+    window.currentPrintContext = 'portrait';
+    
+    // Get all bookings that have evaluations
+    const evaluatedBookings = state.bookings.filter(b => b.positives || b.negatives || b.recommendations);
+    
+    if (evaluatedBookings.length === 0) {
+        alert('لا توجد فعاليات تم تقييمها وتسجيل إيجابيات/سلبيات لها حتى الآن لطباعتها.');
+        return;
+    }
+    
+    // Sort by date
+    evaluatedBookings.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    // Get branding info
+    const logoBase64 = state.appSettings.logo;
+    const orgName = state.appSettings.orgName || 'إدارة التعليم بمنطقة عسير';
+    const deptName = state.appSettings.deptName || 'قسم الاتصال المؤسسي';
+    
+    const logoHtml = logoBase64 
+        ? `<img src="${logoBase64}" style="max-width: 100%; max-height: 100%; object-fit: contain;">`
+        : `<div style="width: 80px; height: 80px; border: 1px dashed #ccc; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; color: #aaa;">شعار</div>`;
+
+    let comprehensiveHtml = '';
+    const totalCount = evaluatedBookings.length;
+
+    evaluatedBookings.forEach((book, idx) => {
+        // Build evidence grid if any
+        let evidenceHtml = '';
+        if (book.evidence && book.evidence.length > 0) {
+            const gridItems = book.evidence.map(img => `
+                <div style="border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; height: 180px; display: flex; align-items: center; justify-content: center; background: #f8fafc;">
+                    <img src="${img}" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                </div>
+            `).join('');
+            evidenceHtml = `
+                <div class="print-section-unified" style="margin-bottom: 25px; width: 100%;">
+                    <div class="print-section-title-unified" style="background: #f8fafc; padding: 10px 15px; border-right: 5px solid #3b82f6; font-size: 1.1rem; font-weight: 800; margin-bottom: 15px; color: #1e293b; border-radius: 0 4px 4px 0; border-left: 1px solid #e2e8f0; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0;">
+                        <i class="fas fa-camera"></i> الشواهد المرئية والصور التوثيقية للفعالية
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 15px;">
+                        ${gridItems}
+                    </div>
+                </div>
+            `;
+        }
+
+        comprehensiveHtml += `
+            <div class="print-page-unified print-theme-blue" style="min-height: 297mm; display: flex; flex-direction: column; box-sizing: border-box; ${idx > 0 ? 'page-break-before: always; break-before: page;' : ''}">
+                <div class="print-header-unified">
+                    <div class="header-right-info" style="width: 38%; text-align: right; font-weight: bold; line-height: 1.6; font-size: 1.05rem; color: #1e293b;">
+                        المملكة العربية السعودية<br>
+                        وزارة التعليم<br>
+                        <span>${orgName}</span><br>
+                        <span>${deptName}</span>
+                    </div>
+                    <div class="header-center-logo-place"></div>
+                    <div class="header-left-logo-container dynamic-print-logo-container" style="width: 130px; height: 130px; display: flex; align-items: center; justify-content: flex-end;">
+                        ${logoHtml}
+                    </div>
+                </div>
+
+                <div class="print-title-badge-container" style="text-align: center; margin-bottom: 30px; width: 100%;">
+                    <div class="print-title-badge-unified" style="font-size: 1.35rem; font-weight: 800; color: #3b82f6; border: 2px solid #3b82f6; padding: 8px 35px; border-radius: 50px; display: inline-block; background: #eff6ff;">
+                        تقرير تقييم فعالية
+                    </div>
+                </div>
+
+                <div class="print-info-box-unified" style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 22px; margin-bottom: 30px;">
+                    <table class="print-info-table-unified" style="width: 100%; border-collapse: collapse; font-size: 1.1rem; color: #1e293b;">
+                        <tr style="border-bottom: 1.5px solid #edf2f7;">
+                            <td class="label" style="font-weight: 800; width: 160px; color: #475569; padding: 12px 10px;">الفعالية:</td>
+                            <td class="value" style="font-weight: 600; padding: 12px 10px; font-weight: bold;">${book.title}</td>
+                        </tr>
+                        <tr style="border-bottom: 1.5px solid #edf2f7;">
+                            <td class="label" style="font-weight: 800; width: 160px; color: #475569; padding: 12px 10px;">الجهة المنظمة:</td>
+                            <td class="value" style="font-weight: 600; padding: 12px 10px;">${book.entityName}</td>
+                        </tr>
+                        <tr style="border-bottom: 1.5px solid #edf2f7;">
+                            <td class="label" style="font-weight: 800; width: 160px; color: #475569; padding: 12px 10px;">تاريخ التنفيذ:</td>
+                            <td class="value" style="font-weight: 600; padding: 12px 10px;">${book.date}</td>
+                        </tr>
+                        <tr>
+                            <td class="label" style="font-weight: 800; width: 160px; color: #475569; padding: 12px 10px;">تاريخ التقرير:</td>
+                            <td class="value" style="font-weight: 600; padding: 12px 10px;">${new Date().toLocaleDateString('ar-SA-u-nu-latn')}</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div class="print-section-unified" style="margin-bottom: 25px; width: 100%;">
+                    <div class="print-section-title-unified" style="background: #f8fafc; padding: 10px 15px; border-right: 5px solid #3b82f6; font-size: 1.1rem; font-weight: 800; margin-bottom: 15px; color: #1e293b; border-radius: 0 4px 4px 0; border-left: 1px solid #e2e8f0; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0;">
+                        <i class="fas fa-plus-circle"></i> الإيجابيات ومكاسب الفعالية
+                    </div>
+                    <div style="padding: 10px; line-height: 1.8; font-size: 1.05rem; min-height: 80px; white-space: pre-wrap; color: #1e293b;">${book.positives || 'لم يتم تسجيل إيجابيات'}</div>
+                </div>
+
+                <div class="print-section-unified" style="margin-bottom: 25px; width: 100%;">
+                    <div class="print-section-title-unified" style="background: #f8fafc; padding: 10px 15px; border-right: 5px solid #3b82f6; font-size: 1.1rem; font-weight: 800; margin-bottom: 15px; color: #1e293b; border-radius: 0 4px 4px 0; border-left: 1px solid #e2e8f0; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0;">
+                        <i class="fas fa-minus-circle"></i> السلبيات وملاحظات التحسين
+                    </div>
+                    <div style="padding: 10px; line-height: 1.8; font-size: 1.05rem; min-height: 80px; white-space: pre-wrap; color: #1e293b;">${book.negatives || 'لم يتم تسجيل ملاحظات سلبية'}</div>
+                </div>
+
+                <div class="print-section-unified" style="margin-bottom: 25px; width: 100%;">
+                    <div class="print-section-title-unified" style="background: #f8fafc; padding: 10px 15px; border-right: 5px solid #3b82f6; font-size: 1.1rem; font-weight: 800; margin-bottom: 15px; color: #1e293b; border-radius: 0 4px 4px 0; border-left: 1px solid #e2e8f0; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0;">
+                        <i class="fas fa-lightbulb"></i> التوصيات والمقترحات التطويرية
+                    </div>
+                    <div style="padding: 10px; line-height: 1.8; font-size: 1.05rem; min-height: 80px; white-space: pre-wrap; color: #1e293b;">${book.recommendations || 'لم يتم تسجيل توصيات'}</div>
+                </div>
+
+                ${evidenceHtml}
+
+                <div class="print-footer-unified" style="margin-top: auto; border-top: 1.5px solid #edf2f7; padding-top: 18px; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: #64748b; width: 100%;">
+                    <div>نظام إتقان - إدارة الموارد والفعاليات</div>
+                    <div class="footer-left-info" style="font-style: italic;">صفحة ${idx + 1} من ${totalCount}</div>
+                </div>
+            </div>
+        `;
+    });
+
+    const previewContainer = document.getElementById('paper-preview-container');
+    if (previewContainer) {
+        previewContainer.style.width = '210mm';
+        previewContainer.innerHTML = comprehensiveHtml;
+    }
+
+    const reportTitleText = 'التقرير الشامل لتقييمات الفعاليات';
+    window.currentReportTitle = reportTitleText;
+    document.title = reportTitleText;
+    document.getElementById('report-preview-modal').classList.add('active');
+};
+
+window.handleEventEvidenceUpload = (event) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    if (!window.currentEventEvidence) {
+        window.currentEventEvidence = [];
+    }
+
+    let loadedCount = 0;
+    const targetLength = files.length;
+    
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.size > 5 * 1024 * 1024) {
+            showToast('حجم الصورة كبير جداً. يرجى اختيار صور أقل من 5 ميجابايت.', 'error');
+            loadedCount++;
+            continue;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            window.currentEventEvidence.push(e.target.result);
+            loadedCount++;
+            if (loadedCount === targetLength) {
+                renderEventEvidenceThumbnails();
+                showToast('✅ تم إرفاق شواهد الفعالية بنجاح!', 'success');
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+};
+
+window.removeEventEvidence = (index) => {
+    if (window.currentEventEvidence) {
+        window.currentEventEvidence.splice(index, 1);
+        renderEventEvidenceThumbnails();
+        showToast('تمت إزالة الصورة من شواهد الفعالية', 'info');
+    }
+};
+
+window.renderEventEvidenceThumbnails = () => {
+    const container = document.getElementById('event-evidence-thumbnails');
+    if (!container) return;
+
+    if (!window.currentEventEvidence || window.currentEventEvidence.length === 0) {
+        container.innerHTML = '<span style="font-size: 0.8rem; color: var(--text-muted);">لا توجد شواهد مرفقة حالياً</span>';
+        return;
+    }
+
+    container.innerHTML = window.currentEventEvidence.map((img, index) => `
+        <div style="position: relative; width: 75px; height: 75px; border-radius: 8px; overflow: hidden; border: 2px solid var(--glass-border); background: rgba(0,0,0,0.2);">
+            <img src="${img}" style="width: 100%; height: 100%; object-fit: cover;">
+            <button onclick="removeEventEvidence(${index})" style="position: absolute; top: 2px; left: 2px; background: rgba(239, 68, 68, 0.85); border: none; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.85rem; line-height: 1; outline: none;">&times;</button>
+        </div>
+    `).join('');
 };
 
 // --- Maintenance & Backup Functions ---
@@ -3022,6 +5098,13 @@ window.updateSelectedRoomsText = () => {
 document.addEventListener('click', () => {
     const dropdown = document.getElementById('multi-select-dropdown');
     if (dropdown) dropdown.style.display = 'none';
+    
+    const blacklistDropdown = document.getElementById('blacklist-reason-dropdown');
+    if (blacklistDropdown) {
+        blacklistDropdown.style.display = 'none';
+        const chevron = document.querySelector('#blacklist-reason-header i');
+        if (chevron) chevron.style.transform = 'rotate(0deg)';
+    }
 });
 
 function formatTime12h(time24) {
@@ -3032,26 +5115,945 @@ function formatTime12h(time24) {
     return `${hours.toString().padStart(2, '0')}:${minutes}`;
 }
 
-// Theater Seating & Smart QR Invitations Integration
-function openTheaterExternal() {
-    window.open('theater/index.html', '_blank', 'nodeIntegration=no,width=1400,height=900');
-}
+// ==========================================
+// Smart Evaluation Assistant Helper Functions (LocalStorage & Dynamic Presets)
+// ==========================================
+const defaultEvalPresets = {
+    positives: [
+        { title: 'المحتوى', content: 'قيمة المادة المقدمة، كفاءة المتحدثين، ملاءمة المحتوى للجمهور' },
+        { title: 'الحضور', content: 'تحقيق العدد المستهدف، تنوع الفئات، مستوى التفاعل' },
+        { title: 'الهوية والاتصال', content: 'وضوح الشعارات، قوة الحملة الإعلانية، سهولة الوصول للموقع' },
+        { title: 'التجهيزات التقنية', content: 'جودة الصوت والصورة، ثبات الإنترنت، جودة العرض المرئي' },
+        { title: 'الضيافة والاستقبال', content: 'جودة الاستقبال، سرعة التسجيل، مستوى التموين/Catering' }
+    ],
+    negatives: [
+        { title: 'إدارة الوقت', content: 'تأخر البدء، تجاوز الوقت المحدد للفقرات، طول فترات الاستراحة' },
+        { title: 'الأمن والسلامة', content: 'نقص الكوادر الأمنية، غياب التفتيش النسائي، سوء مخارج الطوارئ' },
+        { title: 'الدعم اللوجستي', content: 'مشاكل التكييف/الإضاءة، نقص المرافق الأساسية، عدم جاهزية دورات المياه' },
+        { title: 'إدارة الحشود', content: 'تكدس عند المداخل، تداخل المسارات، غياب اللوحات الإرشادية' },
+        { title: 'التواصل الميداني', content: 'تضارب معلومات المنظمين، غياب نقطة استعلامات واضحة' }
+    ],
+    recommendations: [
+        { title: 'تفعيل الـ Checklist', content: 'اعتماد قائمة مراجعة نهائية قبل انطلاق الفعالية بـ 24 ساعة (Final Walkthrough)' },
+        { title: 'توزيع المهام', content: 'وجود هيكل تنظيمي واضح (مراقب فني، مسؤول أمني، مشرف حشود) مع أجهزة اتصال لاسلكية' },
+        { title: 'خطط الطوارئ', content: 'توفير فريق فني مرابط وصيانة دورية فورية لأي عطل طارئ' },
+        { title: 'تجربة العميل (UX)', content: 'تخصيص فريق سرية لمراجعة مسار الزائر من الباب وحتى الخروج لرصد أي مضايقات' },
+        { title: 'التوثيق والتقييم', content: 'توزيع استبيان رقمي سريع (QR Code) للجمهور أثناء الفعالية لقياس الرضا الفوري' }
+    ]
+};
 
-function openBeneficiaryPortal() {
-    window.open('theater/beneficiary.html', '_blank', 'nodeIntegration=no,width=1200,height=800');
-}
+window.evaluationPresets = {};
 
-function openGateScanner() {
-    window.open('theater/staff.html', '_blank', 'nodeIntegration=no,width=1100,height=800');
-}
-
-function reloadTheaterFrame() {
-    const iframe = document.getElementById('theater-iframe');
-    if (iframe) {
-        iframe.src = iframe.src;
+window.loadEvaluationPresets = function() {
+    const saved = localStorage.getItem('itqan_evaluation_presets');
+    if (saved) {
+        try {
+            window.evaluationPresets = JSON.parse(saved);
+        } catch (e) {
+            console.error('Error parsing evaluation presets', e);
+            window.evaluationPresets = JSON.parse(JSON.stringify(defaultEvalPresets));
+        }
+    } else {
+        window.evaluationPresets = JSON.parse(JSON.stringify(defaultEvalPresets));
+        localStorage.setItem('itqan_evaluation_presets', JSON.stringify(window.evaluationPresets));
     }
+};
+
+window.renderEvaluationPresets = function() {
+    if (!window.evaluationPresets || Object.keys(window.evaluationPresets).length === 0) {
+        window.loadEvaluationPresets();
+    }
+    
+    const categories = ['positives', 'negatives', 'recommendations'];
+    const textareaIds = {
+        positives: 'book-positives',
+        negatives: 'book-negatives',
+        recommendations: 'book-recommendations'
+    };
+    const chipClasses = {
+        positives: 'success-chip',
+        negatives: 'danger-chip',
+        recommendations: 'primary-chip'
+    };
+    const headers = {
+        positives: '💡 معايير النجاح (اضغط للإضافة السريعة):',
+        negatives: '💡 الفجوات التشغيلية (اضغط للإضافة السريعة):',
+        recommendations: '💡 خارطة الطريق والحلول (اضغط للإضافة السريعة):'
+    };
+
+    categories.forEach(category => {
+        const container = document.getElementById(`${category}-presets-container`);
+        if (!container) return;
+
+        const targetId = textareaIds[category];
+        const chipClass = chipClasses[category];
+        const labelText = headers[category];
+
+        let html = `<span style="font-size: 0.75rem; color: var(--text-muted); width: 100%; margin-bottom: 2px; display: block;">${labelText}</span>`;
+
+        // Render current list of preset chips
+        window.evaluationPresets[category].forEach((preset, index) => {
+            html += `
+                <div class="eval-chip ${chipClass}">
+                    <span class="chip-text" onclick="window.appendEvaluationPreset('${targetId}', '${preset.title}', '${preset.content}')" style="cursor: pointer;">
+                        <i class="fas fa-plus"></i> ${preset.title}
+                    </span>
+                    <span class="chip-delete" onclick="window.deleteEvaluationPreset('${category}', ${index})" title="حذف">&times;</span>
+                </div>
+            `;
+        });
+
+        // Add "+ Add Custom Criteria" button
+        html += `
+            <button type="button" class="eval-chip add-preset-btn" onclick="window.toggleAddPresetForm('${category}')" style="border-style: dashed; border-color: rgba(255,255,255,0.2); background: transparent; color: var(--primary-light);">
+                <i class="fas fa-plus-circle"></i> + معيار جديد
+            </button>
+        `;
+
+        container.innerHTML = html;
+    });
+};
+
+window.toggleAddPresetForm = function(category) {
+    const form = document.getElementById(`add-preset-form-${category}`);
+    if (!form) return;
+    if (form.style.display === 'none') {
+        form.style.display = 'block';
+        const titleInput = document.getElementById(`new-preset-title-${category}`);
+        const contentInput = document.getElementById(`new-preset-content-${category}`);
+        if (titleInput) titleInput.value = '';
+        if (contentInput) contentInput.value = '';
+        if (titleInput) titleInput.focus();
+    } else {
+        form.style.display = 'none';
+    }
+};
+
+window.addEvaluationPreset = function(category) {
+    const titleInput = document.getElementById(`new-preset-title-${category}`);
+    const contentInput = document.getElementById(`new-preset-content-${category}`);
+    if (!titleInput || !contentInput) return;
+
+    const title = titleInput.value.trim();
+    const content = contentInput.value.trim();
+
+    if (!title || !content) {
+        if (typeof showToast === 'function') {
+            showToast('يرجى كتابة عنوان المعيار وتفاصيله أولاً!', 'warning');
+        } else {
+            alert('يرجى كتابة عنوان المعيار وتفاصيله أولاً!');
+        }
+        return;
+    }
+
+    if (!window.evaluationPresets[category]) {
+        window.evaluationPresets[category] = [];
+    }
+    
+    const exists = window.evaluationPresets[category].some(p => p.title.toLowerCase() === title.toLowerCase());
+    if (exists) {
+        if (typeof showToast === 'function') {
+            showToast('هذا المعيار موجود بالفعل في القائمة!', 'warning');
+        } else {
+            alert('هذا المعيار موجود بالفعل في القائمة!');
+        }
+        return;
+    }
+
+    window.evaluationPresets[category].push({ title, content });
+    localStorage.setItem('itqan_evaluation_presets', JSON.stringify(window.evaluationPresets));
+    window.renderEvaluationPresets();
+    window.toggleAddPresetForm(category);
+
+    if (typeof showToast === 'function') {
+        showToast(`تمت إضافة معيار [${title}] كخيار سريع`, 'success');
+    }
+};
+
+window.deleteEvaluationPreset = function(category, index) {
+    if (!window.evaluationPresets[category]) return;
+    
+    const preset = window.evaluationPresets[category][index];
+    if (!preset) return;
+
+    if (!confirm(`هل أنت متأكد من رغبتك في حذف المعيار [${preset.title}] من قائمة الخيارات السريعة؟`)) return;
+
+    window.evaluationPresets[category].splice(index, 1);
+    localStorage.setItem('itqan_evaluation_presets', JSON.stringify(window.evaluationPresets));
+    window.renderEvaluationPresets();
+
+    if (typeof showToast === 'function') {
+        showToast(`تم حذف المعيار [${preset.title}] من القائمة`, 'info');
+    }
+};
+
+window.appendEvaluationPreset = function(targetId, title, content) {
+    const textarea = document.getElementById(targetId);
+    if (!textarea) return;
+    
+    let currentText = textarea.value.trim();
+    const newItem = `* **${title}:** ${content}.`;
+    
+    if (currentText) {
+        if (currentText.includes(title)) {
+            if (typeof showToast === 'function') {
+                showToast(`المعيار [${title}] مضاف بالفعل!`, 'info');
+            } else {
+                alert(`المعيار [${title}] مضاف بالفعل!`);
+            }
+            return;
+        }
+        textarea.value = currentText + '\n' + newItem;
+    } else {
+        textarea.value = newItem;
+    }
+    
+    textarea.dispatchEvent(new Event('input'));
+    
+    if (typeof showToast === 'function') {
+        showToast(`تمت إضافة معيار [${title}] بنجاح`, 'success');
+    }
+};
+
+window.fillSpecificReportPreset = function() {
+    const positives = `* **جودة المحتوى:** قوة الطرح وتمكن المتحدثين من المادة العلمية.
+* **الإقبال الجماهيري:** حضور لافت وتفاعل ملموس من المستهدفين.
+* **الهوية البصرية:** حملة تسويقية ناجحة وتصميم بصري جذاب وواضح.`;
+
+    const negatives = `* **انعدام الدعم الفني:** مخاطرة عالية لغياب فرق الصيانة (تكييف، كهرباء، تقنية).
+* **غياب الكادر النسائي:** قصور أمني وتنظيمي في التعامل مع الحضور النسائي بخصوصية.
+* **ضعف الإدارة الميدانية:** عشوائية في توجيه الحشود وتضارب في المعلومات بسبب غياب فريق التنظيم.`;
+
+    const recommendations = `* **التعاقد المسبق:** إلزام شركات الصيانة والتشغيل بالتواجد الميداني قبل وأثناء الفعالية.
+* **تكامل الفريق الأمني:** توفير كوادر نسائية متخصصة للأمن والسلامة لضمان الانسيابية.
+* **هيكلة التنظيم:** تعيين فريق تنظيم ميداني (بزي موحد) ومهام محددة لإدارة تدفق الزوار.
+* **قائمة التدقيق (Checklist):** عدم تفعيل أي فعالية مستقبلاً دون التأكد من جاهزية "المرفقات والخدمات" تقنياً وبشرياً.`;
+
+    const posField = document.getElementById('book-positives');
+    const negField = document.getElementById('book-negatives');
+    const recField = document.getElementById('book-recommendations');
+
+    if (posField) {
+        posField.value = positives;
+        posField.dispatchEvent(new Event('input'));
+    }
+    if (negField) {
+        negField.value = negatives;
+        negField.dispatchEvent(new Event('input'));
+    }
+    if (recField) {
+        recField.value = recommendations;
+        recField.dispatchEvent(new Event('input'));
+    }
+
+    if (typeof showToast === 'function') {
+        showToast('⚡ تم تعبئة تقرير الحدث الحالي بنجاح!', 'success');
+    }
+};
+
+window.clearEvaluationFields = function() {
+    if (!confirm('هل أنت متأكد من رغبتك في مسح كافة حقول التقييم الحالية؟')) return;
+    
+    const posField = document.getElementById('book-positives');
+    const negField = document.getElementById('book-negatives');
+    const recField = document.getElementById('book-recommendations');
+
+    if (posField) {
+        posField.value = '';
+        posField.dispatchEvent(new Event('input'));
+    }
+    if (negField) {
+        negField.value = '';
+        negField.dispatchEvent(new Event('input'));
+    }
+    if (recField) {
+        recField.value = '';
+        recField.dispatchEvent(new Event('input'));
+    }
+
+    if (typeof showToast === 'function') {
+        showToast('تم مسح كافة الحقول بنجاح', 'info');
+    }
+};
+
+// Auto boot on load
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    window.loadEvaluationPresets();
+    window.renderEvaluationPresets();
+    window.loadBlacklist();
+} else {
+    document.addEventListener('DOMContentLoaded', () => {
+        window.loadEvaluationPresets();
+        window.renderEvaluationPresets();
+        window.loadBlacklist();
+    });
 }
 
+// ==========================================
+// Blacklist (القائمة السوداء) Management Logic
+// ==========================================
+const defaultBlacklist = [
+    { type: 'entity', value: 'مؤسسة التنظيم العشوائي', reason: 'عدم الالتزام بضوابط المحافظة على الأجهزة والصوتيات وترك المسرح بحالة فوضى وتلف التمديدات.', date: '2026-05-01' },
+    { type: 'coordinator', value: 'خالد بن محمد', reason: 'تكرار إلغاء الحجوزات المؤكدة في وقت حرج جداً دون إخطار مسبق مما تسبب في هدر حجوزات مسرح الإدارة.', date: '2026-05-05' }
+];
+
+window.blacklistData = [];
+
+window.loadBlacklist = function() {
+    const saved = localStorage.getItem('itqan_blacklist');
+    if (saved) {
+        try {
+            window.blacklistData = JSON.parse(saved);
+        } catch (e) {
+            console.error('Error parsing blacklist data', e);
+            window.blacklistData = JSON.parse(JSON.stringify(defaultBlacklist));
+        }
+    } else {
+        window.blacklistData = JSON.parse(JSON.stringify(defaultBlacklist));
+        localStorage.setItem('itqan_blacklist', JSON.stringify(window.blacklistData));
+    }
+};
+
+window.renderBlacklistTable = function(searchQuery = '') {
+    if (!window.blacklistData || window.blacklistData.length === 0) {
+        window.loadBlacklist();
+    }
+    
+    const tbody = document.getElementById('blacklist-table-body');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+    const query = (searchQuery || '').trim().toLowerCase();
+
+    const filtered = window.blacklistData.filter(item => {
+        if (!query) return true;
+        const val = item.value.toLowerCase();
+        const reason = item.reason.toLowerCase();
+        const typeText = item.type === 'entity' ? 'جهة' : 'منسق';
+        return val.includes(query) || reason.includes(query) || typeText.includes(query);
+    });
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" style="text-align: center; padding: 30px; color: var(--text-muted);">
+                    <i class="fas fa-user-shield" style="font-size: 2.5rem; display: block; margin-bottom: 12px; color: var(--text-muted); opacity: 0.5;"></i>
+                    لا توجد جهات أو منسقين محظورين يطابقون البحث حالياً.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    filtered.forEach((item, index) => {
+        const typeBadge = item.type === 'entity' 
+            ? `<span style="background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.2); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;"><i class="fas fa-building"></i> جهة منظمة</span>`
+            : `<span style="background: rgba(245,158,11,0.1); color: #fbbf24; border: 1px solid rgba(245,158,11,0.2); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;"><i class="fas fa-user"></i> منسق فعالية</span>`;
+
+        const originalIndex = window.blacklistData.indexOf(item);
+
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid var(--glass-border)';
+        tr.style.height = '60px';
+        tr.style.cursor = 'pointer';
+        tr.style.transition = 'background 0.2s ease';
+        tr.innerHTML = `
+            <td style="padding: 10px;">${typeBadge}</td>
+            <td style="padding: 10px; font-weight: 700; color: white;">${item.value}</td>
+            <td style="padding: 10px; max-width: 350px; font-size: 0.82rem; color: var(--text-muted); line-height: 1.5; white-space: normal;">${item.reason}</td>
+            <td style="padding: 10px; font-size: 0.8rem; color: var(--text-muted);">${item.date || '---'}</td>
+            <td style="padding: 10px; text-align: left;">
+                <button type="button" class="btn-secondary" onclick="window.deleteBlacklistEntry(${originalIndex})" style="padding: 5px 12px; border-color: rgba(255,255,255,0.1); color: #ef4444; background: rgba(239,68,68,0.05); font-size: 0.75rem; border-radius: 6px; cursor: pointer;">
+                    <i class="fas fa-trash-can"></i> إزالة
+                </button>
+            </td>
+        `;
+
+        // Click row to show details modal
+        tr.onclick = (e) => {
+            if (e.target.closest('button')) return;
+            window.openBlacklistDetails(item);
+        };
+
+        // Hover styles
+        tr.addEventListener('mouseenter', () => { tr.style.background = 'rgba(239, 68, 68, 0.03)'; });
+        tr.addEventListener('mouseleave', () => { tr.style.background = 'transparent'; });
+
+        tbody.appendChild(tr);
+    });
+};
+
+// Multi-Select Blacklist Reasons Helpers
+window.toggleBlacklistReasonDropdown = (e) => {
+    e.stopPropagation();
+    const dropdown = document.getElementById('blacklist-reason-dropdown');
+    const chevron = document.querySelector('#blacklist-reason-header i');
+    if (dropdown) {
+        const isShown = dropdown.style.display === 'block';
+        dropdown.style.display = isShown ? 'none' : 'block';
+        if (chevron) {
+            chevron.style.transform = isShown ? 'rotate(0deg)' : 'rotate(180deg)';
+        }
+    }
+};
+
+window.toggleBlacklistReasonSelection = (bandKey, e) => {
+    e.stopPropagation();
+    const cb = document.getElementById(`reason-${bandKey}`);
+    if (cb) {
+        cb.checked = !cb.checked;
+        window.updateSelectedBlacklistReasonsText();
+    }
+};
+
+window.updateSelectedBlacklistReasonsText = () => {
+    const checkedBoxes = Array.from(document.querySelectorAll('input[name="blacklist-reasons-checkboxes"]:checked'));
+    const textEl = document.getElementById('selected-blacklist-reasons-text');
+    const textarea = document.getElementById('blacklist-reason');
+    
+    if (!textEl) return;
+    
+    if (checkedBoxes.length === 0) {
+        textEl.textContent = 'اضغط لاختيار بند أو أكثر من بنود المخالفة...';
+        textEl.style.color = '#cbd5e1';
+    } else if (checkedBoxes.length === 1) {
+        const name = checkedBoxes[0].parentElement.querySelector('span').textContent;
+        textEl.textContent = name;
+        textEl.style.color = 'white';
+    } else {
+        const first = checkedBoxes[0].parentElement.querySelector('span').textContent;
+        textEl.textContent = `${first} (+${checkedBoxes.length - 1} بنود أخرى)`;
+        textEl.style.color = 'white';
+    }
+    
+    // Toggle other/custom reason text area
+    const customChecked = checkedBoxes.some(cb => cb.value === 'custom');
+    if (textarea) {
+        if (customChecked) {
+            textarea.style.display = 'block';
+            textarea.setAttribute('required', 'true');
+            // Don't auto-reset value so they don't lose typed text if toggled, but ensure it starts empty if it was hidden
+            if (textarea.style.display === 'none') {
+                textarea.value = '';
+            }
+        } else {
+            textarea.style.display = 'none';
+            textarea.removeAttribute('required');
+        }
+    }
+};
+
+window.openAddBlacklistModal = function(isFromBooking) {
+    if (!isFromBooking) {
+        window.pendingBlacklistEntity = null;
+        window.pendingBlacklistCoordinator = null;
+    }
+    const modal = document.getElementById('blacklist-modal');
+    if (modal) {
+        modal.classList.add('active');
+        const form = document.getElementById('blacklist-form');
+        if (form) form.reset();
+        
+        // Reset custom checkboxes and text field
+        const checkboxes = document.querySelectorAll('input[name="blacklist-reasons-checkboxes"]');
+        checkboxes.forEach(cb => cb.checked = false);
+        
+        const dropdown = document.getElementById('blacklist-reason-dropdown');
+        if (dropdown) dropdown.style.display = 'none';
+        
+        const chevron = document.querySelector('#blacklist-reason-header i');
+        if (chevron) chevron.style.transform = 'rotate(0deg)';
+        
+        window.updateSelectedBlacklistReasonsText();
+        
+        const textarea = document.getElementById('blacklist-reason');
+        if (textarea) {
+            textarea.value = '';
+            textarea.style.display = 'none';
+            textarea.removeAttribute('required');
+        }
+        
+        document.getElementById('blacklist-value').focus();
+    }
+};
+
+window.closeBlacklistModal = function() {
+    const modal = document.getElementById('blacklist-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+};
+
+window.handleBlacklistSubmit = function(e) {
+    if (e) e.preventDefault();
+    
+    const type = document.getElementById('blacklist-type').value;
+    const value = document.getElementById('blacklist-value').value.trim();
+    
+    // Construct concatenated reasons list
+    const checkedBoxes = Array.from(document.querySelectorAll('input[name="blacklist-reasons-checkboxes"]:checked'));
+    if (checkedBoxes.length === 0) {
+        if (typeof showToast === 'function') {
+            showToast('يرجى اختيار بند واحد على الأقل من مبررات الحظر!', 'warning');
+        } else {
+            alert('يرجى اختيار بند واحد على الأقل من مبررات الحظر!');
+        }
+        return;
+    }
+
+    let reasonsArray = [];
+    checkedBoxes.forEach(cb => {
+        if (cb.value !== 'custom') {
+            reasonsArray.push(cb.value);
+        } else {
+            const customText = document.getElementById('blacklist-reason').value.trim();
+            if (customText) {
+                reasonsArray.push(`أخرى: ${customText}`);
+            } else {
+                // If custom is checked but empty, prompt user or add a placeholder
+                reasonsArray.push('أخرى (سبب مخصص)');
+            }
+        }
+    });
+
+    const reason = reasonsArray.join('\n');
+
+    if (!value || !reason) {
+        if (typeof showToast === 'function') {
+            showToast('يرجى تعبئة كافة الحقول المطلوبة أولاً!', 'warning');
+        } else {
+            alert('يرجى تعبئة كافة الحقول المطلوبة أولاً!');
+        }
+        return;
+    }
+
+    // Check duplicate
+    const exists = window.blacklistData.some(item => item.value.toLowerCase() === value.toLowerCase() && item.type === type);
+    if (exists) {
+        if (typeof showToast === 'function') {
+            showToast('هذا الاسم أو الجهة مدرجة بالفعل في القائمة السوداء!', 'warning');
+        } else {
+            alert('هذا الاسم أو الجهة مدرجة بالفعل في القائمة السوداء!');
+        }
+        return;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    window.blacklistData.push({ type, value, reason, date: today });
+    localStorage.setItem('itqan_blacklist', JSON.stringify(window.blacklistData));
+    
+    window.renderBlacklistTable();
+    window.closeBlacklistModal();
+
+    if (typeof showToast === 'function') {
+        showToast('تمت إضافة الكيان إلى القائمة السوداء وتفعيل الحظر التلقائي!', 'success');
+    }
+};
+
+window.deleteBlacklistEntry = function(index) {
+    const item = window.blacklistData[index];
+    if (!item) return;
+
+    if (!confirm(`هل أنت متأكد من رغبتك في إزالة [ ${item.value} ] وحذفه من القائمة السوداء؟`)) return;
+
+    window.blacklistData.splice(index, 1);
+    localStorage.setItem('itqan_blacklist', JSON.stringify(window.blacklistData));
+    window.renderBlacklistTable();
+
+    if (typeof showToast === 'function') {
+        showToast('تمت إزالة الكيان بنجاح من القائمة السوداء', 'info');
+    }
+};
+
+window.checkBlacklist = function(entityName, coordinatorName) {
+    if (!window.blacklistData || window.blacklistData.length === 0) {
+        window.loadBlacklist();
+    }
+
+    const ent = (entityName || '').trim().toLowerCase();
+    const coord = (coordinatorName || '').trim().toLowerCase();
+
+    for (let item of window.blacklistData) {
+        const val = item.value.trim().toLowerCase();
+        if (item.type === 'entity' && ent && ent.includes(val)) {
+            return item;
+        }
+        if (item.type === 'coordinator' && coord && coord.includes(val)) {
+            return item;
+        }
+    }
+    return null;
+};
+
+window.printBlacklist = () => {
+    window.currentPrintContext = 'landscape';
+    if (!window.blacklistData || window.blacklistData.length === 0) {
+        window.loadBlacklist();
+    }
+    
+    if (window.blacklistData.length === 0) {
+        alert('لا توجد جهات أو منسقين محظورين في القائمة السوداء لطباعتها.');
+        return;
+    }
+
+    // Build Table Body
+    const tableHtml = window.blacklistData.map(item => {
+        const typeText = item.type === 'entity' ? 'جهة منظمة' : 'منسق فعالية';
+        return `
+            <tr style="border-bottom: 1px solid #eee; height: 35px;">
+                <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">${typeText}</td>
+                <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold; color: #b91c1c;">${item.value}</td>
+                <td style="padding: 10px; border: 1px solid #ddd; white-space: normal; line-height: 1.5; max-width: 380px;">${item.reason}</td>
+                <td style="padding: 10px; border: 1px solid #ddd;">${item.date || '---'}</td>
+            </tr>
+        `;
+    }).join('');
+
+    document.getElementById('blacklist-print-count').textContent = window.blacklistData.length;
+    document.getElementById('blacklist-print-gen-date').textContent = new Date().toLocaleString('ar-SA-u-nu-latn');
+
+    // Inject and Show Preview
+    document.getElementById('blacklist-print-table-body').innerHTML = tableHtml;
+    
+    // Set preview
+    const previewContainer = document.getElementById('paper-preview-container');
+    if (previewContainer) {
+        previewContainer.style.width = '297mm';
+        previewContainer.innerHTML = document.getElementById('blacklist-print-template').innerHTML;
+    }
+    
+    // Open preview modal
+    window.currentReportTitle = 'القائمة السوداء';
+    document.title = `تقرير القائمة السوداء - ${new Date().toISOString().split('T')[0]}`;
+    document.getElementById('report-preview-modal').classList.add('active');
+};
+
+window.openBlacklistDetails = function(item) {
+    window.currentSelectedBlacklistItem = item;
+    
+    const modal = document.getElementById('blacklist-details-modal');
+    if (!modal) return;
+
+    const typeBadge = item.type === 'entity' 
+        ? `<span style="background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.2); padding: 5px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 700;"><i class="fas fa-building"></i> جهة منظمة</span>`
+        : `<span style="background: rgba(245,158,11,0.1); color: #fbbf24; border: 1px solid rgba(245,158,11,0.2); padding: 5px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 700;"><i class="fas fa-user"></i> منسق فعالية</span>`;
+
+    document.getElementById('blacklist-details-type').innerHTML = typeBadge;
+    document.getElementById('blacklist-details-value').textContent = item.value;
+    document.getElementById('blacklist-details-reason').textContent = item.reason;
+    document.getElementById('blacklist-details-date').textContent = item.date || '---';
+
+    modal.classList.add('active');
+};
+
+window.closeBlacklistDetailsModal = function() {
+    const modal = document.getElementById('blacklist-details-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+};
+
+window.printSingleBlacklist = function() {
+    const item = window.currentSelectedBlacklistItem;
+    if (!item) return;
+
+    window.currentPrintContext = 'portrait';
+
+    const typeText = item.type === 'entity' ? 'جهة منظمة كاملة' : 'منسق فعالية محدد';
+    const randomBanId = Math.floor(1000 + Math.random() * 9000);
+
+    document.getElementById('ban-print-id').textContent = randomBanId;
+    document.getElementById('ban-print-type').textContent = typeText;
+    document.getElementById('ban-print-value').textContent = item.value;
+    document.getElementById('ban-print-date').textContent = item.date || '---';
+    document.getElementById('ban-print-reason').textContent = item.reason;
+    document.getElementById('ban-print-gen-date').textContent = new Date().toLocaleString('ar-SA-u-nu-latn');
+
+    // Populate digital seal values inside single ban template before moving to preview
+    const template = document.getElementById('single-ban-print-template');
+    if (template) {
+        template.querySelectorAll('.ban-print-archive-id-seal').forEach(el => el.textContent = randomBanId);
+        template.querySelectorAll('.ban-print-date-seal').forEach(el => el.textContent = item.date || '---');
+    }
+
+    // System branding is applied dynamically to templates list
+    const previewContainer = document.getElementById('paper-preview-container');
+    if (previewContainer) {
+        previewContainer.style.width = '210mm';
+        previewContainer.innerHTML = document.getElementById('single-ban-print-template').innerHTML;
+    }
+    
+    // Open preview modal
+    window.currentReportTitle = `قرار حظر - ${item.value}`;
+    document.title = `قرار حظر - ${item.value}`;
+    document.getElementById('report-preview-modal').classList.add('active');
+};
+
+window.deleteCurrentBlacklistItem = function() {
+    const item = window.currentSelectedBlacklistItem;
+    if (!item) return;
+
+    const originalIndex = window.blacklistData.indexOf(item);
+    if (originalIndex === -1) return;
+
+    if (!confirm(`هل أنت متأكد من رغبتك في إزالة [ ${item.value} ] وحذفه من القائمة السوداء؟`)) return;
+
+    window.blacklistData.splice(originalIndex, 1);
+    localStorage.setItem('itqan_blacklist', JSON.stringify(window.blacklistData));
+    
+    window.renderBlacklistTable();
+    window.closeBlacklistDetailsModal();
+
+    if (typeof showToast === 'function') {
+        showToast('تمت إزالة الكيان بنجاح من القائمة السوداء', 'info');
+    }
+};
+
+window.openAddBlacklistModalFromBooking = function(bookingId) {
+    const booking = state.bookings.find(b => b.id === bookingId);
+    if (!booking) return;
+
+    window.pendingBlacklistEntity = booking.entityName;
+    window.pendingBlacklistCoordinator = booking.coordName;
+
+    // Open add blacklist modal with isFromBooking = true
+    window.openAddBlacklistModal(true);
+
+    const typeSelect = document.getElementById('blacklist-type');
+    const valInput = document.getElementById('blacklist-value');
+
+    if (typeSelect && valInput) {
+        typeSelect.value = 'entity';
+        valInput.value = booking.entityName;
+    }
+
+    // Direct user to Blacklist view so they see the modal clearly
+    if (typeof switchView === 'function') {
+        switchView('blacklist');
+    }
+};
+
+window.handleBlacklistTypeChange = function(type) {
+    const valInput = document.getElementById('blacklist-value');
+    if (!valInput) return;
+
+    if (window.pendingBlacklistEntity && window.pendingBlacklistCoordinator) {
+        valInput.value = type === 'entity' ? window.pendingBlacklistEntity : window.pendingBlacklistCoordinator;
+    }
+};
+
+// ===== Backup & Restore System (v2.0 Pro) =====
+window.exportFullBackupJSON = function() {
+    try {
+        const fullBackupData = {
+            version: '2.0.0',
+            exportedAt: new Date().toISOString(),
+            state: state,
+            blacklist: window.blacklistData || []
+        };
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(fullBackupData, null, 2));
+        const downloadAnchor = document.createElement('a');
+        const dateStr = new Date().toISOString().split('T')[0];
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `Itqan_System_Backup_${dateStr}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+        showToast('تم تصدير النسخة الاحتياطية للبيانات بنجاح (JSON Backup)!', 'success');
+    } catch (e) {
+        console.error("Backup Export Error:", e);
+        showToast('حدث خطأ أثناء تصدير النسخة الاحتياطية.', 'error');
+    }
+};
+
+window.handleImportBackupJSON = function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const importedData = JSON.parse(e.target.result);
+            if (!importedData || (!importedData.state && !importedData.rooms)) {
+                showToast('ملف النسخة الاحتياطية غير صالحة أو تالف.', 'error');
+                return;
+            }
+
+            if (confirm('هل أنت متأكد من استرجاع هذا الملف؟ سيتم تحديث كافة بيانات الحجوزات والإعدادات الحالية.')) {
+                const newStateData = importedData.state || importedData;
+                state = { ...defaultState, ...newStateData };
+                if (newStateData.appSettings) {
+                    state.appSettings = { ...defaultState.appSettings, ...newStateData.appSettings };
+                }
+                saveState();
+
+                if (importedData.blacklist && Array.isArray(importedData.blacklist)) {
+                    window.blacklistData = importedData.blacklist;
+                    localStorage.setItem('itqan_blacklist', JSON.stringify(window.blacklistData));
+                }
+
+                syncSettingsUI();
+                applySystemBranding();
+                if (typeof renderDashboard === 'function') renderDashboard();
+                if (typeof renderBookingsTable === 'function') renderBookingsTable();
+                if (typeof renderRoomsGrid === 'function') renderRoomsGrid();
+                if (typeof renderBlacklistTable === 'function') window.renderBlacklistTable();
+
+                showToast('✅ تم استرجاع النسخة الاحتياطية وتطبيق البيانات بنجاح!', 'success');
+            }
+        } catch (err) {
+            console.error("Import Backup Error:", err);
+            showToast('فشل في قراءة ملف النسخة الاحتياطية.', 'error');
+        }
+    };
+    reader.readAsText(file);
+};
+
+window.resetSystemToFactoryDefault = function() {
+    if (confirm('⚠️ تحذير: هل أنت متأكد من إعادة ضبط المصنع؟ سيتم إعادة النظام إلى البيانات الافتراضية.')) {
+        localStorage.removeItem('itqan_state');
+        localStorage.removeItem('injaz_state');
+        localStorage.removeItem('itqan_blacklist');
+        location.reload();
+    }
+};
+
+// ===== Excel / CSV Export (v2.0 Pro) =====
+window.exportBookingsToExcelCSV = function() {
+    try {
+        if (!state.bookings || state.bookings.length === 0) {
+            showToast('لا توجد حجوزات لتصديرها.', 'info');
+            return;
+        }
+
+        const headers = ["رقم الحجز", "مسمى الفعالية", "المقر", "التاريخ", "الوقت", "الفترة", "الجهة المنظمة", "المنسق", "جوال المنسق", "عدد الحضور", "الحالة"];
+        
+        let csvContent = "\uFEFF"; // UTF-8 BOM for Arabic support in Excel
+        csvContent += headers.join(",") + "\n";
+
+        state.bookings.forEach(b => {
+            const room = state.rooms.find(r => r.id === b.roomId);
+            const roomName = room ? room.name : 'غير محدد';
+            const statusText = b.status === 'confirmed' ? 'معتمد' : b.status === 'pending' ? 'قيد الانتظار' : 'ملغى';
+
+            const row = [
+                `"${b.id}"`,
+                `"${(b.title || '').replace(/"/g, '""')}"`,
+                `"${(roomName).replace(/"/g, '""')}"`,
+                `"${b.date || ''}"`,
+                `"${b.time || ''}"`,
+                `"${b.timePeriod || ''}"`,
+                `"${(b.entityName || '').replace(/"/g, '""')}"`,
+                `"${(b.coordName || '').replace(/"/g, '""')}"`,
+                `"${b.coordMobile || ''}"`,
+                `"${b.audienceCount || 0}"`,
+                `"${statusText}"`
+            ];
+            csvContent += row.join(",") + "\n";
+        });
+
+        const encodedUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
+        const link = document.createElement("a");
+        const dateStr = new Date().toISOString().split('T')[0];
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `Bookings_Report_${dateStr}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+
+        showToast('تم تصدير الحجوزات إلى ملف Excel / CSV بنجاح!', 'success');
+    } catch (err) {
+        console.error("Excel Export Error:", err);
+        showToast('حدث خطأ أثناء تصدير Excel.', 'error');
+    }
+};
+
+// ===== Client Booking Link & WhatsApp Integration =====
+window.openClientBookingLinkModal = function() {
+    const modal = document.getElementById('client-booking-link-modal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+    updateWhatsAppGeneratedLink();
+};
+
+window.closeClientBookingLinkModal = function() {
+    const modal = document.getElementById('client-booking-link-modal');
+    if (!modal) return;
+    modal.style.display = 'none';
+    modal.classList.remove('active');
+};
+
+window.updateWhatsAppGeneratedLink = function() {
+    const textarea = document.getElementById('client-link-template-text');
+    if (!textarea) return;
+
+    const orgName = state.appSettings.orgName || 'إدارة التعليم بمنطقة عسير';
+    const deptName = state.appSettings.deptName || 'إدارة الاتصال المؤسسي';
+    const contact = state.appSettings.contactNumber || '0582233500';
+
+    const availableRooms = state.rooms ? state.rooms.map(r => `• ${r.name}`).join('\n') : '';
+
+    const text = `السلام عليكم ورحمة الله وبركاته،
+
+مرحباً بك.. نسعد بتواصلك مع [ ${orgName} - ${deptName} ].
+
+يرجى تعبئة بيانات طلب حجز المقر المطلوب وإرسالها إلينا للاعتماد:
+----------------------------------------
+📌 مسمى الفعالية: 
+🏢 المقر المطلوب: 
+📅 تاريخ التنفيذ: 
+⏰ الوقت والفترة: 
+👤 اسم الجهة والمنسق: 
+📱 رقم جوال التنسيق: 
+👥 عدد الحضور التقديري: 
+----------------------------------------
+المقرات المتاحة للحجز:
+${availableRooms}
+
+للتنسيق والاستفسار المباشر: ${contact}`;
+
+    textarea.value = text;
+};
+
+window.openWhatsAppClientLink = function() {
+    const mobileInput = document.getElementById('client-link-mobile');
+    let rawMobile = mobileInput ? mobileInput.value.trim() : '';
+    
+    // Clean mobile number (e.g. 0551234567 -> 966551234567)
+    let cleanMobile = rawMobile.replace(/\D/g, '');
+    if (cleanMobile.startsWith('05')) {
+        cleanMobile = '966' + cleanMobile.substring(1);
+    } else if (cleanMobile.startsWith('5')) {
+        cleanMobile = '966' + cleanMobile;
+    }
+
+    const textarea = document.getElementById('client-link-template-text');
+    const text = textarea ? textarea.value : '';
+
+    let url = '';
+    if (cleanMobile.length >= 9) {
+        url = `https://api.whatsapp.com/send?phone=${cleanMobile}&text=${encodeURIComponent(text)}`;
+    } else {
+        url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    }
+
+    window.open(url, '_blank');
+    showToast('جاري فتح الواتساب لإرسال نموذج الحجز...', 'success');
+};
+
+window.copyClientBookingLinkText = function() {
+    const textarea = document.getElementById('client-link-template-text');
+    if (!textarea) return;
+    
+    navigator.clipboard.writeText(textarea.value).then(() => {
+        showToast('✅ تم نسخ نص نموذج الحجز بنجاح!', 'success');
+    }).catch(err => {
+        textarea.select();
+        document.execCommand('copy');
+        showToast('✅ تم نسخ النص بنجاح!', 'success');
+    });
+};
 
 
 // ==========================================================================

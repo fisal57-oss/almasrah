@@ -21,7 +21,8 @@ import {
   Layers,
   Wrench,
   BarChart3,
-  DoorClosed
+  DoorClosed,
+  Ban
 } from 'lucide-react';
 import { getEventDetails } from '../utils/storage';
 
@@ -110,6 +111,13 @@ export default function Sidebar({
           icon: Layers
         },
         { 
+          id: 'itqan-blacklist', 
+          label: 'القائمة السوداء للمحظورين', 
+          icon: Ban,
+          badge: 'حظر تلقائي 🚫',
+          badgeType: 'rose'
+        },
+        { 
           id: 'itqan-equipment', 
           label: 'المعدات والعهدة التشغيلية', 
           icon: Wrench
@@ -185,6 +193,8 @@ export default function Sidebar({
         return 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30';
       case 'purple':
         return 'bg-purple-500/15 text-purple-300 border border-purple-500/30';
+      case 'rose':
+        return 'bg-rose-500/15 text-rose-300 border border-rose-500/30';
       case 'amber':
         return 'bg-amber-500/15 text-amber-300 border border-amber-500/30';
       case 'cyan':

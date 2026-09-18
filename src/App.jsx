@@ -338,6 +338,7 @@ export default function App() {
               'itqan-rooms': 'rooms',
               'itqan-calendar': 'calendar',
               'itqan-bookings': 'bookings-list',
+              'itqan-blacklist': 'blacklist',
               'itqan-equipment': 'equipment',
               'itqan-reports': 'reports'
             };
@@ -347,21 +348,40 @@ export default function App() {
               'rooms': 'صفحة القاعات والمقرات',
               'calendar': 'التقويم وجدولة الفعاليات',
               'bookings-list': 'إدارة الحجوزات والطلبات',
+              'blacklist': 'القائمة السوداء للجهات والمنسقين',
               'equipment': 'إدارة المعدات والعهدة',
               'reports': 'التقارير التحليلية والإحصاءات',
               'dashboard': 'لوحة متابعة القاعات والفعاليات'
+            };
+
+            const iconMap = {
+              'rooms': '🏢',
+              'calendar': '📅',
+              'bookings-list': '📋',
+              'blacklist': '🚫',
+              'equipment': '🔧',
+              'reports': '📊',
+              'dashboard': '🏛️'
             };
 
             return (
               <div className="space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xl">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-400/30 flex items-center justify-center font-black">
-                      🏢
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black border ${
+                      targetView === 'blacklist' 
+                        ? 'bg-rose-500/20 text-rose-400 border-rose-500/30' 
+                        : 'bg-blue-500/20 text-blue-400 border-blue-400/30'
+                    }`}>
+                      {iconMap[targetView] || '🏢'}
                     </div>
                     <div>
                       <h2 className="text-base font-black text-white">{titleMap[targetView] || 'نظام إدارة القاعات'}</h2>
-                      <p className="text-xs text-slate-400">واجهة موحدة ومتكاملة ضمن منصة المسارح والقاعات</p>
+                      <p className="text-xs text-slate-400">
+                        {targetView === 'blacklist' 
+                          ? 'إدارة الجهات والمنسقين المحظورين ومنع حجزهم تلقائياً في النظام'
+                          : 'واجهة موحدة ومتكاملة ضمن منصة المسارح والقاعات'}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
