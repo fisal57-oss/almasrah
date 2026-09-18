@@ -103,10 +103,62 @@ export default function SettingsModal({
   };
 
   const handleRemoveLogo = () => {
-    setEventData(prev => ({
-      ...prev,
+    const updated = {
+      ...eventData,
       logoUrl: ''
-    }));
+    };
+    setEventData(updated);
+    saveEventDetails(updated);
+    onEventUpdated?.(updated);
+  };
+
+  const handleStampUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('يرجى اختيار ملف صورة صالح للختم (PNG, JPG, SVG, WebP)');
+      return;
+    }
+
+    if (file.size > 3 * 1024 * 1024) {
+      alert('حجم الصورة كبير جداً، يفضل اختيار صورة أقل من 3 ميغابايت للحفاظ على كفاءة المتصفح');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (uploadEvent) => {
+      const base64Url = uploadEvent.target.result;
+      const updated = {
+        ...eventData,
+        stampUrl: base64Url
+      };
+      setEventData(updated);
+      saveEventDetails(updated);
+      onEventUpdated?.(updated);
+      setIsSaved(true);
+      setTimeout(() => setIsSaved(false), 3000);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveStamp = () => {
+    if (confirm('هل أنت متأكد من حذف الختم الرسمي؟')) {
+      const updated = {
+        ...eventData,
+        stampUrl: ''
+      };
+      setEventData(updated);
+      saveEventDetails(updated);
+      onEventUpdated?.(updated);
+    }
+  };
+
+  const handleSaveOrganizationInfo = () => {
+    saveEventDetails(eventData);
+    onEventUpdated?.(eventData);
+    setIsSaved(true);
+    setTimeout(() => setIsSaved(false), 3000);
   };
 
   const handleSubmit = (e) => {
@@ -253,7 +305,194 @@ export default function SettingsModal({
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto space-y-6" dir="rtl">
+    <div className="w-full max-w-5xl mx-auto space-y-6" dir="rtl">
+      
+      {/* 1. إعدادات النظام والتخصيص (الهوية الرسمية، معلومات الجهة، وختم الاعتماد المعتمد) */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between px-2">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 text-slate-950 font-black flex items-center justify-center shadow-lg shadow-cyan-500/25">
+              <Sparkles className="w-5 h-5 text-slate-950" />
+            </div>
+            <div>
+              <h2 className="text-lg sm:text-xl font-black text-white">إعدادات النظام والتخصيص</h2>
+              <p className="text-xs text-slate-400">تخصيص الشعار المؤسسي، بيانات المنشأة، وختم الاعتماد المعتمد للتقارير والبطاقات</p>
+            </div>
+          </div>
+          {isSaved && (
+            <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded-xl flex items-center gap-1.5 animate-fade-in">
+              <Check className="w-4 h-4" /> تم الحفظ بنجاح
+            </span>
+          )}
+        </div>
+
+        {/* 3 Cards Grid Matching User's Design */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+
+          {/* Card 1: ختم الاعتماد الرسمي */}
+          <div className="bg-[#0b162b] p-6 rounded-3xl border border-white/10 flex flex-col justify-between shadow-xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <h3 className="text-sm font-black text-white">ختم الاعتماد الرسمي</h3>
+              <FileText className="w-4 h-4 text-cyan-400" />
+            </div>
+
+            <div className="flex flex-col items-center justify-center py-2">
+              <div className="w-44 h-32 rounded-2xl border-2 border-dashed border-white/20 bg-slate-900/70 flex items-center justify-center p-2 relative overflow-hidden shadow-inner">
+                {eventData.stampUrl ? (
+                  <img
+                    src={eventData.stampUrl}
+                    alt="ختم الاعتماد الرسمي"
+                    className="max-h-full max-w-full object-contain"
+                  />
+                ) : (
+                  <span className="text-xs text-slate-400 text-center font-medium">لا يوجد ختم معتمد حالياً</span>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="w-full block cursor-pointer">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleStampUpload}
+                  className="hidden"
+                />
+                <div className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 font-black text-xs flex items-center justify-center gap-2 transition-all shadow-lg shadow-cyan-500/25">
+                  <Upload className="w-4 h-4 text-slate-950" />
+                  <span>رفع صورة الختم المعتمد</span>
+                </div>
+              </label>
+
+              {eventData.stampUrl && (
+                <button
+                  type="button"
+                  onClick={handleRemoveStamp}
+                  className="w-full py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>حذف الختم</span>
+                </button>
+              )}
+
+              <p className="text-[10px] text-slate-400 text-center pt-1 leading-relaxed">
+                يتم إدراج هذا الختم تلقائياً في خانة الاعتماد بجميع التقارير.
+              </p>
+            </div>
+          </div>
+
+          {/* Card 2: معلومات الجهة */}
+          <div className="bg-[#0b162b] p-6 rounded-3xl border border-white/10 flex flex-col justify-between shadow-xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <h3 className="text-sm font-black text-white">معلومات الجهة</h3>
+              <Building2 className="w-4 h-4 text-cyan-400" />
+            </div>
+
+            <div className="space-y-3 py-1">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 mb-1">اسم المنشأة / الجهة</label>
+                <input
+                  type="text"
+                  value={eventData.orgName || ''}
+                  onChange={(e) => setEventData({ ...eventData, orgName: e.target.value })}
+                  placeholder="إدارة التعليم بمنطقة عسير"
+                  className="w-full bg-white/5 border border-white/15 focus:border-cyan-400 focus:bg-white/10 rounded-xl px-3.5 py-2 text-xs text-white outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 mb-1">القسم المسؤول</label>
+                <input
+                  type="text"
+                  value={eventData.deptName || ''}
+                  onChange={(e) => setEventData({ ...eventData, deptName: e.target.value })}
+                  placeholder="إدارة الاتصال المؤسسي"
+                  className="w-full bg-white/5 border border-white/15 focus:border-cyan-400 focus:bg-white/10 rounded-xl px-3.5 py-2 text-xs text-white outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 mb-1">أرقام التواصل والاستفسار</label>
+                <input
+                  type="text"
+                  value={eventData.contactNumber || ''}
+                  onChange={(e) => setEventData({ ...eventData, contactNumber: e.target.value })}
+                  placeholder="0590504047 - 0582233500"
+                  className="w-full bg-white/5 border border-white/15 focus:border-cyan-400 focus:bg-white/10 rounded-xl px-3.5 py-2 text-xs text-white outline-none font-mono"
+                  dir="ltr"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                onClick={handleSaveOrganizationInfo}
+                className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-600/30"
+              >
+                <Save className="w-4 h-4 text-white" />
+                <span>حفظ التغييرات والبيانات</span>
+              </button>
+              <p className="text-[10px] text-slate-400 text-center pt-1 leading-relaxed">
+                تظهر هذه المعلومات في ترويسة التقارير والمطبوعات.
+              </p>
+            </div>
+          </div>
+
+          {/* Card 3: هوية النظام (الشعار) */}
+          <div className="bg-[#0b162b] p-6 rounded-3xl border border-white/10 flex flex-col justify-between shadow-xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <h3 className="text-sm font-black text-white">هوية النظام (الشعار)</h3>
+              <Image className="w-4 h-4 text-cyan-400" />
+            </div>
+
+            <div className="flex flex-col items-center justify-center py-2">
+              <div className="w-44 h-32 rounded-2xl border-2 border-dashed border-white/20 bg-slate-900/70 flex items-center justify-center p-2 relative overflow-hidden shadow-inner">
+                {eventData.logoUrl && eventData.logoUrl !== 'ministry_logo.png' ? (
+                  <img
+                    src={eventData.logoUrl}
+                    alt="شعار النظام"
+                    className="max-h-full max-w-full object-contain"
+                  />
+                ) : (
+                  <span className="text-xs text-slate-400 text-center font-medium">لا يوجد شعار مخصص</span>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="w-full block cursor-pointer">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                  className="hidden"
+                />
+                <div className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 font-black text-xs flex items-center justify-center gap-2 transition-all shadow-lg shadow-cyan-500/25">
+                  <Upload className="w-4 h-4 text-slate-950" />
+                  <span>رفع شعار جديد</span>
+                </div>
+              </label>
+
+              {eventData.logoUrl && eventData.logoUrl !== 'ministry_logo.png' && (
+                <button
+                  type="button"
+                  onClick={handleRemoveLogo}
+                  className="w-full py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>حذف الشعار والعودة للافتراضي</span>
+                </button>
+              )}
+
+              <p className="text-[10px] text-slate-400 text-center pt-1 leading-relaxed">
+                يفضل استخدام صورة بخلفية شفافة (PNG) وبأبعاد مربعة.
+              </p>
+            </div>
+          </div>
+
+        </div>
+      </div>
       
       {/* Event Info Form */}
       <form onSubmit={handleSubmit} className="bg-[#0b162b] p-6 sm:p-8 rounded-3xl border border-cyan-500/30 space-y-6 shadow-2xl">

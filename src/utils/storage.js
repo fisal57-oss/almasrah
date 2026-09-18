@@ -6,12 +6,16 @@ const STORAGE_EVENT_KEY = 'theater_event_v2';
 export const DEFAULT_EVENT = {
   title: 'المسرح الرئيسي - حفل التكريم والافتتاح',
   organizer: 'إدارة المسرح والفعاليات',
+  orgName: 'إدارة التعليم بمنطقة عسير',
+  deptName: 'إدارة الاتصال المؤسسي',
+  contactNumber: '0590504047 - 0582233500',
   date: 'الجمعة، 25 أكتوبر 2026',
   time: '08:00 مساءً (تفتح الأبواب 07:00 مساءً)',
   venue: 'المسرح الرئيسي - القاعة الكبرى',
   city: 'الرياض، المملكة العربية السعودية',
   logoText: 'المسرح الرئيسي',
   logoUrl: 'ministry_logo.png',
+  stampUrl: '',
   theaterImageUrl: '',
   note: 'يرجى إبراز بطاقة الحضور عند مدخل المسرح للتحقق عبر الـ QR Code.'
 };
@@ -179,12 +183,27 @@ export function saveSeats(seats) {
 export function getEventDetails() {
   try {
     const saved = localStorage.getItem(STORAGE_EVENT_KEY);
+    let itqanSettings = {};
+    try {
+      const itqanRaw = localStorage.getItem('itqan_state');
+      if (itqanRaw) {
+        itqanSettings = JSON.parse(itqanRaw)?.appSettings || {};
+      }
+    } catch (e) {}
+
     if (saved) {
       const parsed = JSON.parse(saved);
       if (!parsed.logoUrl) {
         parsed.logoUrl = 'ministry_logo.png';
       }
-      return { ...DEFAULT_EVENT, ...parsed };
+      return { 
+        ...DEFAULT_EVENT, 
+        orgName: parsed.orgName || itqanSettings.orgName || DEFAULT_EVENT.orgName,
+        deptName: parsed.deptName || itqanSettings.deptName || DEFAULT_EVENT.deptName,
+        contactNumber: parsed.contactNumber || itqanSettings.contactNumber || DEFAULT_EVENT.contactNumber,
+        stampUrl: parsed.stampUrl || itqanSettings.stamp || '',
+        ...parsed 
+      };
     }
   } catch (err) {
     console.error('Error loading event', err);
@@ -195,6 +214,18 @@ export function getEventDetails() {
 export function saveEventDetails(eventData) {
   try {
     localStorage.setItem(STORAGE_EVENT_KEY, JSON.stringify(eventData));
+    try {
+      const itqanRaw = localStorage.getItem('itqan_state');
+      const itqanState = itqanRaw ? JSON.parse(itqanRaw) : {};
+      if (!itqanState.appSettings) itqanState.appSettings = {};
+      if (eventData.orgName) itqanState.appSettings.orgName = eventData.orgName;
+      if (eventData.deptName) itqanState.appSettings.deptName = eventData.deptName;
+      if (eventData.contactNumber) itqanState.appSettings.contactNumber = eventData.contactNumber;
+      if (eventData.stampUrl !== undefined) itqanState.appSettings.stamp = eventData.stampUrl;
+      if (eventData.logoUrl) itqanState.appSettings.logo = eventData.logoUrl;
+      localStorage.setItem('itqan_state', JSON.stringify(itqanState));
+      localStorage.setItem('injaz_state', JSON.stringify(itqanState));
+    } catch (e) {}
   } catch (err) {
     console.error('Error saving event', err);
   }
