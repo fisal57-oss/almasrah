@@ -150,8 +150,6 @@ function setupNavigation() {
             link.classList.add('active');
         });
     });
-});
-    });
 }
 
 function switchView(viewId) {
