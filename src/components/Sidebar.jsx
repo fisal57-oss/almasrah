@@ -17,7 +17,11 @@ import {
   Lock,
   ExternalLink,
   ShieldCheck,
-  X
+  X,
+  Layers,
+  Wrench,
+  BarChart3,
+  DoorClosed
 } from 'lucide-react';
 import { getEventDetails } from '../utils/storage';
 
@@ -38,87 +42,127 @@ export default function Sidebar({
   const [logoError, setLogoError] = useState(false);
   const activeEvent = eventDetails || getEventDetails();
   const activeLogo = !logoError && activeEvent?.logoUrl;
-  const menuItems = [
-    { 
-      id: 'dashboard', 
-      label: 'لوحة القيادة والمؤشرات', 
-      icon: LayoutDashboard,
-      badge: `${stats.reserved || 0} نشط`
+
+  const menuSections = [
+    {
+      title: 'الرئيسية والمسرح',
+      items: [
+        { 
+          id: 'dashboard', 
+          label: 'لوحة القيادة والمؤشرات', 
+          icon: LayoutDashboard,
+          badge: `${stats.reserved || 0} نشط`
+        },
+        { 
+          id: 'map', 
+          label: 'خريطة مقاعد المسرح (746)', 
+          icon: Armchair, 
+          badge: `${stats.available || 0} شاغر`
+        },
+        { 
+          id: 'booking-form', 
+          label: 'استمارة حجز القاعات والمسارح', 
+          icon: FileSpreadsheet, 
+          badge: 'طلب حجز 📝'
+        },
+        { 
+          id: 'invitations', 
+          label: 'مركز الدعوات والبطاقات', 
+          icon: Mail, 
+          badge: `${stats.reserved || 0} دعوة`
+        },
+        { 
+          id: 'list', 
+          label: 'كشف الضيوف والحجوزات', 
+          icon: Calendar, 
+          badge: `${stats.reserved || 0} ضيف`
+        },
+        { 
+          id: 'scanner', 
+          label: 'ماسح الباركود عند الباب', 
+          icon: QrCode,
+          badge: `${stats.checkedIn || 0} حاضر`
+        }
+      ]
     },
-    { 
-      id: 'itqan', 
-      label: 'نظام إتقان لإدارة القاعات', 
-      icon: Building2, 
-      badge: 'إتقان 🏢'
+    {
+      title: 'إدارة القاعات والمقرات',
+      items: [
+        { 
+          id: 'itqan-rooms', 
+          label: 'صفحة القاعات والمقرات', 
+          icon: DoorClosed,
+          badge: 'القاعات'
+        },
+        { 
+          id: 'itqan-calendar', 
+          label: 'التقويم وجدولة الفعاليات', 
+          icon: Calendar,
+          badge: 'التقويم'
+        },
+        { 
+          id: 'itqan-bookings', 
+          label: 'إدارة الحجوزات والطلبات', 
+          icon: FileSpreadsheet,
+          badge: 'الحجوزات'
+        },
+        { 
+          id: 'itqan-equipment', 
+          label: 'المعدات والعهدة', 
+          icon: Wrench,
+          badge: 'المعدات'
+        },
+        { 
+          id: 'itqan-reports', 
+          label: 'التقارير التحليلية', 
+          icon: BarChart3,
+          badge: 'تقارير'
+        }
+      ]
     },
-    { 
-      id: 'booking-form', 
-      label: 'استمارة حجز القاعات والمسارح', 
-      icon: FileSpreadsheet, 
-      badge: 'طلب حجز 📝'
-    },
-    { 
-      id: 'map', 
-      label: 'خريطة مقاعد المسرح', 
-      icon: Armchair, 
-      badge: `${stats.available || 0} شاغر`
-    },
-    { 
-      id: 'invitations', 
-      label: 'مركز الدعوات والبطاقات', 
-      icon: Mail, 
-      badge: `${stats.reserved || 0} دعوة`
-    },
-    { 
-      id: 'list', 
-      label: 'كشف الضيوف والحجوزات', 
-      icon: Calendar, 
-      badge: `${stats.reserved || 0} ضيف`
-    },
-    { 
-      id: 'scanner', 
-      label: 'ماسح الباركود عند الباب', 
-      icon: QrCode,
-      badge: `${stats.checkedIn || 0} حاضر`
-    },
-    { 
-      id: 'staff-portal', 
-      label: 'بوابة الموظف والمنظمين', 
-      icon: ShieldCheck, 
-      onClick: () => window.open('staff.html', '_blank'),
-      isExternal: true
-    },
-    { 
-      id: 'beneficiary-portal', 
-      label: 'بوابة المستفيدين والضيوف', 
-      icon: Users, 
-      onClick: onOpenBeneficiaryPortal,
-      isExternal: true
-    },
-    { 
-      id: 'print-all-tickets', 
-      label: 'طباعة جميع تذاكر الحضور', 
-      icon: Printer, 
-      onClick: onOpenPrintAllTickets
-    },
-    { 
-      id: 'seat-manager', 
-      label: 'تخصيص وإدارة المقاعد', 
-      icon: PlusCircle, 
-      onClick: onOpenSeatManager
-    },
-    { 
-      id: 'labels', 
-      label: 'طباعة ملصقات المقاعد QR', 
-      icon: Printer, 
-      onClick: onOpenPrintLabels 
-    },
-    { 
-      id: 'settings', 
-      label: 'إعدادات الفعالية والمسرح', 
-      icon: Settings, 
-      onClick: onOpenSettings
-    },
+    {
+      title: 'البوابات الذكية والأدوات',
+      items: [
+        { 
+          id: 'staff-portal', 
+          label: 'بوابة الموظف والمنظمين', 
+          icon: ShieldCheck, 
+          onClick: () => window.open('staff.html', '_blank'),
+          isExternal: true
+        },
+        { 
+          id: 'beneficiary-portal', 
+          label: 'بوابة المستفيدين والضيوف', 
+          icon: Users, 
+          onClick: onOpenBeneficiaryPortal,
+          isExternal: true
+        },
+        { 
+          id: 'print-all-tickets', 
+          label: 'طباعة جميع تذاكر الحضور', 
+          icon: Printer, 
+          onClick: onOpenPrintAllTickets
+        },
+        { 
+          id: 'seat-manager', 
+          label: 'تخصيص وإدارة المقاعد', 
+          icon: PlusCircle, 
+          onClick: onOpenSeatManager
+        },
+        { 
+          id: 'labels', 
+          label: 'طباعة ملصقات المقاعد QR', 
+          icon: Printer, 
+          onClick: onOpenPrintLabels 
+        },
+        { 
+          id: 'settings', 
+          label: 'إعدادات الفعالية والمسرح', 
+          icon: Settings, 
+          onClick: onOpenSettings
+        }
+      ]
+    }
   ];
 
   const handleItemClick = (item) => {
@@ -152,10 +196,10 @@ export default function Sidebar({
             )}
             <div>
               <h1 className="text-sm sm:text-base font-black tracking-wide text-white">
-                مسرح تعليم عسير
+                منظومة المسارح والقاعات
               </h1>
               <p className="text-[10px] text-cyan-400 font-bold tracking-wider uppercase">
-                لوحة تحكم الإدارة
+                لوحة التحكم الموحدة
               </p>
             </div>
           </div>
@@ -173,50 +217,58 @@ export default function Sidebar({
         </div>
 
         {/* Navigation Items List */}
-        <nav className="p-3 space-y-1.5 mt-2">
-          <div className="text-[10px] font-black text-slate-400 px-3 uppercase tracking-wider mb-2">
-            الأقسام الرئيسية
-          </div>
+        <nav className="p-3 space-y-4 mt-2">
+          {menuSections.map((section, sIdx) => (
+            <div key={sIdx} className="space-y-1">
+              <div className="text-[10px] font-black text-slate-400 px-3 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+                <span>{section.title}</span>
+              </div>
+              <div className="space-y-1">
+                {section.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = currentTab === item.id;
 
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = currentTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => handleItemClick(item)}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-2xl text-xs font-bold transition-all duration-200 ${
+                        isActive
+                          ? 'bg-gradient-to-l from-cyan-500 to-blue-600 text-slate-950 shadow-lg shadow-cyan-500/25 scale-[1.01] font-black'
+                          : 'text-slate-300 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Icon className={`w-4 h-4 ${isActive ? 'text-slate-950' : 'text-cyan-400'}`} />
+                        <span>{item.label}</span>
+                      </div>
+                      
+                      {item.badge && (
+                        <span className={`text-[9px] font-mono px-2 py-0.5 rounded-full font-bold ${
+                          isActive 
+                            ? 'bg-slate-950/20 text-slate-950 font-black' 
+                            : item.id === 'map'
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                            : item.id === 'scanner'
+                            ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                            : item.id.startsWith('itqan')
+                            ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                            : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                        }`}>
+                          {item.badge}
+                        </span>
+                      )}
 
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleItemClick(item)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all duration-200 ${
-                  isActive
-                    ? 'bg-gradient-to-l from-cyan-500 to-blue-600 text-slate-950 shadow-lg shadow-cyan-500/25 scale-[1.01] font-black'
-                    : 'text-slate-300 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-slate-950' : 'text-cyan-400'}`} />
-                  <span>{item.label}</span>
-                </div>
-                
-                {item.badge && (
-                  <span className={`text-[9px] font-mono px-2 py-0.5 rounded-full font-bold ${
-                    isActive 
-                      ? 'bg-slate-950/20 text-slate-950 font-black' 
-                      : item.id === 'map'
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                      : item.id === 'scanner'
-                      ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-                      : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                  }`}>
-                    {item.badge}
-                  </span>
-                )}
-
-                {item.isExternal && (
-                  <ExternalLink className="w-3 h-3 text-slate-400" />
-                )}
-              </button>
-            );
-          })}
+                      {item.isExternal && (
+                        <ExternalLink className="w-3 h-3 text-slate-400" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
       </div>
 

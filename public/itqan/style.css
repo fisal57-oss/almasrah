@@ -2119,3 +2119,28 @@ input, textarea {
         transform: scale(0.5);
     }
 }
+
+
+/* ==========================================================================
+   Embedded Mode (الوضع المدمج السلس داخل المنظومة الموحدة بدون أشرطة مكررة)
+   ========================================================================== */
+body.is-embedded .sidebar,
+body.is-embedded .top-bar,
+body.is-embedded .sidebar-footer {
+    display: none !important;
+}
+
+body.is-embedded .app-container {
+    display: block !important;
+    height: 100vh !important;
+    width: 100% !important;
+}
+
+body.is-embedded .main-content {
+    padding: 1.25rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100vh !important;
+    overflow-y: auto !important;
+    background: transparent !important;
+}

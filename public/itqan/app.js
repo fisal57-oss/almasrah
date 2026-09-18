@@ -3052,3 +3052,39 @@ function reloadTheaterFrame() {
     }
 }
 
+
+
+// ==========================================================================
+// Embedded View Controller (التحكم في الواجهات المدمجة بدون إطارات مكررة)
+// ==========================================================================
+(function initEmbeddedMode() {
+    try {
+        const isEmbed = (window.self !== window.top) || window.location.search.includes('embed=clean');
+        if (isEmbed) {
+            document.body.classList.add('is-embedded');
+            document.documentElement.classList.add('is-embedded');
+        }
+
+        function applyViewFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            const viewParam = params.get('view');
+            if (viewParam && typeof switchView === 'function') {
+                switchView(viewParam);
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(applyViewFromUrl, 50);
+        });
+
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.action === 'switchView' && event.data.viewId) {
+                if (typeof switchView === 'function') {
+                    switchView(event.data.viewId);
+                }
+            }
+        });
+    } catch (e) {
+        console.warn('Embedded mode init error:', e);
+    }
+})();
