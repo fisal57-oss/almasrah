@@ -365,55 +365,15 @@ export default function App() {
             };
 
             return (
-              <div className="space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xl">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black border ${
-                      targetView === 'blacklist' 
-                        ? 'bg-rose-500/20 text-rose-400 border-rose-500/30' 
-                        : 'bg-blue-500/20 text-blue-400 border-blue-400/30'
-                    }`}>
-                      {iconMap[targetView] || '🏢'}
-                    </div>
-                    <div>
-                      <h2 className="text-base font-black text-white">{titleMap[targetView] || 'نظام إدارة القاعات'}</h2>
-                      <p className="text-xs text-slate-400">
-                        {targetView === 'blacklist' 
-                          ? 'إدارة الجهات والمنسقين المحظورين ومنع حجزهم تلقائياً في النظام'
-                          : 'واجهة موحدة ومتكاملة ضمن منصة المسارح والقاعات'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => {
-                        const frame = document.getElementById('itqan-embed-frame');
-                        if (frame) frame.src = `./itqan/index.html?embed=clean&view=${targetView}&t=${Date.now()}`;
-                      }}
-                      className="px-3 py-2 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 text-white border border-white/20 transition-all flex items-center gap-1.5"
-                      title="تحديث صفحة إتقان"
-                    >
-                      <span>تحديث</span>
-                    </button>
-                    <button
-                      onClick={() => window.open(`itqan/index.html?view=${targetView}`, '_blank')}
-                      className="px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-lg transition-all flex items-center gap-1.5"
-                    >
-                      <span>فتح كنافذة مستقلة ↗</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="w-full h-[calc(100vh-210px)] min-h-[750px] rounded-3xl overflow-hidden border border-white/15 shadow-2xl bg-[#060D1A] relative">
-                  <iframe
-                    key={targetView}
-                    id="itqan-embed-frame"
-                    src={`./itqan/index.html?embed=clean&view=${targetView}`}
-                    title="نظام إتقان لإدارة القاعات والمهام"
-                    className="w-full h-full border-0 block"
-                    allow="camera; clipboard-read; clipboard-write; fullscreen"
-                  />
-                </div>
+              <div className="w-full h-[calc(100vh-120px)] min-h-[820px] rounded-3xl overflow-hidden border border-white/15 shadow-2xl bg-[#060D1A] relative">
+                <iframe
+                  key={targetView}
+                  id="itqan-embed-frame"
+                  src={`./itqan/index.html?embed=clean&view=${targetView}`}
+                  title="نظام إتقان لإدارة القاعات والمهام"
+                  className="w-full h-full border-0 block"
+                  allow="camera; clipboard-read; clipboard-write; fullscreen"
+                />
               </div>
             );
           })()}
