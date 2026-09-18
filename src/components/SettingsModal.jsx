@@ -28,7 +28,8 @@ import {
   CheckCircle2,
   X,
   Plus,
-  Printer
+  Printer,
+  Building2
 } from 'lucide-react';
 import { 
   getEventDetails, 
