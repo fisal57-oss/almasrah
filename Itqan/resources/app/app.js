@@ -139,14 +139,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Navigation logic (Updated to include click listeners for dynamically added tabs if any, though handled by navLinks selector)
 function setupNavigation() {
+    navLinks = document.querySelectorAll('.nav-links li[data-view]');
     navLinks.forEach(link => {
         link.addEventListener('click', () => {
             const viewId = link.getAttribute('data-view');
+            if (!viewId) return;
             switchView(viewId);
             
             navLinks.forEach(l => l.classList.remove('active'));
             link.classList.add('active');
         });
+    });
+});
     });
 }
 
