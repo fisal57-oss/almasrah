@@ -292,6 +292,36 @@ export default function Sidebar({
             </div>
           ))}
         </nav>
+
+        {/* Theater Promo Card matching Screenshot 2 & 4 */}
+        <div className="p-3 mx-3 my-2 rounded-2xl bg-gradient-to-br from-[#0c1e3d] via-[#09152b] to-[#060D1A] border border-cyan-500/20 relative overflow-hidden group shadow-lg shrink-0">
+          <div className="flex items-center gap-3 relative z-10">
+            <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-amber-400/40 relative shadow-md">
+              <img 
+                src="theater_stage.jpg" 
+                alt="المسرح" 
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                onError={(e) => { e.target.src = 'src/assets/theater_stage.jpg'; }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end justify-center pb-0.5">
+                <Crown className="w-3 h-3 text-amber-300" />
+              </div>
+            </div>
+            <div>
+              <h4 className="text-xs font-black text-white group-hover:text-cyan-300 transition-colors">مسرحنا .. أكثر من فعالية</h4>
+              <p className="text-[10px] text-slate-400 mt-0.5">تجربة ملهمة تجمع الإبداع والتنظيم</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Support & Help widget */}
+        <div className="px-3 py-2 mx-3 mb-2 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between text-xs text-slate-400 shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]"></span>
+            <span className="text-[11px] font-bold text-slate-300">الدعم والمساعدة</span>
+          </div>
+          <span className="text-[10px] text-cyan-400 font-mono">24/7 نشط</span>
+        </div>
       </div>
 
       {/* Dedicated Settings Button & Bottom Footer */}

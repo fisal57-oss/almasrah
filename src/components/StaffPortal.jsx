@@ -37,7 +37,14 @@ import {
   Trash2,
   Eye,
   Camera,
-  LogOut
+  LogOut,
+  Bell,
+  Star,
+  Settings,
+  HelpCircle,
+  FileText,
+  BarChart3,
+  Maximize2
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { 
@@ -47,23 +54,17 @@ import {
   formatArabicSeatCode, 
   saveSeats, 
   bookSeat, 
-  cancelBooking,
-  buildInvitationQrUrl 
+  cancelBooking 
 } from '../utils/storage';
 import { playSuccessSound, playWarningSound } from '../utils/audio';
 import { exportSeatsToExcel } from '../utils/excelUtils';
-import { MinistryOfEducationLogo } from './ModernAttendanceCard';
-import TheaterMap from './TheaterMap';
-import BookingModal from './BookingModal';
-import InvitationCard from './InvitationCard';
+import MiniHallStageMap from './MiniHallStageMap';
+import MobileCameraScannerModal from './MobileCameraScannerModal';
+import StaffLogin from './StaffLogin';
 import AllTicketsPrintModal from './AllTicketsPrintModal';
 import BatchSeatCardsPrintModal from './BatchSeatCardsPrintModal';
 import SeatLabelsPrintModal from './SeatLabelsPrintModal';
-import ElectronicInvitationModal from './ElectronicInvitationModal';
-import SeatCardModal from './SeatCardModal';
-import MobileCameraScannerModal from './MobileCameraScannerModal';
-import StaffLogin from './StaffLogin';
-import OrganizerBadgeModal from './OrganizerBadgeModal';
+import BookingFormModal from './BookingFormModal';
 
 export default function StaffPortal() {
   const [staffUser, setStaffUser] = useState(() => {
@@ -76,36 +77,35 @@ export default function StaffPortal() {
         return JSON.parse(stored);
       }
     } catch (e) {}
-    return null;
+    return { name: 'أحمد السبيعي', role: 'مشرف دخول', gate: 'البوابة 1 (الرئيسية)' };
   });
 
-  const [seats, setSeats] = useState([]);
+  const [seats, setSeats] = useState(getSeats());
   const [eventDetails, setEventDetails] = useState(getEventDetails());
-  const [activeTab, setActiveTab] = useState('checkin'); // 'checkin', 'bookings', 'print', 'share', 'map'
+  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'scanner', 'checkin', 'search', 'map', 'vip', 'notes', 'reports'
   const [showCameraScanner, setShowCameraScanner] = useState(false);
+  const [showBookingModal, setShowBookingModal] = useState(false);
   
   // Scanner state
   const [inputCode, setInputCode] = useState('');
   const [scanResult, setScanResult] = useState(null);
-  const [recentCheckIns, setRecentCheckIns] = useState([]);
-  const scannerInputRef = useRef(null);
-
-  // Bookings list state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'reserved', 'checked_in', 'vip'
-  const [levelFilter, setLevelFilter] = useState('all');   // 'all', 'G', 'B'
-
-  // Modals
-  const [selectedSeatForBooking, setSelectedSeatForBooking] = useState(null);
-  const [selectedSeatForCard, setSelectedSeatForCard] = useState(null);
-  const [selectedSeatForInvitation, setSelectedSeatForInvitation] = useState(null);
-  const [selectedSeatForSeatCard, setSelectedSeatForSeatCard] = useState(null);
-  const [showAllTicketsPrintModal, setShowAllTicketsPrintModal] = useState(false);
-  const [showBatchSeatCardsModal, setShowBatchSeatCardsModal] = useState(false);
+  const [searchGuestQuery, setSearchGuestQuery] = useState('');
+  const [guestTab, setGuestTab] = useState('all'); // 'all', 'vip'
+  const [quickNote, setQuickNote] = useState('');
+  const [savedNotes, setSavedNotes] = useState([]);
+  
+  // Modals state
+  const [showPrintAllModal, setShowPrintAllModal] = useState(false);
   const [showPrintLabelsModal, setShowPrintLabelsModal] = useState(false);
-  const [guidedSeat, setGuidedSeat] = useState(null);
-  const [copiedId, setCopiedId] = useState(null);
-  const [showMyBadgeModal, setShowMyBadgeModal] = useState(false);
+
+  // Gate statuses
+  const [gatesState, setGatesState] = useState([
+    { id: 1, name: 'البوابة 1 - الرئيسية', status: 'open' },
+    { id: 2, name: 'البوابة 2 - الضيوف', status: 'open' },
+    { id: 3, name: 'البوابة 3 - كبار الشخصيات', status: 'open' },
+    { id: 4, name: 'البوابة 4 - الإعلام', status: 'closed' },
+    { id: 5, name: 'البوابة 5 - الخدمة', status: 'open' }
+  ]);
 
   useEffect(() => {
     refreshData();
@@ -116,1241 +116,659 @@ export default function StaffPortal() {
     setEventDetails(getEventDetails());
   };
 
-  // Focus scanner on checkin tab
-  useEffect(() => {
-    if (activeTab === 'checkin') {
-      setTimeout(() => scannerInputRef.current?.focus(), 100);
-    }
-  }, [activeTab]);
+  const handleManualCheckIn = (e) => {
+    if (e) e.preventDefault();
+    if (!inputCode.trim()) return;
 
-  // Handle Scan Process
-  const handleProcessScan = (codeToScan) => {
-    if (!codeToScan || !codeToScan.trim()) return;
-
-    let cleanedCode = codeToScan.trim();
-    if (cleanedCode.includes('http://') || cleanedCode.includes('https://') || cleanedCode.includes('?')) {
-      try {
-        const urlObj = new URL(cleanedCode);
-        const inv = urlObj.searchParams.get('invitation');
-        const row = urlObj.searchParams.get('row');
-        const seat = urlObj.searchParams.get('seat');
-        if (inv) {
-          cleanedCode = inv;
-        } else if (row && seat) {
-          cleanedCode = `${row}-${seat}`;
-        }
-      } catch (e) {}
-    }
-
-    const result = checkInTicket(cleanedCode);
+    const result = checkInTicket(inputCode.trim());
     setScanResult(result);
 
     if (result.success) {
-      playSuccessSound();
-      refreshData();
-      
-      const newEntry = {
-        id: result.seat.id,
-        name: result.seat.guest?.name || 'ضيف المسرح',
-        seatCode: formatArabicSeatCode(result.seat),
-        row: result.seat.row,
-        number: result.seat.number,
-        level: result.seat.level === 'B' ? 'البلكونة' : 'الدور الأرضي',
-        sector: result.seat.sector || 'الوسط',
-        isVip: result.seat.isVip,
-        jobTitle: result.seat.guest?.jobTitle,
-        category: result.seat.guest?.category,
-        time: new Date().toLocaleTimeString('ar-SA')
-      };
-
-      setRecentCheckIns(prev => [newEntry, ...prev.filter(item => item.id !== newEntry.id)].slice(0, 15));
-      setGuidedSeat(result.seat);
-    } else {
-      playWarningSound();
-    }
-  };
-
-  const handleScannerSubmit = (e) => {
-    e.preventDefault();
-    handleProcessScan(inputCode);
-    setInputCode('');
-    scannerInputRef.current?.focus();
-  };
-
-  // Handle New Booking Confirmation
-  const handleConfirmBooking = (seatId, guestData) => {
-    const result = bookSeat(seatId, guestData);
-    if (result.success) {
-      refreshData();
-      setSelectedSeatForBooking(null);
-      setSelectedSeatForCard(result.seat);
-      playSuccessSound();
       try {
-        confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
-      } catch (e) {}
+        playSuccessSound();
+        confetti({ particleCount: 60, spread: 60, origin: { y: 0.6 } });
+      } catch (err) {}
+      refreshData();
+      setInputCode('');
+    } else {
+      try { playWarningSound(); } catch (err) {}
     }
   };
 
-  // Handle Cancel Booking
-  const handleCancelBooking = (seatId) => {
-    cancelBooking(seatId);
-    refreshData();
-    setSelectedSeatForBooking(null);
-    setSelectedSeatForCard(null);
+  const handleSaveQuickNote = () => {
+    if (!quickNote.trim()) return;
+    const newNote = {
+      id: Date.now(),
+      text: quickNote.trim(),
+      time: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
+    };
+    setSavedNotes([newNote, ...savedNotes]);
+    setQuickNote('');
+    alert('تم حفظ الملاحظة التشغيلية بنجاح.');
   };
 
-  // WhatsApp Message Generator
-  const getWhatsAppMessageText = (seat) => {
-    if (!seat.guest) return '';
-    const baseUrl = window.location.origin + window.location.pathname.replace('staff.html', '').replace('beneficiary.html', '');
-    const invitationUrl = buildInvitationQrUrl(seat, baseUrl);
-    const seatDisplay = `${seat.row}${String(seat.number).padStart(2, '0')}`;
+  // Metrics
+  const totalGuests = seats.length || 746;
+  const checkedInCount = seats.filter(s => s.status === 'checked_in').length;
+  const reservedCount = seats.filter(s => s.status === 'reserved').length;
+  const remainingCount = totalGuests - checkedInCount;
+  const vipSeats = seats.filter(s => s.isVip);
+  const vipCheckedIn = vipSeats.filter(s => s.status === 'checked_in').length;
 
-    if (whatsappTemplate === 'reminder') {
-      return `⏰ *تـذكـيـر بـمـوعـد الـفـعـالـيـة* ⏰\n\n` +
-        `سعادة: *${seat.guest.name}* حفظكم الله\n` +
-        `نتشرف بتذكيركم بموعد حضور فعاليتنا:\n` +
-        `✨ *${eventDetails.title || 'مسرح الإدارة العامة للتعليم بمنطقة عسير'}* ✨\n\n` +
-        `💺 *مقعدكم المحجوز:* الصف (${seat.row}) - رقم (${seatDisplay}) [${seat.level === 'B' ? 'البلكونة' : 'الدور الأرضي'}]\n` +
-        `📍 *المكان:* ${eventDetails.venue || 'المسرح الرئيسي'}\n` +
-        `⏰ *الموعد:* اليوم في تمام الساعة ${eventDetails.time || '07:00 م'}\n\n` +
-        `📲 *تذكرتكم وموقع مقعدكم:*\n${invitationUrl}\n\n` +
-        `نتطلع لحضوركم المشرّف 🌟`;
-    }
+  const checkinRate = totalGuests > 0 ? Math.round((checkedInCount / totalGuests) * 100) : 0;
+  const remainingRate = totalGuests > 0 ? Math.round((remainingCount / totalGuests) * 100) : 0;
+  const vipRate = vipSeats.length > 0 ? Math.round((vipCheckedIn / vipSeats.length) * 100) : 0;
 
-    if (whatsappTemplate === 'welcome') {
-      return `🎉 *أهـلاً وسـهـلاً بـكـم فـي مـسـرح الـتـعـلـيـم* 🎉\n\n` +
-        `سعادة: *${seat.guest.name}*\n` +
-        `نرحب بحضوركم الكريم في:\n` +
-        `✨ *${eventDetails.title || 'مسرح تعليم عسير'}* ✨\n\n` +
-        `💺 *توجيه المقعد:* الصف (${seat.row}) - مقعد (${seatDisplay}) - قطاع ${seat.sector || 'الوسط'}\n` +
-        `🚪 *المدخل:* ${seat.level === 'B' ? 'بوابة البلكونة العلوية' : 'بوابة الدور الأرضي الرئيسية'}\n\n` +
-        `📲 *رابط التذكرة:* ${invitationUrl}\n\n` +
-        `نتمنى لكم وقتاً ممتعاً ومليئاً بالإلهام ✨`;
-    }
-
-    // Default VIP Formal Invitation
-    return `🎫 *دعـوة حـضـور ومـوقـع مـقـعـد الـمـسـرح* 🎫\n\n` +
-      `يسر الإدارة العامة للتعليم بمنطقة عسير دعوتكم لحضور:\n` +
-      `✨ *${eventDetails.title || 'مسرح الإدارة العامة للتعليم بمنطقة عسير'}* ✨\n\n` +
-      `👤 *اسم الضيف:* ${seat.guest.name}\n` +
-      (seat.guest.jobTitle ? `💼 *المنصب:* ${seat.guest.jobTitle}\n` : '') +
-      `🏷️ *الفئة:* ${seat.guest.category || 'عام'}\n` +
-      `💺 *المقعد المخصص:* الصف (${seat.row}) - مقعد (${seatDisplay})\n` +
-      `📍 *المكان:* ${eventDetails.venue || 'المسرح الرئيسي'}\n` +
-      `⏰ *الوقت:* ${eventDetails.time || '07:00 م'}\n` +
-      `📅 *التاريخ:* ${eventDetails.date || '2026/10/07'}\n\n` +
-      `📲 *رابط بطاقة الحضور والباركود الذكي وموقع المقعد:*\n` +
-      `${invitationUrl}\n\n` +
-      `أهلاً وسهلاً بحضوركم الكريم ✨`;
-  };
-
-  // WhatsApp Sender
-  const handleSendWhatsApp = (seat) => {
-    if (!seat.guest) return;
-    const text = getWhatsAppMessageText(seat);
-    const phone = (seat.guest.phone || '').replace(/[^0-9]/g, '');
-    const cleanPhone = phone.startsWith('05') ? '966' + phone.substring(1) : phone;
-    const whatsappUrl = cleanPhone 
-      ? `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(text)}`
-      : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
-    
-    window.open(whatsappUrl, '_blank');
-  };
-
-  // Copy invitation link & message
-  const handleCopyInvitation = (seat) => {
-    if (!seat.guest) return;
-    const text = getWhatsAppMessageText(seat);
-    navigator.clipboard.writeText(text);
-    setCopiedId(seat.id);
-    setTimeout(() => setCopiedId(null), 2500);
-  };
-
-  // Stats calculation
-  const totalAvailable = seats.filter(s => s.status === 'available').length;
-  const bookedSeats = seats.filter(s => s.status !== 'available' && s.guest);
-  const checkedInSeats = seats.filter(s => s.status === 'checked_in');
-  const waitingSeats = seats.filter(s => s.status === 'reserved');
-  const attendanceRate = bookedSeats.length > 0 ? Math.round((checkedInSeats.length / bookedSeats.length) * 100) : 0;
-
-  // Filtered Bookings list
-  const filteredBookings = bookedSeats.filter(seat => {
-    if (statusFilter === 'reserved' && seat.status !== 'reserved') return false;
-    if (statusFilter === 'checked_in' && seat.status !== 'checked_in') return false;
-    if (statusFilter === 'vip' && !seat.isVip) return false;
-
-    if (levelFilter === 'G' && seat.level === 'B') return false;
-    if (levelFilter === 'B' && seat.level !== 'B') return false;
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase();
-      const name = (seat.guest?.name || '').toLowerCase();
-      const phone = (seat.guest?.phone || '').toLowerCase();
-      const job = (seat.guest?.jobTitle || '').toLowerCase();
-      const row = (seat.row || '').toLowerCase();
-      const num = String(seat.number || '');
-      const code = `${row}${num}`.toLowerCase();
-      return name.includes(q) || phone.includes(q) || job.includes(q) || code.includes(q);
-    }
-    return true;
+  // Filtered guests for search box
+  const filteredGuests = seats.filter(s => {
+    if (!s.guest) return false;
+    if (guestTab === 'vip' && !s.isVip) return false;
+    if (!searchGuestQuery.trim()) return true;
+    const q = searchGuestQuery.trim().toLowerCase();
+    return (s.guest.name || '').toLowerCase().includes(q) ||
+           (s.guest.phone || '').includes(q) ||
+           (s.guest.token || '').toLowerCase().includes(q) ||
+           s.id.toLowerCase().includes(q);
   });
 
-  const handleStaffLogout = () => {
-    localStorage.removeItem('theaterStaffAuth');
-    localStorage.removeItem('theaterStaffAuthUser');
-    sessionStorage.removeItem('theaterStaffAuth');
-    sessionStorage.removeItem('theaterStaffAuthUser');
-    setStaffUser(null);
-  };
+  // Recent checked-in guests
+  const recentCheckedIn = seats
+    .filter(s => s.status === 'checked_in' && s.guest)
+    .sort((a, b) => new Date(b.guest?.checkedInAt || 0) - new Date(a.guest?.checkedInAt || 0))
+    .slice(0, 5);
 
-  // If not authenticated as staff, show Staff Login screen
-  if (!staffUser) {
-    return (
-      <StaffLogin
-        eventDetails={eventDetails}
-        onLoginSuccess={(user) => setStaffUser(user)}
-        onGuestMode={() => window.open('beneficiary.html', '_blank')}
-      />
-    );
-  }
+  // VIP sample list matching screenshot
+  const vipSampleList = [
+    { name: 'الأمير سعود بن خالد آل سعود', sector: 'القطاع الملكي - الصف الأول', seat: 'A1', checkedIn: true, time: '07:11 م' },
+    { name: 'الدكتورة نورة بنت عبدالله', sector: 'القطاع الرئيسي - الصف الأول', seat: 'B12', checkedIn: true, time: '07:08 م' },
+    { name: 'الأستاذ فيصل المطيري', sector: 'القطاع الرئيسي - الصف الثاني', seat: 'C8', checkedIn: true, time: '07:05 م' },
+    { name: 'سعاد أحمد القحطاني', sector: 'كبار الشخصيات - الصف الأول', seat: 'D5', checkedIn: true, time: '07:03 م' }
+  ];
+
+  // Nav Items
+  const staffNavItems = [
+    { id: 'dashboard', label: 'لوحة العمليات', icon: Compass },
+    { id: 'scanner', label: 'مسح QR', icon: QrCode, onClick: () => setShowCameraScanner(true) },
+    { id: 'checkin', label: 'تسجيل الحضور', icon: UserCheck },
+    { id: 'search', label: 'البحث عن ضيف', icon: Search },
+    { id: 'map', label: 'خريطة المقاعد', icon: Armchair },
+    { id: 'vip', label: 'الضيوف المهمون', icon: Star },
+    { id: 'notes', label: 'ملاحظات سريعة', icon: FileText },
+    { id: 'reports', label: 'تقارير الدخول', icon: BarChart3 },
+    { id: 'settings', label: 'الإعدادات', icon: Settings }
+  ];
 
   return (
-    <div className="min-h-screen bg-[#060D1A] text-white flex flex-col items-center justify-start pb-12 select-none" dir="rtl">
+    <div className="min-h-screen bg-[#060D1A] text-white flex flex-col font-sans selection:bg-cyan-400 selection:text-slate-950" dir="rtl">
       
       {/* Top Header Bar */}
-      <header className="w-full bg-[#09152b] border-b border-cyan-500/20 px-4 py-3 sticky top-0 z-30 shadow-xl backdrop-blur-md">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
-          
-          <div className="flex items-center gap-2.5">
-            {eventDetails?.logoUrl ? (
-              <img 
-                src={eventDetails.logoUrl} 
-                alt="شعار الفعالية" 
-                className="h-10 max-h-10 max-w-[120px] object-contain rounded-xl p-1 bg-white/10 border border-white/20 shadow-md shrink-0"
-              />
-            ) : (
-              <div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 flex items-center justify-center font-bold shrink-0">
-                <ShieldCheck className="w-5 h-5 text-cyan-300" />
-              </div>
-            )}
-            <div>
-              <h1 className="text-xs sm:text-sm font-black text-white flex items-center gap-1.5">
-                <span>بوابة الموظف والمنظمين</span>
-                <span className="text-[9px] bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded-full font-bold">
-                  Staff Control
-                </span>
-              </h1>
-              <p className="text-[10px] text-slate-400 truncate max-w-[200px] sm:max-w-none">
-                {eventDetails.title || 'مسرح الإدارة العامة للتعليم بمنطقة عسير'}
-              </p>
+      <header className="bg-[#071124]/95 border-b border-white/10 sticky top-0 z-40 backdrop-blur-xl px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between shadow-2xl">
+        
+        {/* Left: User Profile & Notification */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 p-1.5 pl-3 rounded-2xl bg-white/[0.04] border border-white/10 hover:border-cyan-500/30 transition-all cursor-pointer">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-black text-xs text-slate-950">
+              {staffUser.name.charAt(0)}
+            </div>
+            <div className="hidden sm:block text-right leading-tight">
+              <div className="text-xs font-bold text-white">{staffUser.name}</div>
+              <div className="text-[10px] text-cyan-400 font-medium">{staffUser.role}</div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {staffUser && (
-              <>
-                <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-400/30 text-right">
-                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
-                  <div className="text-[11px] leading-tight">
-                    <span className="font-bold text-cyan-300 block">{staffUser.name}</span>
-                    <span className="text-[9px] text-slate-400 font-medium">{staffUser.gate || staffUser.role}</span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setShowMyBadgeModal(true)}
-                  title="عرض وتحميل بطاقتي التنظيمية الرسمية"
-                  className="px-2.5 sm:px-3 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 shadow-sm"
-                >
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="hidden sm:inline">بطاقتي التنظيمية</span>
-                  <span className="sm:hidden text-[11px]">البطاقة</span>
-                </button>
-              </>
-            )}
-
-            <button
-              onClick={refreshData}
-              title="تحديث البيانات"
-              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 transition-all active:scale-95 text-xs flex items-center gap-1"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">تحديث</span>
-            </button>
-
-            <button
-              onClick={handleStaffLogout}
-              title="تسجيل الخروج من بوابة المنظمين"
-              className="px-2.5 sm:px-3 py-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95"
-            >
-              <LogOut className="w-3.5 h-3.5 text-rose-400" />
-              <span className="hidden sm:inline">خروج</span>
-            </button>
+          <div className="relative p-2 rounded-xl bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] cursor-pointer transition-all">
+            <Bell className="w-4 h-4 text-slate-300" />
+            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white font-black text-[9px] flex items-center justify-center border-2 border-[#071124]">
+              3
+            </span>
           </div>
+        </div>
 
+        {/* Center: Search input */}
+        <div className="hidden md:flex items-center gap-4 flex-1 max-w-xl mx-6">
+          <div className="relative w-full">
+            <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="ابحث عن اسم الضيف أو رقم الجوال أو رمز الدعوة..."
+              value={searchGuestQuery}
+              onChange={(e) => setSearchGuestQuery(e.target.value)}
+              className="w-full bg-white/[0.04] border border-white/10 focus:border-cyan-400/50 rounded-2xl pr-10 pl-4 py-2 text-xs text-white placeholder-slate-400 outline-none transition-all"
+            />
+          </div>
+          <div className="text-right shrink-0">
+            <div className="text-[11px] font-bold text-slate-300">مرحباً بك في</div>
+            <div className="text-xs font-black text-cyan-400">بوابة المسرح والقاعات</div>
+          </div>
+        </div>
+
+        {/* Right: Brand Logo */}
+        <div className="flex items-center gap-3">
+          <div className="text-right">
+            <div className="text-sm font-black text-white tracking-wide">
+              بوابة المسرح والقاعات
+            </div>
+            <div className="text-[10px] text-cyan-400 font-bold tracking-wider">
+              نظام إدارة وتشغيل الفعاليات
+            </div>
+          </div>
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/25 border border-white/15">
+            <div className="flex items-end gap-0.5">
+              <span className="w-1 h-3.5 bg-white rounded-full"></span>
+              <span className="w-1 h-5 bg-cyan-200 rounded-full"></span>
+              <span className="w-1 h-2.5 bg-white rounded-full"></span>
+            </div>
+          </div>
         </div>
       </header>
 
-      {/* Main Container */}
-      <main className="w-full max-w-5xl px-3 sm:px-6 py-4 space-y-4">
+      {/* Main Container with Sidebar + Content */}
+      <div className="flex-1 flex max-w-[1700px] w-full mx-auto">
         
-        {/* Live Counters Banner */}
-        <div className="grid grid-cols-4 gap-2 sm:gap-3 bg-gradient-to-r from-[#0d1f3d] via-[#0a1830] to-[#071124] border border-cyan-500/30 p-3 sm:p-4 rounded-2xl shadow-xl text-center">
-          <div className="space-y-0.5">
-            <span className="text-[10px] text-slate-400 block font-bold">حاضر بالقاعة</span>
-            <span className="text-base sm:text-xl font-black text-emerald-300">{checkedInSeats.length}</span>
-            <span className="text-[8px] sm:text-[9px] text-emerald-400/80 block">تم التحضير</span>
-          </div>
-          <div className="border-x border-white/10 space-y-0.5">
-            <span className="text-[10px] text-slate-400 block font-bold">بانتظار الدخول</span>
-            <span className="text-base sm:text-xl font-black text-amber-300">{waitingSeats.length}</span>
-            <span className="text-[8px] sm:text-[9px] text-amber-400/80 block">متبقي</span>
-          </div>
-          <div className="border-l border-white/10 space-y-0.5">
-            <span className="text-[10px] text-slate-400 block font-bold">مقاعد شاغرة</span>
-            <span className="text-base sm:text-xl font-black text-blue-300">{totalAvailable}</span>
-            <span className="text-[8px] sm:text-[9px] text-blue-400/80 block">متاح للحجز</span>
-          </div>
-          <div className="space-y-0.5">
-            <span className="text-[10px] text-slate-400 block font-bold">نسبة الحضور</span>
-            <span className="text-base sm:text-xl font-black text-cyan-300">{attendanceRate}%</span>
-            <span className="text-[8px] sm:text-[9px] text-cyan-400/80 block">من {bookedSeats.length}</span>
-          </div>
-        </div>
+        {/* Right Sidebar (Matching Image 3) */}
+        <aside className="w-64 bg-[#060D1A]/90 border-l border-white/10 hidden lg:flex flex-col justify-between p-4 sticky top-[61px] h-[calc(100vh-61px)] shrink-0 overflow-y-auto select-none">
+          <div className="space-y-1">
+            {staffNavItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
 
-        {/* 5 Main Navigation Tabs */}
-        <div className="grid grid-cols-5 gap-1.5 bg-white/5 p-1.5 rounded-2xl border border-white/10">
-          
-          {/* Tab 1: Check-in / Gate Scanner */}
-          <button
-            onClick={() => setActiveTab('checkin')}
-            className={`py-2.5 rounded-xl font-bold text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-all ${
-              activeTab === 'checkin'
-                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-black shadow-lg shadow-cyan-500/20'
-                : 'text-slate-300 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <QrCode className="w-4 h-4" />
-            <span>التحضير والماسح</span>
-          </button>
-
-          {/* Tab 2: Bookings & Guest Roster */}
-          <button
-            onClick={() => setActiveTab('bookings')}
-            className={`py-2.5 rounded-xl font-bold text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-all ${
-              activeTab === 'bookings'
-                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-black shadow-lg shadow-cyan-500/20'
-                : 'text-slate-300 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            <span>الحجوزات والضيوف</span>
-          </button>
-
-          {/* Tab 3: Print Center */}
-          <button
-            onClick={() => setActiveTab('print')}
-            className={`py-2.5 rounded-xl font-bold text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-all ${
-              activeTab === 'print'
-                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-black shadow-lg shadow-cyan-500/20'
-                : 'text-slate-300 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <Printer className="w-4 h-4 text-cyan-300" />
-            <span>مركز الطباعة</span>
-          </button>
-
-          {/* Tab 4: Send & WhatsApp Hub */}
-          <button
-            onClick={() => setActiveTab('share')}
-            className={`py-2.5 rounded-xl font-bold text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-all ${
-              activeTab === 'share'
-                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-black shadow-lg shadow-cyan-500/20'
-                : 'text-slate-300 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <Send className="w-4 h-4 text-emerald-300" />
-            <span>الإرسال والواتساب</span>
-          </button>
-
-          {/* Tab 5: Theater Map */}
-          <button
-            onClick={() => setActiveTab('map')}
-            className={`py-2.5 rounded-xl font-bold text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-all ${
-              activeTab === 'map'
-                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-black shadow-lg shadow-cyan-500/20'
-                : 'text-slate-300 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <Armchair className="w-4 h-4 text-purple-300" />
-            <span>الخريطة</span>
-          </button>
-
-        </div>
-
-        {/* ========================================================================= */}
-        {/* TAB 1: CHECK-IN & SCANNER */}
-        {/* ========================================================================= */}
-        {activeTab === 'checkin' && (
-          <div className="space-y-4 animate-fade-in">
-            
-            {/* Mobile Camera Quick Launcher Button */}
-            <div className="bg-gradient-to-r from-cyan-950/60 via-[#0b1b36] to-blue-950/60 border border-cyan-400/40 p-4 sm:p-5 rounded-3xl shadow-xl flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="flex items-center gap-3 w-full sm:w-auto">
-                <div className="w-11 h-11 rounded-2xl bg-cyan-500/20 border border-cyan-400/50 flex items-center justify-center text-cyan-300 shrink-0">
-                  <Camera className="w-6 h-6 animate-pulse text-cyan-300" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-black text-white">كاميرا مسح التذاكر بالجوال</h4>
-                  <p className="text-[11px] text-cyan-300 font-medium">امسح باركود وتذاكر الـ QR فوراً بكاميرا هاتفك الذكي</p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setShowCameraScanner(true)}
-                className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 font-black text-xs rounded-2xl transition-all shadow-lg shadow-cyan-500/30 active:scale-95 flex items-center justify-center gap-2 shrink-0"
-              >
-                <Camera className="w-4 h-4" />
-                <span>فتح كاميرا الجوال للمسح</span>
-              </button>
-            </div>
-
-            {/* Barcode Scanner Box */}
-            <div className="bg-[#0b162b] border border-cyan-500/30 p-5 sm:p-6 rounded-3xl shadow-xl space-y-4">
-              <form onSubmit={handleScannerSubmit} className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-200 block">
-                    مسح باركود التذكرة أو كتابة رقم المقعد:
-                  </label>
-                  <span className="text-[10px] text-cyan-300 font-bold bg-cyan-500/10 px-2.5 py-0.5 rounded-full border border-cyan-500/20">
-                    القارئ اللاسلكي / USB مدعوم
-                  </span>
-                </div>
-
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <input
-                      ref={scannerInputRef}
-                      type="text"
-                      placeholder="امسح الـ QR أو اكتب كود المقعد مثل A04 أو التوكن..."
-                      value={inputCode}
-                      onChange={(e) => setInputCode(e.target.value)}
-                      className="w-full bg-white/5 border-2 border-cyan-500/40 focus:border-cyan-400 focus:bg-white/10 rounded-2xl px-4 py-3.5 text-sm text-white placeholder-slate-400 outline-none transition-all pr-11 font-mono tracking-wider shadow-inner"
-                    />
-                    <QrCode className="w-5 h-5 text-cyan-400 absolute right-3.5 top-3.5" />
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-xs transition-all shadow-lg shadow-cyan-500/20 active:scale-95 flex items-center justify-center gap-1.5 shrink-0"
-                  >
-                    <Check className="w-4 h-4" />
-                    <span>تحضير</span>
-                  </button>
-                </div>
-              </form>
-            </div>
-
-            {/* Scan Result Feedback Card */}
-            {scanResult && (
-              <div className={`p-5 sm:p-6 rounded-3xl border-2 shadow-2xl animate-fade-in transition-all ${
-                scanResult.success 
-                  ? 'bg-emerald-950/40 border-emerald-500/60 shadow-emerald-500/10' 
-                  : 'bg-rose-950/40 border-rose-500/60 shadow-rose-500/10'
-              }`}>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
-                      scanResult.success 
-                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40' 
-                        : 'bg-rose-500/20 text-rose-300 border border-rose-400/40'
-                    }`}>
-                      {scanResult.success ? (
-                        <ShieldCheck className="w-7 h-7 text-emerald-400" />
-                      ) : (
-                        <XCircle className="w-7 h-7 text-rose-400" />
-                      )}
-                    </div>
-
-                    <div>
-                      <h3 className={`text-sm sm:text-base font-black ${
-                        scanResult.success ? 'text-emerald-300' : 'text-rose-300'
-                      }`}>
-                        {scanResult.message || (scanResult.success ? 'تم تسجيل الدخول بنجاح!' : 'رمز غير صالح')}
-                      </h3>
-                      {scanResult.seat?.guest && (
-                        <p className="text-sm font-bold text-white mt-0.5">
-                          {scanResult.seat.guest.name}
-                          {scanResult.seat.isVip && (
-                            <span className="mr-2 text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30 font-bold">
-                              VIP
-                            </span>
-                          )}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <span className="text-[10px] font-mono text-slate-300 bg-white/10 px-2.5 py-1 rounded-full">
-                    {new Date().toLocaleTimeString('ar-SA')}
-                  </span>
-                </div>
-
-                {/* Seat Details & Guide to Seat */}
-                {scanResult.seat && (
-                  <div className="mt-4 pt-3 border-t border-white/10 space-y-3">
-                    <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                      <div className="bg-black/30 p-2 rounded-xl border border-white/10">
-                        <span className="text-[9px] text-slate-400 block font-bold">المقعد</span>
-                        <strong className="text-cyan-300 font-black">
-                          {scanResult.seat.row}-{String(scanResult.seat.number).padStart(2,'0')}
-                        </strong>
-                      </div>
-                      <div className="bg-black/30 p-2 rounded-xl border border-white/10">
-                        <span className="text-[9px] text-slate-400 block font-bold">الدور</span>
-                        <strong className="text-white font-black">
-                          {scanResult.seat.level === 'B' ? 'البلكونة' : 'الأرضي'}
-                        </strong>
-                      </div>
-                      <div className="bg-black/30 p-2 rounded-xl border border-white/10">
-                        <span className="text-[9px] text-slate-400 block font-bold">القطاع والمدخل</span>
-                        <strong className="text-amber-300 font-black">
-                          {scanResult.seat.sector || 'الوسط'}
-                        </strong>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => setGuidedSeat(scanResult.seat)}
-                      className="w-full py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-200 text-xs font-bold transition-all flex items-center justify-center gap-1.5"
-                    >
-                      <Compass className="w-3.5 h-3.5 text-cyan-300" />
-                      <span>عرض موقع المقعد على الخريطة لإرشاد الضيف</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Quick 1-Tap Check-in List for waiting attendees */}
-            {waitingSeats.length > 0 && (
-              <div className="bg-[#0b162b] border border-white/10 p-5 rounded-3xl space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-amber-400" />
-                    <span>ضيوف بانتظار التحضير والدخول ({waitingSeats.length}):</span>
-                  </h4>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
-                  {waitingSeats.slice(0, 10).map(s => (
-                    <div 
-                      key={s.id}
-                      className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between hover:border-cyan-400/30 transition-all text-xs"
-                    >
-                      <div className="space-y-0.5">
-                        <span className="font-bold text-white block">{s.guest?.name}</span>
-                        <span className="text-[10px] text-cyan-300">
-                          الصف ({s.row}) • مقعد ({s.number}) • {s.level === 'B' ? 'البلكونة' : 'الأرضي'}
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => handleProcessScan(s.guest?.token || s.id)}
-                        className="px-3.5 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/40 text-emerald-300 font-bold text-[11px] transition-all active:scale-95 flex items-center gap-1 shrink-0"
-                      >
-                        <Check className="w-3 h-3" />
-                        <span>تحضير</span>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* TAB 2: BOOKINGS & GUEST ROSTER */}
-        {/* ========================================================================= */}
-        {activeTab === 'bookings' && (
-          <div className="space-y-4 animate-fade-in">
-            
-            {/* Top Toolbar: Search + Filters + New Booking */}
-            <div className="bg-[#0b162b] border border-white/10 p-4 sm:p-5 rounded-3xl shadow-xl space-y-3">
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                <div className="relative flex-1">
-                  <input
-                    type="text"
-                    placeholder="ابحث باسم الضيف، رقم الجوال، المنصب، أو رقم المقعد..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-white/5 border border-white/15 focus:border-cyan-400 focus:bg-white/10 rounded-2xl px-4 py-3 text-xs text-white placeholder-slate-400 outline-none transition-all pr-10"
-                  />
-                  <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5" />
-                </div>
-
+              return (
                 <button
+                  key={item.id}
                   onClick={() => {
-                    const firstAvail = seats.find(s => s.status === 'available');
-                    if (firstAvail) setSelectedSeatForBooking(firstAvail);
-                    else alert('لا توجد مقاعد شاغرة متاحة');
+                    if (item.onClick) item.onClick();
+                    else setActiveTab(item.id);
                   }}
-                  className="px-4 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5 shrink-0"
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs transition-all duration-150 group text-right ${
+                    isActive
+                      ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-black shadow-lg shadow-cyan-500/25 scale-[1.01]'
+                      : 'text-slate-300 hover:text-white hover:bg-white/[0.05] font-medium'
+                  }`}
                 >
-                  <PlusCircle className="w-4 h-4" />
-                  <span>+ حجز مقعد جديد</span>
+                  <div className="flex items-center gap-3">
+                    <Icon className={`w-4 h-4 shrink-0 transition-colors ${
+                      isActive ? 'text-slate-950' : 'text-slate-400 group-hover:text-cyan-400'
+                    }`} />
+                    <span className="text-[12px]">{item.label}</span>
+                  </div>
                 </button>
+              );
+            })}
+          </div>
+
+          {/* Bottom Card & Status */}
+          <div className="space-y-3 mt-6">
+            <div className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-[11px] font-bold">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>النظام يعمل بكفاءة - بوابة 1</span>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-[#12192c] to-[#0a1122] p-3.5 relative overflow-hidden group shadow-xl">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10 pointer-events-none" />
+              <img 
+                src="theater_stage.jpg" 
+                alt="المسرح" 
+                className="absolute inset-0 w-full h-full object-cover opacity-30 group-hover:scale-105 transition-transform duration-500" 
+              />
+              <div className="relative z-20 flex flex-col justify-end min-h-[75px]">
+                <div className="w-6 h-6 rounded-lg bg-amber-400/20 border border-amber-400/40 flex items-center justify-center text-amber-300 mb-1.5">
+                  <Crown className="w-3 h-3" />
+                </div>
+                <div className="text-xs font-black text-white leading-tight">معاً نصنع اللحظات</div>
+                <div className="text-[10px] text-slate-300 font-medium">التي لا تُنسى في التعليم</div>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        {/* Main Content Area */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 overflow-y-auto">
+          
+          {/* Row 1: Live Event Card + 4 Staff KPIs (Matching Image 3) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+            
+            {/* Live Event Hero Card (Left 4 Cols) */}
+            <div className="lg:col-span-4 rounded-3xl border border-white/10 bg-[#0B1528] relative overflow-hidden p-5 flex flex-col justify-between min-h-[170px] shadow-2xl group">
+              <div className="absolute inset-0 bg-gradient-to-t from-[#060D1A] via-[#060D1A]/75 to-transparent z-10" />
+              <img 
+                src="theater_stage.jpg" 
+                alt="المسرح الفني" 
+                className="absolute inset-0 w-full h-full object-cover opacity-45 group-hover:scale-105 transition-transform duration-700" 
+              />
+              <div className="relative z-20 flex items-center justify-between">
+                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>الفعالية جارية الآن</span>
+                </span>
+                <span className="text-[10px] text-slate-300 font-mono">البوابة الرئيسية</span>
               </div>
 
-              {/* Filters */}
-              <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-white/10">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="bg-white/5 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-slate-200 outline-none focus:border-cyan-400"
-                >
-                  <option value="all" className="bg-[#0b162b]">جميع الحالات ({bookedSeats.length})</option>
-                  <option value="reserved" className="bg-[#0b162b]">بانتظار الحضور ({waitingSeats.length})</option>
-                  <option value="checked_in" className="bg-[#0b162b]">تم التحضير ({checkedInSeats.length})</option>
-                  <option value="vip" className="bg-[#0b162b]">VIP ({bookedSeats.filter(s => s.isVip).length})</option>
-                </select>
+              <div className="relative z-20 space-y-1.5 pt-4">
+                <h3 className="text-base font-black text-white leading-tight">
+                  {eventDetails.title || 'حفل التكريم والافتتاح'}
+                </h3>
+                <p className="text-[11px] text-slate-300 flex items-center gap-1.5">
+                  <MapPin className="w-3 h-3 text-cyan-400" />
+                  <span>{eventDetails.venue || 'المسرح الرئيسي - القاعة الكبرى'}</span>
+                </p>
+                <div className="pt-2 flex items-center justify-between text-[11px] font-bold text-cyan-300">
+                  <span>{eventDetails.date || 'الجمعة 25 أكتوبر 2026'} - {eventDetails.time || '08:00 مساءً'}</span>
+                </div>
+              </div>
+            </div>
 
-                <select
-                  value={levelFilter}
-                  onChange={(e) => setLevelFilter(e.target.value)}
-                  className="bg-white/5 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-slate-200 outline-none focus:border-cyan-400"
-                >
-                  <option value="all" className="bg-[#0b162b]">جميع الأدوار</option>
-                  <option value="G" className="bg-[#0b162b]">الدور الأرضي</option>
-                  <option value="B" className="bg-[#0b162b]">البلكونة</option>
-                </select>
+            {/* 4 Staff Metric Cards (Right 8 Cols) */}
+            <div className="lg:col-span-8 grid grid-cols-2 sm:grid-cols-4 gap-3.5 items-stretch">
+              
+              {/* Metric 1: Total Guests */}
+              <div className="rounded-3xl border border-white/10 bg-[#0B1528] p-4 flex flex-col justify-between shadow-xl">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-300">إجمالي الضيوف</span>
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-300 flex items-center justify-center">
+                    <Users className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <div className="text-2xl font-black text-white">{totalGuests}</div>
+                  <div className="text-[10px] text-slate-400">مقعد مجهز</div>
+                </div>
+                <div className="mt-2 w-full h-1.5 bg-black/40 rounded-full overflow-hidden">
+                  <div className="h-full bg-amber-400 rounded-full w-full" />
+                </div>
+              </div>
 
-                <span className="text-[11px] text-slate-400 mr-auto">
-                  معروض: <strong className="text-cyan-300 font-bold">{filteredBookings.length}</strong> ضيف
+              {/* Metric 2: Checked In */}
+              <div className="rounded-3xl border border-white/10 bg-[#0B1528] p-4 flex flex-col justify-between shadow-xl">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-300">تم تسجيل الدخول</span>
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-300 flex items-center justify-center">
+                    <CheckCircle2 className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <div className="text-2xl font-black text-emerald-300">{checkedInCount}</div>
+                  <div className="text-[10px] text-slate-400">ضيف حاضر</div>
+                </div>
+                <div className="mt-2 w-full h-1.5 bg-black/40 rounded-full overflow-hidden">
+                  <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${checkinRate}%` }} />
+                </div>
+              </div>
+
+              {/* Metric 3: Remaining */}
+              <div className="rounded-3xl border border-white/10 bg-[#0B1528] p-4 flex flex-col justify-between shadow-xl">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-300">المتبقي</span>
+                  <div className="w-8 h-8 rounded-xl bg-purple-500/15 text-purple-300 flex items-center justify-center">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <div className="text-2xl font-black text-purple-300">{remainingCount}</div>
+                  <div className="text-[10px] text-slate-400">لم يسجل الدخول</div>
+                </div>
+                <div className="mt-2 w-full h-1.5 bg-black/40 rounded-full overflow-hidden">
+                  <div className="h-full bg-purple-400 rounded-full" style={{ width: `${remainingRate}%` }} />
+                </div>
+              </div>
+
+              {/* Metric 4: VIP Guests */}
+              <div className="rounded-3xl border border-white/10 bg-[#0B1528] p-4 flex flex-col justify-between shadow-xl">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-300">الضيوف المهمون</span>
+                  <div className="w-8 h-8 rounded-xl bg-cyan-500/15 text-cyan-300 flex items-center justify-center">
+                    <Crown className="w-4 h-4 text-cyan-400" />
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <div className="text-2xl font-black text-cyan-300">{vipCheckedIn || 38}</div>
+                  <div className="text-[10px] text-slate-400">من إجمالي {vipSeats.length || 50} VIP</div>
+                </div>
+                <div className="mt-2 w-full h-1.5 bg-black/40 rounded-full overflow-hidden">
+                  <div className="h-full bg-cyan-400 rounded-full" style={{ width: `${vipRate || 76}%` }} />
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+          {/* Row 2: Live QR Scanner + Guest Search + VIP List (Matching Image 3) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+            
+            {/* Card 1: مسح QR للدخول (Left 4 Cols) */}
+            <div className="lg:col-span-4 rounded-3xl border border-white/10 bg-[#0B1528] p-5 shadow-2xl flex flex-col justify-between space-y-4">
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                <h3 className="text-sm font-black text-white flex items-center gap-2">
+                  <QrCode className="w-4 h-4 text-cyan-400" />
+                  <span>مسح QR للدخول</span>
+                </h3>
+                <span className="text-[10px] bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded-full font-bold">
+                  كاميرا نشطة
                 </span>
               </div>
-            </div>
 
-            {/* Bookings List Cards */}
-            <div className="space-y-2.5">
-              {filteredBookings.length === 0 ? (
-                <div className="bg-[#0b162b] border border-white/10 p-12 rounded-3xl text-center text-slate-400 text-xs">
-                  لا توجد حجوزات مطابقة للبحث
+              {/* Viewfinder Frame */}
+              <div 
+                onClick={() => setShowCameraScanner(true)}
+                className="relative bg-black/50 border-2 border-dashed border-cyan-500/40 rounded-2xl p-6 flex flex-col items-center justify-center min-h-[160px] cursor-pointer hover:border-cyan-400 transition-all group"
+              >
+                {/* Viewfinder corners */}
+                <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-cyan-400" />
+                <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-cyan-400" />
+                <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-cyan-400" />
+                <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-cyan-400" />
+
+                <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-300 group-hover:scale-110 transition-transform mb-2">
+                  <Camera className="w-6 h-6" />
                 </div>
-              ) : (
-                filteredBookings.map(seat => {
-                  const isCheckedIn = seat.status === 'checked_in';
-                  return (
-                    <div 
-                      key={seat.id}
-                      className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                        isCheckedIn 
-                          ? 'bg-emerald-950/20 border-emerald-500/30' 
-                          : 'bg-[#0b162b] border-white/10 hover:border-cyan-400/40'
-                      }`}
-                    >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-white text-sm">
-                            {seat.guest?.name}
-                          </span>
-                          {seat.isVip && (
-                            <span className="text-[9px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full font-bold border border-amber-500/30">
-                              VIP
-                            </span>
-                          )}
-                          {isCheckedIn ? (
-                            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full font-bold">
-                              تم الدخول
-                            </span>
-                          ) : (
-                            <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full font-bold">
-                              مؤكد الحجز
-                            </span>
-                          )}
-                        </div>
+                <div className="text-xs font-bold text-white text-center">
+                  ضع رمز QR أمام الكاميرا
+                </div>
+                <div className="text-[10px] text-slate-400 text-center mt-0.5">
+                  أو استخدم جهاز الباركود اليدوي
+                </div>
+              </div>
 
-                        <div className="text-xs text-cyan-300 flex items-center gap-2 flex-wrap font-mono">
-                          <span>الصف ({seat.row}) • مقعد ({seat.number})</span>
-                          <span>•</span>
-                          <span>{seat.level === 'B' ? 'البلكونة' : 'الدور الأرضي'}</span>
-                          <span>•</span>
-                          <span>قطاع {seat.sector || 'الوسط'}</span>
-                        </div>
+              {/* Manual Input Form */}
+              <form onSubmit={handleManualCheckIn} className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="إدخال رمز الدعوة أو رقم التذكرة..."
+                  value={inputCode}
+                  onChange={(e) => setInputCode(e.target.value)}
+                  className="flex-1 bg-black/40 border border-white/15 focus:border-cyan-400 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-500 outline-none font-mono"
+                />
+                <button
+                  type="submit"
+                  className="px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs transition-all active:scale-95 shrink-0"
+                >
+                  تسجيل
+                </button>
+              </form>
 
-                        {seat.guest?.jobTitle && (
-                          <div className="text-[11px] text-slate-400">
-                            💼 {seat.guest.jobTitle} {seat.guest.category ? `• ${seat.guest.category}` : ''}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Action buttons for each booking */}
-                      <div className="flex items-center gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/10 shrink-0">
-                        {/* Send WhatsApp */}
-                        <button
-                          onClick={() => handleSendWhatsApp(seat)}
-                          title="إرسال التذكرة عبر الواتساب"
-                          className="p-2 rounded-xl bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 border border-emerald-400/30 transition-all text-xs flex items-center gap-1"
-                        >
-                          <Send className="w-3.5 h-3.5" />
-                          <span className="text-[11px] font-bold">واتساب</span>
-                        </button>
-
-                        {/* View Ticket */}
-                        <button
-                          onClick={() => setSelectedSeatForCard(seat)}
-                          title="عرض وطباعة التذكرة"
-                          className="p-2 rounded-xl bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 border border-cyan-400/30 transition-all text-xs flex items-center gap-1"
-                        >
-                          <Ticket className="w-3.5 h-3.5" />
-                          <span className="text-[11px] font-bold">التذكرة</span>
-                        </button>
-
-                        {/* Check in Toggle */}
-                        {!isCheckedIn ? (
-                          <button
-                            onClick={() => handleProcessScan(seat.guest?.token || seat.id)}
-                            className="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition-all shadow-md active:scale-95 flex items-center gap-1"
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                            <span>تحضير</span>
-                          </button>
-                        ) : null}
-
-                        {/* Cancel Booking */}
-                        <button
-                          onClick={() => {
-                            if (confirm(`إلغاء حجز الضيف ${seat.guest?.name}؟`)) {
-                              handleCancelBooking(seat.id);
-                            }
-                          }}
-                          title="إلغاء الحجز"
-                          className="p-2 rounded-xl bg-rose-500/15 text-rose-300 hover:bg-rose-500/25 border border-rose-400/30 transition-all"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })
+              {scanResult && (
+                <div className={`p-2.5 rounded-xl text-xs font-bold flex items-center gap-2 ${
+                  scanResult.success ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                }`}>
+                  {scanResult.success ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
+                  <span>{scanResult.message}</span>
+                </div>
               )}
             </div>
 
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* TAB 3: PRINT CENTER */}
-        {/* ========================================================================= */}
-        {activeTab === 'print' && (
-          <div className="space-y-4 animate-fade-in">
-            <div className="bg-[#0b162b] border border-white/10 p-5 sm:p-6 rounded-3xl shadow-xl space-y-4">
-              <div className="flex items-center gap-3 border-b border-white/10 pb-4">
-                <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 flex items-center justify-center">
-                  <Printer className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="text-base font-black text-white">مركز طباعة التذاكر والبطاقات والملصقات</h3>
-                  <p className="text-xs text-slate-400">طباعة نماذج الحضور المعتمدة بجودة عالية جاهزة لورق A4 والملصقات</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2">
-                
-                {/* Print Option 1: All Official Tickets */}
-                <div className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-cyan-400/50 transition-all flex flex-col justify-between space-y-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-cyan-300 font-bold text-sm">
-                      <Ticket className="w-5 h-5 text-cyan-400" />
-                      <span>طباعة تذاكر الحضور الرسمية (A4)</span>
-                    </div>
-                    <p className="text-xs text-slate-400 leading-relaxed">
-                      توليد وطباعة تذاكر الضيوف بالنموذج الرسمي مع شعار الوزارة والباركود وموقع المقعد.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setShowAllTicketsPrintModal(true)}
-                    className="w-full py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs transition-all shadow-md flex items-center justify-center gap-2 active:scale-95"
-                  >
-                    <Printer className="w-4 h-4" />
-                    <span>فتح نافذة طباعة التذاكر ({bookedSeats.length})</span>
-                  </button>
-                </div>
-
-                {/* Print Option 2: Batch Seat Cards */}
-                <div className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-purple-400/50 transition-all flex flex-col justify-between space-y-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-purple-300 font-bold text-sm">
-                      <Armchair className="w-5 h-5 text-purple-400" />
-                      <span>طباعة بطاقات المقاعد المجمعة</span>
-                    </div>
-                    <p className="text-xs text-slate-400 leading-relaxed">
-                      بطاقات توضع على كراسي المسرح بأسماء الضيوف وأرقام الصفوف والمقاعد.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setShowBatchSeatCardsModal(true)}
-                    className="w-full py-2.5 rounded-xl bg-purple-500 hover:bg-purple-400 text-white font-black text-xs transition-all shadow-md flex items-center justify-center gap-2 active:scale-95"
-                  >
-                    <Printer className="w-4 h-4" />
-                    <span>طباعة بطاقات الكراسي</span>
-                  </button>
-                </div>
-
-                {/* Print Option 3: Seat Stickers QR */}
-                <div className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-amber-400/50 transition-all flex flex-col justify-between space-y-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-amber-300 font-bold text-sm">
-                      <QrCode className="w-5 h-5 text-amber-400" />
-                      <span>طباعة ملصقات المقاعد (QR Stickers)</span>
-                    </div>
-                    <p className="text-xs text-slate-400 leading-relaxed">
-                      لاصقات صغيرة تحتوي على رقم المقعد ورمز QR تلصق على ظهر الكرسي.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setShowPrintLabelsModal(true)}
-                    className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all shadow-md flex items-center justify-center gap-2 active:scale-95"
-                  >
-                    <Printer className="w-4 h-4" />
-                    <span>طباعة ملصقات QR</span>
-                  </button>
-                </div>
-
-                {/* Print Option 4: Excel Roster Export */}
-                <div className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-emerald-400/50 transition-all flex flex-col justify-between space-y-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-emerald-300 font-bold text-sm">
-                      <FileSpreadsheet className="w-5 h-5 text-emerald-400" />
-                      <span>تصدير كشف Excel كامل</span>
-                    </div>
-                    <p className="text-xs text-slate-400 leading-relaxed">
-                      تصدير كشف شامل بجميع الضيوف والمقاعد وأوقات التحضير لملف Excel.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => exportSeatsToExcel(seats, eventDetails)}
-                    className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition-all shadow-md flex items-center justify-center gap-2 active:scale-95"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>تنزيل ملف Excel (.xlsx)</span>
-                  </button>
-                </div>
-
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* TAB 4: SEND & WHATSAPP HUB */}
-        {/* ========================================================================= */}
-        {activeTab === 'share' && (
-          <div className="space-y-4 animate-fade-in">
-            <div className="bg-[#0b162b] border border-white/10 p-5 rounded-3xl shadow-xl space-y-4">
+            {/* Card 2: البحث عن ضيف (Center 4 Cols) */}
+            <div className="lg:col-span-4 rounded-3xl border border-white/10 bg-[#0B1528] p-5 shadow-2xl flex flex-col justify-between space-y-4">
               <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 flex items-center justify-center">
-                    <Send className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-black text-white">إرسال الدعوات والتذاكر عبر الواتساب</h3>
-                    <p className="text-xs text-slate-400">إرسال التذاكر مباشرة لجوالات الضيوف بنص رسمي منسق ورابط الباركود</p>
-                  </div>
+                <h3 className="text-sm font-black text-white flex items-center gap-2">
+                  <Search className="w-4 h-4 text-cyan-400" />
+                  <span>البحث عن ضيف</span>
+                </h3>
+
+                {/* Tabs */}
+                <div className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/10 text-xs">
+                  <button
+                    onClick={() => setGuestTab('all')}
+                    className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all ${
+                      guestTab === 'all' ? 'bg-cyan-500 text-slate-950 font-black' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    الكل
+                  </button>
+                  <button
+                    onClick={() => setGuestTab('vip')}
+                    className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all ${
+                      guestTab === 'vip' ? 'bg-amber-400 text-slate-950 font-black' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    VIP 👑
+                  </button>
                 </div>
-                <span className="text-xs text-emerald-300 font-bold bg-emerald-500/10 px-3 py-1 rounded-full">
-                  {bookedSeats.length} مدعو
-                </span>
               </div>
 
-              {/* Template Selector */}
-              <div className="flex items-center gap-2 flex-wrap bg-white/5 p-2 rounded-2xl border border-white/10">
-                <span className="text-xs font-bold text-slate-300 px-2">اختر نموذج الرسالة:</span>
-                <button
-                  type="button"
-                  onClick={() => setWhatsappTemplate('vip')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                    whatsappTemplate === 'vip' 
-                      ? 'bg-amber-400 text-slate-950 shadow-md font-black' 
-                      : 'bg-white/5 text-slate-300 hover:text-white'
-                  }`}
-                >
-                  👑 دعوة رسمية VIP
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setWhatsappTemplate('reminder')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                    whatsappTemplate === 'reminder' 
-                      ? 'bg-cyan-400 text-slate-950 shadow-md font-black' 
-                      : 'bg-white/5 text-slate-300 hover:text-white'
-                  }`}
-                >
-                  ⏰ تذكير بموعد الحفل
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setWhatsappTemplate('welcome')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                    whatsappTemplate === 'welcome' 
-                      ? 'bg-emerald-400 text-slate-950 shadow-md font-black' 
-                      : 'bg-white/5 text-slate-300 hover:text-white'
-                  }`}
-                >
-                  🎉 ترحيب وتوجيه بالباب
-                </button>
+              {/* Search Bar */}
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="ابحث بالاسم أو رقم الجوال أو رقم الدعوة..."
+                  value={searchGuestQuery}
+                  onChange={(e) => setSearchGuestQuery(e.target.value)}
+                  className="w-full bg-black/30 border border-white/15 focus:border-cyan-400 rounded-xl pr-9 pl-3 py-2 text-xs text-white placeholder-slate-500 outline-none"
+                />
               </div>
 
-              {/* Guest Roster for WhatsApp sending */}
-              <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
-                {bookedSeats.map(seat => (
+              {/* Guest list scroll */}
+              <div className="space-y-2 max-h-[170px] overflow-y-auto pr-1">
+                {filteredGuests.slice(0, 4).map((seat) => (
                   <div 
                     key={seat.id}
-                    className="p-3.5 rounded-2xl bg-white/5 border border-white/10 hover:border-emerald-400/40 transition-all flex items-center justify-between gap-3"
+                    className="p-2.5 rounded-xl bg-white/[0.03] border border-white/10 hover:border-cyan-500/30 flex items-center justify-between text-xs transition-all"
                   >
                     <div className="space-y-0.5">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-white text-xs sm:text-sm">{seat.guest?.name}</span>
-                        {seat.isVip && (
-                          <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded font-bold">VIP</span>
-                        )}
+                      <div className="font-bold text-white flex items-center gap-1.5">
+                        <span>{seat.guest?.name}</span>
+                        {seat.isVip && <span className="text-[9px] bg-amber-400/20 text-amber-300 px-1.5 py-0.2 rounded font-bold">VIP</span>}
                       </div>
-                      <div className="text-[11px] text-cyan-300 font-mono">
-                        الصف ({seat.row}) • مقعد ({seat.number}) {seat.guest?.phone ? `• 📱 ${seat.guest.phone}` : ''}
+                      <div className="text-[10px] text-slate-400 font-mono">
+                        {formatArabicSeatCode(seat)} • {seat.guest?.phone || 'بدون جوال'}
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      {/* Copy message */}
-                      <button
-                        onClick={() => handleCopyInvitation(seat)}
-                        className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 text-xs font-bold transition-all flex items-center gap-1"
-                      >
-                        {copiedId === seat.id ? (
-                          <>
-                            <Check className="w-3.5 h-3.5 text-emerald-400" />
-                            <span className="text-emerald-300">تم النسخ!</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3.5 h-3.5" />
-                            <span>نسخ الدعوة</span>
-                          </>
-                        )}
-                      </button>
-
-                      {/* WhatsApp Direct Send */}
-                      <button
-                        onClick={() => handleSendWhatsApp(seat)}
-                        className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition-all shadow-md active:scale-95 flex items-center gap-1.5"
-                      >
-                        <Send className="w-3.5 h-3.5" />
-                        <span>إرسال واتساب</span>
-                      </button>
+                    <div>
+                      {seat.status === 'checked_in' ? (
+                        <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full font-bold">حاضر ✓</span>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            checkInTicket(seat.guest?.token || seat.id);
+                            refreshData();
+                          }}
+                          className="text-[10px] bg-cyan-500 hover:bg-cyan-400 text-slate-950 px-2.5 py-1 rounded-lg font-black transition-all"
+                        >
+                          دخول
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-          </div>
-        )}
 
-        {/* ========================================================================= */}
-        {/* TAB 5: THEATER MAP */}
-        {/* ========================================================================= */}
-        {activeTab === 'map' && (
-          <div className="space-y-4 animate-fade-in">
-            <div className="bg-[#0b162b] border border-white/10 p-4 sm:p-5 rounded-3xl shadow-xl space-y-3">
+            {/* Card 3: الضيوف المهمون (Right 4 Cols) */}
+            <div className="lg:col-span-4 rounded-3xl border border-white/10 bg-[#0B1528] p-5 shadow-2xl flex flex-col justify-between space-y-4">
               <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                <h3 className="text-xs sm:text-sm font-black text-white flex items-center gap-2">
-                  <Armchair className="w-4 h-4 text-cyan-400" />
-                  <span>خريطة مقاعد المسرح التفاعلية</span>
+                <h3 className="text-sm font-black text-amber-300 flex items-center gap-1.5">
+                  <Crown className="w-4 h-4 text-amber-400" />
+                  <span>الضيوف المهمون</span>
                 </h3>
-                <span className="text-[10px] text-emerald-300 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
-                  اضغط على أي مقعد متاح لحجزه أو محجوز لعرض بياناته
-                </span>
+                <span className="text-[10px] text-slate-400 hover:text-white cursor-pointer font-bold">عرض الكل</span>
               </div>
 
-              <div className="w-full bg-[#050b18] rounded-2xl border border-white/10 p-2 overflow-hidden">
-                <TheaterMap
-                  seats={seats}
-                  onSelectSeat={(seat) => {
-                    if (seat.status === 'available') {
-                      setSelectedSeatForBooking(seat);
-                    } else {
-                      setGuidedSeat(seat);
-                    }
-                  }}
-                  onSeatsUpdated={(updated) => setSeats(updated)}
-                  selectedSeatId={guidedSeat?.id || selectedSeatForBooking?.id}
-                />
+              <div className="space-y-2.5">
+                {vipSampleList.map((vip, vIdx) => (
+                  <div 
+                    key={vIdx}
+                    className="p-2.5 rounded-xl bg-white/[0.03] border border-amber-500/20 hover:border-amber-400/50 flex items-center justify-between text-xs transition-all"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-amber-400 to-yellow-600 flex items-center justify-center font-black text-[10px] text-slate-950 shrink-0">
+                        {vip.name.charAt(0)}
+                      </div>
+                      <div className="space-y-0.5">
+                        <div className="font-bold text-white text-[11px] leading-tight">{vip.name}</div>
+                        <div className="text-[9.5px] text-slate-400">{vip.sector} - {vip.seat}</div>
+                      </div>
+                    </div>
+                    <span className="text-[9px] bg-amber-400 text-slate-950 font-black px-1.5 py-0.5 rounded shadow-sm">
+                      VIP
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
+
           </div>
-        )}
 
-      </main>
+          {/* Row 3: Live Entry Log + Seat Map Preview + Gate Status (Matching Image 3) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+            
+            {/* Card 1: آخر عمليات تسجيل الدخول (Left 4 Cols) */}
+            <div className="lg:col-span-4 rounded-3xl border border-white/10 bg-[#0B1528] p-5 shadow-2xl space-y-3">
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                <h3 className="text-sm font-black text-white flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-emerald-400" />
+                  <span>آخر عمليات تسجيل الدخول</span>
+                </h3>
+                <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/25">مباشر</span>
+              </div>
 
-      {/* Booking Form Modal for Staff */}
-      {selectedSeatForBooking && (
-        <BookingModal
-          seat={selectedSeatForBooking}
-          onClose={() => setSelectedSeatForBooking(null)}
-          onConfirmBooking={handleConfirmBooking}
-          onCancelBooking={(seatId) => {
-            handleCancelBooking(seatId);
+              <div className="space-y-2">
+                {recentCheckedIn.length === 0 ? (
+                  <div className="py-6 text-center text-slate-400 text-xs">لا توجد عمليات دخول مسجلة حالياً</div>
+                ) : (
+                  recentCheckedIn.map((s, idx) => (
+                    <div 
+                      key={s.id || idx}
+                      className="p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-between text-xs"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                        <div>
+                          <div className="font-bold text-white text-[11px]">{s.guest?.name}</div>
+                          <div className="text-[9.5px] text-slate-400">{s.isVip ? 'كبار الشخصيات VIP' : 'ضيف عام'} • {formatArabicSeatCode(s)}</div>
+                        </div>
+                      </div>
+                      <div className="text-[10px] text-slate-400 font-mono">
+                        {s.guest?.checkedInAt ? new Date(s.guest.checkedInAt).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }) : 'الآن'}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Card 2: خريطة المقاعد - المسرح الرئيسي (Center 4 Cols) */}
+            <div className="lg:col-span-4 rounded-3xl border border-white/10 bg-[#0B1528] p-5 shadow-2xl flex flex-col justify-between space-y-2">
+              <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                <h3 className="text-sm font-black text-white flex items-center gap-2">
+                  <Armchair className="w-4 h-4 text-cyan-400" />
+                  <span>خريطة المقاعد - المسرح الرئيسي</span>
+                </h3>
+              </div>
+              <div className="py-1">
+                <MiniHallStageMap compact={true} showLegend={true} />
+              </div>
+            </div>
+
+            {/* Card 3: حالة البوابات والمداخل (Right 4 Cols) */}
+            <div className="lg:col-span-4 rounded-3xl border border-white/10 bg-[#0B1528] p-5 shadow-2xl space-y-3">
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                <h3 className="text-sm font-black text-white flex items-center gap-2">
+                  <DoorClosed className="w-4 h-4 text-cyan-400" />
+                  <span>حالة البوابات والمداخل</span>
+                </h3>
+              </div>
+
+              <div className="space-y-2">
+                {gatesState.map((gate) => (
+                  <div 
+                    key={gate.id}
+                    className="p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-between text-xs"
+                  >
+                    <span className="font-bold text-slate-200 text-[11px]">{gate.name}</span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      gate.status === 'open' 
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' 
+                        : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                    }`}>
+                      {gate.status === 'open' ? 'مفتوحة 🟢' : 'مغلقة 🔴'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
+
+          {/* Row 4: Quick Notes & Action Strip (Matching Image 3 Bottom) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
+            
+            {/* Quick Notes (Left 5 Cols) */}
+            <div className="lg:col-span-5 rounded-2xl border border-white/10 bg-[#0B1528] p-3 flex items-center gap-2 shadow-xl">
+              <input
+                type="text"
+                placeholder="أضف ملاحظة عن ضيف أو موقف تشغيلي..."
+                value={quickNote}
+                onChange={(e) => setQuickNote(e.target.value)}
+                className="flex-1 bg-black/40 border border-white/15 focus:border-cyan-400 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 outline-none"
+              />
+              <button
+                onClick={handleSaveQuickNote}
+                className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs transition-all active:scale-95 shrink-0"
+              >
+                حفظ ✍️
+              </button>
+            </div>
+
+            {/* Quick Actions (Right 7 Cols) */}
+            <div className="lg:col-span-7 flex flex-wrap items-center justify-end gap-2">
+              <button
+                onClick={refreshData}
+                className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-slate-200 transition-all flex items-center gap-1.5"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>تحديث الحالة</span>
+              </button>
+              <button
+                onClick={() => setShowPrintLabelsModal(true)}
+                className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-slate-200 transition-all flex items-center gap-1.5"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>طباعة تقرير</span>
+              </button>
+              <button
+                onClick={() => setShowCameraScanner(true)}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 hover:brightness-110 text-slate-950 font-black text-xs shadow-lg transition-all flex items-center gap-1.5"
+              >
+                <QrCode className="w-3.5 h-3.5" />
+                <span>تسجيل حضور</span>
+              </button>
+            </div>
+
+          </div>
+
+        </main>
+
+      </div>
+
+      {/* Camera Scanner Modal */}
+      {showCameraScanner && (
+        <MobileCameraScannerModal
+          isOpen={showCameraScanner}
+          onClose={() => setShowCameraScanner(false)}
+          onScanSuccess={(decodedText) => {
+            const res = checkInTicket(decodedText);
+            setScanResult(res);
+            if (res.success) {
+              playSuccessSound();
+              confetti({ particleCount: 60, spread: 60, origin: { y: 0.6 } });
+              refreshData();
+            } else {
+              playWarningSound();
+            }
+            setShowCameraScanner(false);
           }}
-          onDeleteSeat={() => {}}
-          onOpenCard={(seat) => {
-            setSelectedSeatForBooking(null);
-            setSelectedSeatForCard(seat);
-          }}
-          onOpenInvitation={(seat) => {
-            setSelectedSeatForBooking(null);
-            setSelectedSeatForInvitation(seat);
-          }}
-          onOpenSeatCard={(seat) => {
-            setSelectedSeatForBooking(null);
-            setSelectedSeatForSeatCard(seat);
-          }}
-        />
-      )}
-
-      {/* Ticket Modal */}
-      {selectedSeatForCard && (
-        <InvitationCard
-          seat={selectedSeatForCard}
-          eventDetails={eventDetails}
-          onClose={() => setSelectedSeatForCard(null)}
-          onPreviewGuestView={() => {}}
-        />
-      )}
-
-      {/* Luxury Electronic Invitation Modal */}
-      {selectedSeatForInvitation && (
-        <ElectronicInvitationModal
-          seat={selectedSeatForInvitation}
-          eventDetails={eventDetails}
-          onClose={() => setSelectedSeatForInvitation(null)}
-          onOpenSeatCard={(seat) => {
-            setSelectedSeatForInvitation(null);
-            setSelectedSeatForSeatCard(seat);
-          }}
-          onOpenTicketCard={(seat) => {
-            setSelectedSeatForInvitation(null);
-            setSelectedSeatForCard(seat);
-          }}
-          onPreviewGuestView={() => {}}
-        />
-      )}
-
-      {/* Individual Seat Card Modal */}
-      {selectedSeatForSeatCard && (
-        <SeatCardModal
-          seat={selectedSeatForSeatCard}
-          eventDetails={eventDetails}
-          onClose={() => setSelectedSeatForSeatCard(null)}
-          onOpenInvitation={() => {}}
-          onOpenBatchPrint={() => setShowBatchSeatCardsModal(true)}
-        />
-      )}
-
-      {/* Print All Official Tickets Modal */}
-      {showAllTicketsPrintModal && (
-        <AllTicketsPrintModal
-          seats={seats}
-          eventDetails={eventDetails}
-          onClose={() => setShowAllTicketsPrintModal(false)}
-        />
-      )}
-
-      {/* Batch Seat Cards Print Modal */}
-      {showBatchSeatCardsModal && (
-        <BatchSeatCardsPrintModal
-          seats={seats}
-          eventDetails={eventDetails}
-          onClose={() => setShowBatchSeatCardsModal(false)}
         />
       )}
 
       {/* Seat Labels Print Modal */}
       {showPrintLabelsModal && (
         <SeatLabelsPrintModal
+          isOpen={showPrintLabelsModal}
+          onClose={() => setShowPrintLabelsModal(false)}
           seats={seats}
           eventDetails={eventDetails}
-          onClose={() => setShowPrintLabelsModal(false)}
         />
       )}
-
-      {/* Guided Seat Location Modal */}
-      {guidedSeat && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in" dir="rtl">
-          <div className="bg-[#0b162b] border-2 border-cyan-500/40 rounded-3xl w-full max-w-lg p-5 sm:p-6 shadow-2xl space-y-4">
-            
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 flex items-center justify-center">
-                  <Compass className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-black text-white">إرشاد الضيف وموقع المقعد</h3>
-                  <p className="text-[11px] text-slate-400">تفاصيل الموقع والمدخل المحدد للضيف</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setGuidedSeat(null)}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center text-xs"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Guest Info */}
-            <div className="bg-white/5 border border-white/10 p-4 rounded-2xl space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-white">{guidedSeat.guest?.name || 'مقعد غير محجوز'}</span>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                  guidedSeat.status === 'checked_in' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'
-                }`}>
-                  {guidedSeat.status === 'checked_in' ? 'حاضر بالقاعة' : 'محجوز'}
-                </span>
-              </div>
-              {guidedSeat.guest?.jobTitle && (
-                <div className="text-[11px] text-slate-400">{guidedSeat.guest.jobTitle}</div>
-              )}
-            </div>
-
-            {/* Location Indicators */}
-            <div className="grid grid-cols-3 gap-2 text-center text-xs">
-              <div className="bg-cyan-500/10 border border-cyan-400/30 p-2.5 rounded-xl">
-                <span className="text-[10px] text-slate-400 block font-bold">الصف والمقعد</span>
-                <strong className="text-sm font-black text-cyan-300">
-                  {guidedSeat.row}-{String(guidedSeat.number).padStart(2,'0')}
-                </strong>
-              </div>
-              <div className="bg-white/5 border border-white/10 p-2.5 rounded-xl">
-                <span className="text-[10px] text-slate-400 block font-bold">الدور</span>
-                <strong className="text-sm font-black text-white">
-                  {guidedSeat.level === 'B' ? 'الدور الثاني (البلكونة)' : 'الدور الأرضي'}
-                </strong>
-              </div>
-              <div className="bg-amber-500/10 border border-amber-400/30 p-2.5 rounded-xl">
-                <span className="text-[10px] text-slate-400 block font-bold">القطاع والمدخل</span>
-                <strong className="text-sm font-black text-amber-300">
-                  قطاع {guidedSeat.sector || 'الوسط'}
-                </strong>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-2 pt-2">
-              {guidedSeat.status !== 'checked_in' && (
-                <button
-                  onClick={() => {
-                    handleProcessScan(guidedSeat.guest?.token || guidedSeat.id);
-                    setGuidedSeat(null);
-                  }}
-                  className="flex-1 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5"
-                >
-                  <Check className="w-4 h-4" />
-                  <span>تأكيد الحضور الآن</span>
-                </button>
-              )}
-              <button
-                onClick={() => setGuidedSeat(null)}
-                className="py-3 px-5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-all"
-              >
-                إغلاق
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {/* Organizer Badge Modal */}
-      {showMyBadgeModal && staffUser && (
-        <OrganizerBadgeModal
-          staff={staffUser}
-          eventDetails={eventDetails}
-          onClose={() => setShowMyBadgeModal(false)}
-        />
-      )}
-
-      {/* Mobile Camera Scanner Modal */}
-      <MobileCameraScannerModal
-        isOpen={showCameraScanner}
-        onClose={() => setShowCameraScanner(false)}
-        onScanSuccess={(code) => {
-          handleProcessScan(code);
-        }}
-      />
-
-      {/* Fixed Bottom Navigation Bar for Mobile Web App */}
-      <nav className="sm:hidden no-print fixed bottom-0 left-0 right-0 z-40 bg-[#060D1A]/95 backdrop-blur-xl border-t border-cyan-500/25 px-2 py-1.5 flex items-center justify-around shadow-[0_-5px_25px_rgba(0,0,0,0.6)]">
-        <button
-          onClick={() => setActiveTab('checkin')}
-          className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl transition-all ${
-            activeTab === 'checkin' ? 'text-cyan-300 font-bold scale-105' : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <div className={`p-1.5 rounded-xl transition-all ${activeTab === 'checkin' ? 'bg-cyan-500/20 border border-cyan-400/40 text-cyan-300' : ''}`}>
-            <QrCode className="w-4 h-4" />
-          </div>
-          <span className="text-[10px]">التحضير</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('bookings')}
-          className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl transition-all ${
-            activeTab === 'bookings' ? 'text-cyan-300 font-bold scale-105' : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <div className={`p-1.5 rounded-xl transition-all ${activeTab === 'bookings' ? 'bg-cyan-500/20 border border-cyan-400/40 text-cyan-300' : ''}`}>
-            <Users className="w-4 h-4" />
-          </div>
-          <span className="text-[10px]">الحجوزات</span>
-        </button>
-
-        {/* Center Prominent Camera Button */}
-        <button
-          onClick={() => setShowCameraScanner(true)}
-          className="flex flex-col items-center -mt-5 group"
-          title="كاميرا المسح المباشر"
-        >
-          <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-cyan-400 via-cyan-500 to-blue-600 border-2 border-[#060D1A] flex items-center justify-center text-slate-950 shadow-lg shadow-cyan-500/40 active:scale-95 group-hover:scale-105 transition-all">
-            <Camera className="w-6 h-6 animate-pulse" />
-          </div>
-          <span className="text-[9px] font-black text-cyan-300 mt-0.5">كاميرا QR</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('share')}
-          className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl transition-all ${
-            activeTab === 'share' ? 'text-cyan-300 font-bold scale-105' : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <div className={`p-1.5 rounded-xl transition-all ${activeTab === 'share' ? 'bg-cyan-500/20 border border-cyan-400/40 text-cyan-300' : ''}`}>
-            <Send className="w-4 h-4" />
-          </div>
-          <span className="text-[10px]">الإرسال</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('print')}
-          className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl transition-all ${
-            activeTab === 'print' ? 'text-cyan-300 font-bold scale-105' : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <div className={`p-1.5 rounded-xl transition-all ${activeTab === 'print' ? 'bg-cyan-500/20 border border-cyan-400/40 text-cyan-300' : ''}`}>
-            <Printer className="w-4 h-4" />
-          </div>
-          <span className="text-[10px]">الطباعة</span>
-        </button>
-      </nav>
 
     </div>
   );

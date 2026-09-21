@@ -27,7 +27,7 @@ import TheaterMap from './TheaterMap';
 import InvitationCard from './InvitationCard';
 import ElectronicInvitationModal from './ElectronicInvitationModal';
 import SeatCardModal from './SeatCardModal';
-import VenueBookingModal from './VenueBookingModal';
+import BookingFormModal from './BookingFormModal';
 import BeneficiaryServicesGrid from './BeneficiaryServicesGrid';
 import { formatArabicSeatCode } from '../utils/storage';
 
@@ -355,12 +355,10 @@ export default function BeneficiaryPortal({
         />
       )}
 
-      {/* Venue & Hall Booking Modal */}
-      <VenueBookingModal
+      {/* Hall & Theater Booking Form Modal */}
+      <BookingFormModal
         isOpen={showVenueModal}
         onClose={() => setShowVenueModal(false)}
-        eventDetails={eventDetails}
-        initialVenueId={selectedVenueIdForModal}
       />
 
     </div>

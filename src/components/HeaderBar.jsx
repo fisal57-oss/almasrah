@@ -1,17 +1,27 @@
-import React, { useState } from 'react';
-import { Search, Bell, Building2, Crown, Sparkles, LogOut, Lock, Users, ExternalLink, Menu } from 'lucide-react';
-import { MinistryOfEducationLogo } from './ModernAttendanceCard';
+import React, { useState, useEffect } from 'react';
+import { Search, Bell, Crown, Menu, Lock } from 'lucide-react';
 
 export default function HeaderBar({ 
   eventDetails = {}, 
   onSearchQuery, 
   onLogout, 
-  onOpenBeneficiary, 
   onOpenCommandPalette,
   onToggleMobileMenu
 }) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [logoError, setLogoError] = useState(false);
+  const [timeStr, setTimeStr] = useState('');
+  const [dateStr, setDateStr] = useState('');
+
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      setTimeStr(now.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }));
+      setDateStr(now.toLocaleDateString('ar-SA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
@@ -21,115 +31,104 @@ export default function HeaderBar({
   };
 
   return (
-    <header className="h-16 border-b border-white/10 bg-[#060D1A]/90 backdrop-blur-xl px-3 sm:px-6 flex items-center justify-between sticky top-0 z-30" dir="rtl">
+    <header className="h-16 border-b border-white/10 bg-[#071124]/95 backdrop-blur-xl px-4 sm:px-6 lg:px-8 flex items-center justify-between sticky top-0 z-30 select-none shadow-xl" dir="rtl">
       
-      {/* Right Side: Mobile Hamburger + Ministry & Department Branding */}
-      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-        
-        {/* Mobile Hamburger Toggle Button */}
-        {onToggleMobileMenu && (
+      {/* Left: User Profile + Notifications + Logout */}
+      <div className="flex items-center gap-3">
+        {/* User Profile Chip */}
+        <div className="flex items-center gap-2.5 p-1.5 pl-3 rounded-2xl bg-white/[0.04] border border-white/10 hover:border-cyan-500/30 transition-all cursor-pointer">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-black text-xs text-slate-950">
+            أ
+          </div>
+          <div className="hidden sm:block text-right leading-tight">
+            <div className="text-xs font-bold text-white">أحمد السبيعي</div>
+            <div className="text-[10px] text-cyan-400 font-medium">مدير العمليات</div>
+          </div>
+        </div>
+
+        {/* Notifications Bell with badge 3 */}
+        <div className="relative p-2 rounded-xl bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] cursor-pointer transition-all">
+          <Bell className="w-4 h-4 text-slate-300" />
+          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white font-black text-[9px] flex items-center justify-center border-2 border-[#071124]">
+            3
+          </span>
+        </div>
+
+        {/* Logout */}
+        {onLogout && (
           <button
-            onClick={onToggleMobileMenu}
-            className="lg:hidden p-2 rounded-xl bg-white/10 hover:bg-white/20 text-cyan-300 border border-white/15 shrink-0 active:scale-95 transition-all"
-            aria-label="فتح القائمة الجانبية"
-            title="القائمة"
+            onClick={onLogout}
+            className="hidden sm:flex items-center gap-1.5 p-2 rounded-xl bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 border border-white/10 hover:border-rose-500/30 text-xs font-bold transition-all"
+            title="قفل لوحة التحكم"
           >
-            <Menu className="w-5 h-5" />
+            <Lock className="w-3.5 h-3.5" />
           </button>
         )}
-
-        {eventDetails?.logoUrl && !logoError ? (
-          <img 
-            src={eventDetails.logoUrl} 
-            alt={eventDetails.title || "شعار الفعالية"} 
-            onError={() => setLogoError(true)}
-            className="h-10 sm:h-11 max-h-11 max-w-[130px] sm:max-w-[160px] object-contain rounded-xl p-1 bg-white/10 backdrop-blur-md border border-white/20 shadow-md shrink-0"
-          />
-        ) : (
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-cyan-500/15 border border-cyan-400/30 flex items-center justify-center text-cyan-300 shrink-0">
-            <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
-          </div>
-        )}
-
-        <div>
-          <h2 className="text-xs font-black text-white flex items-center gap-1.5 leading-tight">
-            <span>مسرح تعليم عسير</span>
-            <span className="hidden sm:inline-block text-[10px] bg-cyan-500/20 px-2 py-0.5 rounded text-cyan-300 font-mono font-bold">
-              لوحة الإدارة
-            </span>
-          </h2>
-          <p className="hidden sm:block text-[10px] text-slate-400 font-medium">
-            نظام إدارة وحجز مقاعد المسرح وبطاقات QR
-          </p>
-        </div>
       </div>
 
-      {/* Center Search Input / Command Palette Launcher */}
-      <div className="flex-1 max-w-md mx-2 sm:mx-8">
+      {/* Center: System Status Pill + Search Box + Date Clock */}
+      <div className="hidden md:flex items-center gap-4 flex-1 max-w-2xl mx-6">
         
-        {/* Desktop / Tablet Search Box */}
+        {/* Date and Time pill */}
+        <div className="text-right shrink-0 hidden xl:block text-[11px] text-slate-300 font-mono font-bold bg-white/[0.03] px-3 py-1.5 rounded-xl border border-white/10">
+          <span>{dateStr || 'الجمعة 25 أكتوبر 2026'}</span> • <span className="text-cyan-300">{timeStr || '07:12 م'}</span>
+        </div>
+
+        {/* Search input with Ctrl+K */}
         <div 
           onClick={onOpenCommandPalette}
-          className="hidden sm:block relative cursor-pointer group"
+          className="relative flex-1 cursor-pointer group"
         >
           <Search className="w-4 h-4 text-slate-400 group-hover:text-cyan-400 absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors" />
           <input
             type="text"
             readOnly
-            placeholder="بحث فوري في الضيوف، المقاعد، الفعاليات... (اضغط Ctrl+K)"
-            className="w-full bg-white/5 group-hover:bg-white/10 border border-white/15 group-hover:border-cyan-400/50 rounded-xl pr-10 pl-16 py-2 text-xs text-white placeholder-slate-400 outline-none transition-all shadow-inner cursor-pointer"
+            placeholder="ابحث عن فعالية أو قاعة أو رقم حجز أو اسم مستخدم ... (Ctrl + K)"
+            className="w-full bg-white/[0.04] group-hover:bg-white/[0.07] border border-white/10 group-hover:border-cyan-400/40 rounded-2xl pr-10 pl-16 py-2 text-xs text-white placeholder-slate-400 outline-none transition-all cursor-pointer"
           />
-          <div className="absolute left-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
-            <kbd className="hidden sm:inline-block px-2 py-0.5 text-[10px] font-mono font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-400/30 rounded-md">
+          <div className="absolute left-2.5 top-1/2 -translate-y-1/2">
+            <kbd className="px-2 py-0.5 text-[9px] font-mono font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-400/30 rounded-md">
               Ctrl+K
             </kbd>
           </div>
         </div>
 
-        {/* Mobile Compact Search Trigger Button */}
-        <button
-          onClick={onOpenCommandPalette}
-          className="sm:hidden flex items-center gap-2 w-full bg-white/5 hover:bg-white/10 border border-white/15 rounded-xl px-3 py-1.5 text-slate-400 text-xs transition-all active:scale-95"
-          title="بحث فوري"
-        >
-          <Search className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-          <span className="truncate text-[11px]">بحث سريع...</span>
-        </button>
+        {/* Status indicator pill */}
+        <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-[11px] text-emerald-300 font-bold shrink-0">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>النظام يعمل بكفاءة</span>
+        </div>
 
       </div>
 
-      {/* Left Side: Actions (Beneficiary Link + Event Badge + Logout) */}
-      <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-        
-        {/* Active Event Badge */}
-        <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-400/30 text-amber-300 text-xs font-bold truncate max-w-[180px]">
-          <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-          <span className="truncate">{eventDetails.title || 'مسرح عسير'}</span>
-        </div>
-
-        {/* Guest Portal Quick Launch */}
-        <button
-          onClick={onOpenBeneficiary || (() => window.open('beneficiary.html', '_blank'))}
-          title="فتح بوابة الضيوف والمستفيدين"
-          className="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/15 text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95"
-        >
-          <Users className="w-3.5 h-3.5 text-cyan-300 shrink-0" />
-          <span className="hidden md:inline">بوابة الضيف</span>
-          <ExternalLink className="w-3 h-3 text-slate-400" />
-        </button>
-
-        {/* Logout / Lock Admin */}
-        {onLogout && (
+      {/* Right: Mobile Menu Toggle + Portal Logo */}
+      <div className="flex items-center gap-3">
+        {onToggleMobileMenu && (
           <button
-            onClick={onLogout}
-            title="قفل لوحة التحكم وتسجيل الخروج"
-            className="p-1.5 sm:p-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-400/30 transition-all flex items-center gap-1 text-xs font-bold active:scale-95"
+            onClick={onToggleMobileMenu}
+            className="lg:hidden p-2 rounded-xl bg-white/10 hover:bg-white/20 text-cyan-300 border border-white/15 active:scale-95 transition-all"
+            aria-label="القائمة"
           >
-            <Lock className="w-3.5 h-3.5 text-rose-400" />
-            <span className="hidden md:inline">قفل</span>
+            <Menu className="w-5 h-5" />
           </button>
         )}
 
+        <div className="text-right">
+          <div className="text-sm font-black text-white tracking-wide">
+            بوابة المسرح والقاعات
+          </div>
+          <div className="text-[10px] text-cyan-400 font-bold tracking-wider">
+            إدارة وتشغيل الفعاليات
+          </div>
+        </div>
+
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/25 border border-white/15 shrink-0">
+          <div className="flex items-end gap-0.5">
+            <span className="w-1 h-3.5 bg-white rounded-full"></span>
+            <span className="w-1 h-5 bg-cyan-200 rounded-full"></span>
+            <span className="w-1 h-2.5 bg-white rounded-full"></span>
+          </div>
+        </div>
       </div>
 
     </header>
