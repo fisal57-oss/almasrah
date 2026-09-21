@@ -178,7 +178,397 @@ export default function BeneficiaryApp() {
   };
 
   const handlePrintTicket = () => {
-    window.print();
+    try {
+      const qrSvg = ticketCardRef.current?.querySelector('svg')?.outerHTML || '';
+      const guestName = displayGuestName || 'أحمد السبيعي';
+      const seatCode = displaySeatCode || 'F - 12';
+      const token = displayToken || 'TKT-2026-45872';
+      const title = eventDetails.title || 'المسرح الرئيسي - حفل التكريم والافتتاح';
+      const category = eventDetails.category || 'حفل رسمي';
+      const dateText = 'الجمعة، 25 أكتوبر 2026 • 08:00 مساءً (تفتح الأبواب 07:00 مساءً)';
+      const gateText = 'البوابة 3 (المدخل الرئيسي)';
+
+      // Remove any existing print iframe
+      const oldFrame = document.getElementById('ticket-print-frame');
+      if (oldFrame) {
+        document.body.removeChild(oldFrame);
+      }
+
+      // Create a hidden iframe dedicated for printing
+      const printFrame = document.createElement('iframe');
+      printFrame.id = 'ticket-print-frame';
+      printFrame.style.position = 'fixed';
+      printFrame.style.right = '-9999px';
+      printFrame.style.bottom = '-9999px';
+      printFrame.style.width = '1000px';
+      printFrame.style.height = '800px';
+      printFrame.style.border = '0';
+      document.body.appendChild(printFrame);
+
+      const frameDoc = printFrame.contentWindow.document;
+      frameDoc.open();
+      frameDoc.write(`
+        <!DOCTYPE html>
+        <html dir="rtl" lang="ar">
+        <head>
+          <meta charset="UTF-8" />
+          <title>تذكرة المسرح المعتمدة - ${guestName}</title>
+          <link rel="preconnect" href="https://fonts.googleapis.com">
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+          <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+          <style>
+            * {
+              box-sizing: border-box;
+              margin: 0;
+              padding: 0;
+              font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              color-adjust: exact !important;
+            }
+            @page {
+              size: A4 portrait;
+              margin: 14mm 10mm;
+            }
+            body {
+              background-color: #ffffff;
+              color: #0f172a;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              padding: 24px 16px;
+              min-height: 100vh;
+            }
+            @media print {
+              body {
+                padding: 0;
+                min-height: auto;
+                background-color: transparent !important;
+              }
+              .no-print {
+                display: none !important;
+              }
+            }
+            .page-container {
+              width: 100%;
+              max-width: 760px;
+              margin: 0 auto;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+            }
+            /* Official Ministry Header */
+            .official-header {
+              width: 100%;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              padding-bottom: 16px;
+              border-bottom: 2px solid #e2e8f0;
+              margin-bottom: 26px;
+            }
+            .official-header .title-block {
+              text-align: right;
+            }
+            .official-header .title-block h1 {
+              font-size: 17px;
+              font-weight: 900;
+              color: #0f172a;
+            }
+            .official-header .title-block p {
+              font-size: 12px;
+              color: #64748b;
+              font-weight: 600;
+              margin-top: 3px;
+            }
+            .moe-logo-box {
+              width: 52px;
+              height: 52px;
+              border-radius: 16px;
+              background-color: #0B1528;
+              border: 1.5px solid rgba(6, 182, 212, 0.4);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              padding: 6px;
+              box-shadow: 0 4px 12px rgba(11, 21, 40, 0.25);
+            }
+            .moe-logo-box img {
+              width: 100%;
+              height: 100%;
+              object-fit: contain;
+            }
+
+            /* APPROVED DIGITAL TICKET CARD (MATCHING USER APPROVED DESIGN 100%) */
+            .ticket-card {
+              width: 100%;
+              background: linear-gradient(135deg, #0c182c 0%, #091322 55%, #070e1a 100%);
+              border: 1.5px solid rgba(6, 182, 212, 0.4);
+              border-radius: 26px;
+              padding: 24px 28px;
+              position: relative;
+              overflow: hidden;
+              box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+              display: flex;
+              flex-direction: row;
+              align-items: center;
+              justify-content: space-between;
+              gap: 24px;
+            }
+            .ticket-card::after {
+              content: '';
+              position: absolute;
+              right: -50px;
+              top: -50px;
+              width: 140px;
+              height: 140px;
+              background: radial-gradient(circle, rgba(6, 182, 212, 0.2) 0%, transparent 70%);
+              border-radius: 50%;
+              pointer-events: none;
+            }
+            .ticket-card-stub {
+              position: absolute;
+              right: 0;
+              top: 0;
+              bottom: 0;
+              width: 8px;
+              border-right: 2px dashed rgba(6, 182, 212, 0.25);
+            }
+
+            /* Right Details Section */
+            .ticket-details {
+              flex: 1;
+              display: flex;
+              flex-direction: column;
+              gap: 12px;
+              text-align: right;
+            }
+            .ticket-top-row {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+            }
+            .ticket-category {
+              font-size: 13px;
+              font-weight: 800;
+              color: #22d3ee;
+              letter-spacing: 0.5px;
+            }
+            .ticket-token-pill {
+              font-family: monospace;
+              font-size: 11px;
+              color: #cbd5e1;
+              background: #142033;
+              border: 1px solid #223552;
+              padding: 2px 10px;
+              border-radius: 8px;
+              font-weight: 700;
+            }
+            .ticket-title {
+              font-size: 19px;
+              font-weight: 900;
+              color: #ffffff;
+              line-height: 1.35;
+            }
+
+            /* Info Box */
+            .ticket-info-box {
+              background: rgba(255, 255, 255, 0.035);
+              border: 1px solid rgba(255, 255, 255, 0.1);
+              border-radius: 14px;
+              padding: 12px 16px;
+              display: flex;
+              flex-direction: column;
+              gap: 10px;
+            }
+            .info-row {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              font-size: 13.5px;
+            }
+            .info-label {
+              color: #94a3b8;
+              font-weight: 600;
+            }
+            .info-value-name {
+              color: #ffffff;
+              font-weight: 800;
+              font-size: 15px;
+            }
+            .info-value-seat {
+              background: rgba(245, 158, 11, 0.12);
+              border: 1px solid rgba(245, 158, 11, 0.45);
+              color: #fbbf24;
+              font-weight: 900;
+              padding: 3px 14px;
+              border-radius: 8px;
+              font-size: 13px;
+              letter-spacing: 1px;
+            }
+            .info-value-gate {
+              color: #38bdf8;
+              font-weight: 800;
+              font-size: 13.5px;
+            }
+
+            /* Bottom Date/Time Row */
+            .ticket-bottom-row {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              font-size: 11.5px;
+              color: #cbd5e1;
+              font-weight: 700;
+              margin-top: 2px;
+            }
+            .ticket-bottom-row svg {
+              width: 15px;
+              height: 15px;
+              stroke: #22d3ee;
+              flex-shrink: 0;
+            }
+
+            /* Left QR Box */
+            .ticket-qr-box {
+              background-color: #ffffff;
+              border-radius: 20px;
+              padding: 14px;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+              flex-shrink: 0;
+            }
+            .ticket-qr-box svg {
+              display: block;
+              width: 120px;
+              height: 120px;
+            }
+            .ticket-qr-token {
+              font-family: monospace;
+              font-size: 10px;
+              font-weight: 900;
+              color: #0f172a;
+              margin-top: 8px;
+              letter-spacing: -0.2px;
+            }
+
+            /* Footer Instructions */
+            .instructions-box {
+              width: 100%;
+              margin-top: 28px;
+              background: #f8fafc;
+              border: 1.5px dashed #cbd5e1;
+              border-radius: 16px;
+              padding: 14px 20px;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              font-size: 11.5px;
+              color: #475569;
+              font-weight: 600;
+            }
+            .instructions-box strong {
+              color: #0f172a;
+              font-weight: 800;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="page-container">
+            <!-- Official Header -->
+            <div class="official-header">
+              <div class="moe-logo-box">
+                <img src="saudi_moe_logo.svg" alt="شعار وزارة التعليم" />
+              </div>
+              <div class="title-block">
+                <h1>المملكة العربية السعودية • وزارة التعليم</h1>
+                <p>الإدارة العامة للتعليم - تذكرة الحضور الرسمية المعتمدة للمسرح</p>
+              </div>
+              <div style="font-size: 10px; color: #64748b; font-family: monospace; text-align: left;">
+                <div>التاريخ: ${new Date().toLocaleDateString('ar-SA')}</div>
+                <div style="color: #10b981; font-weight: bold;">الحالة: فعالة ومؤكدة ✓</div>
+              </div>
+            </div>
+
+            <!-- THE APPROVED TICKET CARD -->
+            <div class="ticket-card">
+              <div class="ticket-card-stub"></div>
+
+              <!-- Right Details -->
+              <div class="ticket-details">
+                <div class="ticket-top-row">
+                  <div class="ticket-category">${category}</div>
+                  <div class="ticket-token-pill">${token}</div>
+                </div>
+
+                <div class="ticket-title">${title}</div>
+
+                <div class="ticket-info-box">
+                  <div class="info-row">
+                    <span class="info-label">اسم الضيف:</span>
+                    <span class="info-value-name">${guestName}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="info-label">المقعد المخصص:</span>
+                    <span class="info-value-seat">${seatCode}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="info-label">بوابة الدخول:</span>
+                    <span class="info-value-gate">${gateText}</span>
+                  </div>
+                </div>
+
+                <div class="ticket-bottom-row">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                  <span>${dateText}</span>
+                </div>
+              </div>
+
+              <!-- Left QR Code Container -->
+              <div class="ticket-qr-box">
+                ${qrSvg}
+                <div class="ticket-qr-token">${token}</div>
+              </div>
+            </div>
+
+            <!-- Verification & Instructions -->
+            <div class="instructions-box">
+              <div>
+                <strong>تعليمات الدخول:</strong> يرجى إبراز هذه التذكرة أو رمز الاستجابة السريعة (QR) عند البوابة رقم 3 للمنظمين لتسهيل التوجيه لمقعدكم الكريم.
+              </div>
+              <div style="font-family: monospace; font-weight: 800; color: #0284c7; white-space: nowrap; margin-right: 14px;">
+                TKT-VERIFIED-SA
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `);
+      frameDoc.close();
+
+      setTimeout(() => {
+        try {
+          printFrame.contentWindow.focus();
+          printFrame.contentWindow.print();
+        } catch (printErr) {
+          console.error('Print frame error:', printErr);
+          window.print();
+        }
+      }, 400);
+
+    } catch (err) {
+      console.error('Print error:', err);
+      window.print();
+    }
   };
 
   const handleAddToWallet = () => {
@@ -539,65 +929,63 @@ export default function BeneficiaryApp() {
                 </div>
               </div>
 
-              {/* Ticket Body with Event, Guest & QR (ticketCardRef attached for high-res PNG export) */}
+              {/* Ticket Body with Event, Guest & QR (Approved Ticket Design) */}
               <div 
                 ref={ticketCardRef}
-                className="flex flex-col sm:flex-row items-center gap-4 bg-gradient-to-br from-[#0c182c] via-[#091322] to-[#070e1a] border border-cyan-500/30 rounded-2xl p-4 relative overflow-hidden shadow-inner"
+                className="flex flex-col sm:flex-row items-center gap-4 bg-gradient-to-br from-[#0c182c] via-[#091322] to-[#070e1a] border border-cyan-500/30 rounded-2xl p-4 sm:p-5 relative overflow-hidden shadow-2xl"
               >
                 {/* Visual Watermark & Decorative Glow */}
                 <div className="absolute -top-12 -right-12 w-28 h-28 bg-cyan-500/10 rounded-full blur-xl pointer-events-none" />
-                <div className="hidden sm:block absolute right-0 top-0 bottom-0 w-2 border-r-2 border-dashed border-cyan-500/20" />
+                <div className="hidden sm:block absolute right-0 top-0 bottom-0 w-2 border-r-2 border-dashed border-cyan-500/25" />
 
                 {/* Event & Guest info text */}
-                <div className="flex-1 space-y-2 text-right">
+                <div className="flex-1 space-y-2.5 text-right w-full sm:w-auto">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-cyan-400 font-bold uppercase tracking-wider">
+                    <span className="text-xs text-cyan-400 font-bold tracking-wide">
                       {eventDetails.category || 'حفل رسمي'}
                     </span>
-                    <span className="text-[9px] font-mono text-slate-400 bg-white/5 px-2 py-0.5 rounded-md border border-white/10">
+                    <span className="text-[10px] font-mono text-slate-300 bg-[#142033] px-2.5 py-0.5 rounded-lg border border-[#223552]">
                       {displayToken}
                     </span>
                   </div>
 
                   <h4 className="text-sm sm:text-base font-black text-white leading-snug">
-                    {eventDetails.title || 'حفل التكريم والافتتاح'}
+                    {eventDetails.title || 'المسرح الرئيسي - حفل التكريم والافتتاح'}
                   </h4>
 
                   {/* Guest Name & Seat Highlight Badge */}
-                  <div className="p-2 rounded-xl bg-white/[0.04] border border-white/10 space-y-1">
+                  <div className="p-2.5 rounded-xl bg-white/[0.035] border border-white/10 space-y-1.5">
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-slate-400 font-medium">اسم الضيف:</span>
                       <strong className="text-white font-bold">{displayGuestName}</strong>
                     </div>
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-slate-400 font-medium">المقعد المخصص:</span>
-                      <span className="font-black text-amber-300 bg-amber-500/15 border border-amber-400/30 px-2 py-0.5 rounded-md text-[11px]">
+                      <span className="font-bold text-amber-300 bg-amber-500/10 border border-amber-500/40 px-3 py-0.5 rounded-lg text-xs">
                         {displaySeatCode}
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-slate-400 font-medium">بوابة الدخول:</span>
-                      <span className="font-bold text-cyan-300 text-[11px]">البوابة 3 (المدخل الرئيسي)</span>
+                      <span className="font-bold text-cyan-300 text-xs">البوابة 3 (المدخل الرئيسي)</span>
                     </div>
                   </div>
 
-                  <div className="text-[10px] text-slate-400 flex items-center gap-1.5 font-bold pt-0.5">
-                    <Calendar className="w-3 h-3 text-cyan-400 shrink-0" />
-                    <span>{eventDetails.date || 'الجمعة 25 أكتوبر 2026'}</span>
-                    <span>•</span>
-                    <span>{eventDetails.time || '08:00 مساءً'}</span>
+                  <div className="text-[10.5px] text-slate-300 flex items-center gap-1.5 font-bold pt-0.5">
+                    <Calendar className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    <span>الجمعة، 25 أكتوبر 2026 • 08:00 مساءً (تفتح الأبواب 07:00 مساءً)</span>
                   </div>
                 </div>
 
-                {/* QR Code Container */}
-                <div className="flex flex-col items-center justify-center p-2.5 bg-white rounded-2xl shadow-xl shrink-0 border border-slate-200">
+                {/* QR Code Container (Left side in RTL) */}
+                <div className="flex flex-col items-center justify-center p-3 bg-white rounded-2xl shadow-xl shrink-0 border border-slate-200">
                   <QRCodeSVG 
                     value={displayToken} 
-                    size={105} 
+                    size={110} 
                     level="M" 
                     includeMargin={false}
                   />
-                  <div className="text-[9px] font-mono font-black text-slate-900 mt-1">
+                  <div className="text-[9.5px] font-mono font-black text-slate-900 mt-1">
                     {displayToken}
                   </div>
                 </div>

@@ -222,12 +222,17 @@ body {
     max-height: none !important;
   }
 
-  /* Completely hide main app layout (Sidebar, HeaderBar, Main content body, Footer, Navigation) when printing */
-  aside,
-  header,
-  main,
-  footer,
-  nav,
+  /* Hide main app layout only during specialized admin bulk printing */
+  body.is-printing-card aside,
+  body.is-printing-card header,
+  body.is-printing-card main,
+  body.is-printing-card footer,
+  body.is-printing-card nav,
+  body.is-printing-all-tickets aside,
+  body.is-printing-all-tickets header,
+  body.is-printing-all-tickets main,
+  body.is-printing-all-tickets footer,
+  body.is-printing-all-tickets nav,
   .no-print {
     display: none !important;
   }
