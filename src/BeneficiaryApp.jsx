@@ -42,6 +42,7 @@ import MiniHallStageMap from './components/MiniHallStageMap';
 import TheaterMap from './components/TheaterMap';
 import BookingFormModal from './components/BookingFormModal';
 import InvitationCard from './components/InvitationCard';
+import AseerOfficialTicketCard from './components/AseerOfficialTicketCard';
 import { exportElementToPng } from './utils/exportImage';
 import { 
   getSeats, 
@@ -66,6 +67,8 @@ export default function BeneficiaryApp() {
   const [isCopied, setIsCopied] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showFullCardModal, setShowFullCardModal] = useState(false);
+  const [showOfficialTicketModal, setShowOfficialTicketModal] = useState(false);
+  const officialTicketCardRef = useRef(null);
   const [showTheaterMapModal, setShowTheaterMapModal] = useState(false);
   const [showGateInfoModal, setShowGateInfoModal] = useState(false);
   const [showEventInfoModal, setShowEventInfoModal] = useState(false);
@@ -152,26 +155,27 @@ export default function BeneficiaryApp() {
   const [saveTicketSuccess, setSaveTicketSuccess] = useState(false);
 
   const handleSaveTicket = async () => {
-    if (!ticketCardRef.current) return;
+    const targetElement = officialTicketCardRef.current || ticketCardRef.current;
+    if (!targetElement) return;
     setIsSavingTicket(true);
     try {
       const code = currentTicketSeat ? formatArabicSeatCode(currentTicketSeat) : 'تذكرة';
       const name = currentTicketSeat?.guest?.name || 'مستفيد';
       const cleanName = name.replace(/[\s/\\:*?"<>|]/g, '_');
-      const fileName = `تذكرة_مسرح_${code}_${cleanName}.png`;
+      const fileName = `تذكرة_مسرح_عسير_المعتمدة_${code}_${cleanName}.png`;
 
-      await exportElementToPng(ticketCardRef.current, fileName, {
+      await exportElementToPng(targetElement, fileName, {
         pixelRatio: 4,
-        backgroundColor: '#071124'
+        backgroundColor: '#ffffff'
       });
       setSaveTicketSuccess(true);
       try {
-        confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
+        confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
       } catch (e) {}
       setTimeout(() => setSaveTicketSuccess(false), 3500);
     } catch (err) {
       console.error('Error saving ticket:', err);
-      alert('حدث خطأ أثناء حفظ التذكرة. يرجى استخدام زر الطباعة للحفظ كملف PDF أو أخذ لقطة شاشة.');
+      alert('حدث خطأ أثناء حفظ التذكرة. يرجى استخدام زر الطباعة للحفظ كملف PDF.');
     } finally {
       setIsSavingTicket(false);
     }
@@ -179,14 +183,11 @@ export default function BeneficiaryApp() {
 
   const handlePrintTicket = () => {
     try {
-      const qrSvg = ticketCardRef.current?.querySelector('svg')?.outerHTML || '';
-      const guestName = displayGuestName || 'أحمد السبيعي';
-      const seatCode = displaySeatCode || 'F - 12';
-      const token = displayToken || 'TKT-2026-45872';
-      const title = eventDetails.title || 'المسرح الرئيسي - حفل التكريم والافتتاح';
-      const category = eventDetails.category || 'حفل رسمي';
-      const dateText = 'الجمعة، 25 أكتوبر 2026 • 08:00 مساءً (تفتح الأبواب 07:00 مساءً)';
-      const gateText = 'البوابة 3 (المدخل الرئيسي)';
+      const targetElement = officialTicketCardRef.current || ticketCardRef.current;
+      if (!targetElement) {
+        window.print();
+        return;
+      }
 
       // Remove any existing print iframe
       const oldFrame = document.getElementById('ticket-print-frame');
@@ -194,14 +195,14 @@ export default function BeneficiaryApp() {
         document.body.removeChild(oldFrame);
       }
 
-      // Create a hidden iframe dedicated for printing
+      // Create a hidden iframe dedicated for printing the official ticket
       const printFrame = document.createElement('iframe');
       printFrame.id = 'ticket-print-frame';
       printFrame.style.position = 'fixed';
       printFrame.style.right = '-9999px';
       printFrame.style.bottom = '-9999px';
-      printFrame.style.width = '1000px';
-      printFrame.style.height = '800px';
+      printFrame.style.width = '1050px';
+      printFrame.style.height = '850px';
       printFrame.style.border = '0';
       document.body.appendChild(printFrame);
 
@@ -212,33 +213,32 @@ export default function BeneficiaryApp() {
         <html dir="rtl" lang="ar">
         <head>
           <meta charset="UTF-8" />
-          <title>تذكرة المسرح المعتمدة - ${guestName}</title>
+          <title>تذكرة المسرح المعتمدة - ${currentTicketSeat?.guest?.name || 'مستفيد'}</title>
           <link rel="preconnect" href="https://fonts.googleapis.com">
           <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-          <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+          <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Readex+Pro:wght@400;600;700&display=swap" rel="stylesheet">
+          <script src="https://cdn.tailwindcss.com"></script>
           <style>
             * {
               box-sizing: border-box;
               margin: 0;
               padding: 0;
-              font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
+              font-family: 'Cairo', 'Readex Pro', system-ui, sans-serif;
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
               color-adjust: exact !important;
             }
             @page {
-              size: A4 portrait;
-              margin: 14mm 10mm;
+              size: A4 landscape;
+              margin: 10mm 8mm;
             }
             body {
               background-color: #ffffff;
-              color: #0f172a;
               display: flex;
-              flex-direction: column;
               align-items: center;
               justify-content: center;
-              padding: 24px 16px;
               min-height: 100vh;
+              padding: 10px;
             }
             @media print {
               body {
@@ -246,309 +246,19 @@ export default function BeneficiaryApp() {
                 min-height: auto;
                 background-color: transparent !important;
               }
-              .no-print {
-                display: none !important;
+              .aseer-approved-ticket-card {
+                margin: 0 auto !important;
+                box-shadow: none !important;
+                border: 1.5px solid #cbd5e1 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
               }
-            }
-            .page-container {
-              width: 100%;
-              max-width: 760px;
-              margin: 0 auto;
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-            }
-            /* Official Ministry Header */
-            .official-header {
-              width: 100%;
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
-              padding-bottom: 16px;
-              border-bottom: 2px solid #e2e8f0;
-              margin-bottom: 26px;
-            }
-            .official-header .title-block {
-              text-align: right;
-            }
-            .official-header .title-block h1 {
-              font-size: 17px;
-              font-weight: 900;
-              color: #0f172a;
-            }
-            .official-header .title-block p {
-              font-size: 12px;
-              color: #64748b;
-              font-weight: 600;
-              margin-top: 3px;
-            }
-            .moe-logo-box {
-              width: 52px;
-              height: 52px;
-              border-radius: 16px;
-              background-color: #0B1528;
-              border: 1.5px solid rgba(6, 182, 212, 0.4);
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              padding: 6px;
-              box-shadow: 0 4px 12px rgba(11, 21, 40, 0.25);
-            }
-            .moe-logo-box img {
-              width: 100%;
-              height: 100%;
-              object-fit: contain;
-            }
-
-            /* APPROVED DIGITAL TICKET CARD (MATCHING USER APPROVED DESIGN 100%) */
-            .ticket-card {
-              width: 100%;
-              background: linear-gradient(135deg, #0c182c 0%, #091322 55%, #070e1a 100%);
-              border: 1.5px solid rgba(6, 182, 212, 0.4);
-              border-radius: 26px;
-              padding: 24px 28px;
-              position: relative;
-              overflow: hidden;
-              box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
-              display: flex;
-              flex-direction: row;
-              align-items: center;
-              justify-content: space-between;
-              gap: 24px;
-            }
-            .ticket-card::after {
-              content: '';
-              position: absolute;
-              right: -50px;
-              top: -50px;
-              width: 140px;
-              height: 140px;
-              background: radial-gradient(circle, rgba(6, 182, 212, 0.2) 0%, transparent 70%);
-              border-radius: 50%;
-              pointer-events: none;
-            }
-            .ticket-card-stub {
-              position: absolute;
-              right: 0;
-              top: 0;
-              bottom: 0;
-              width: 8px;
-              border-right: 2px dashed rgba(6, 182, 212, 0.25);
-            }
-
-            /* Right Details Section */
-            .ticket-details {
-              flex: 1;
-              display: flex;
-              flex-direction: column;
-              gap: 12px;
-              text-align: right;
-            }
-            .ticket-top-row {
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
-            }
-            .ticket-category {
-              font-size: 13px;
-              font-weight: 800;
-              color: #22d3ee;
-              letter-spacing: 0.5px;
-            }
-            .ticket-token-pill {
-              font-family: monospace;
-              font-size: 11px;
-              color: #cbd5e1;
-              background: #142033;
-              border: 1px solid #223552;
-              padding: 2px 10px;
-              border-radius: 8px;
-              font-weight: 700;
-            }
-            .ticket-title {
-              font-size: 19px;
-              font-weight: 900;
-              color: #ffffff;
-              line-height: 1.35;
-            }
-
-            /* Info Box */
-            .ticket-info-box {
-              background: rgba(255, 255, 255, 0.035);
-              border: 1px solid rgba(255, 255, 255, 0.1);
-              border-radius: 14px;
-              padding: 12px 16px;
-              display: flex;
-              flex-direction: column;
-              gap: 10px;
-            }
-            .info-row {
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
-              font-size: 13.5px;
-            }
-            .info-label {
-              color: #94a3b8;
-              font-weight: 600;
-            }
-            .info-value-name {
-              color: #ffffff;
-              font-weight: 800;
-              font-size: 15px;
-            }
-            .info-value-seat {
-              background: rgba(245, 158, 11, 0.12);
-              border: 1px solid rgba(245, 158, 11, 0.45);
-              color: #fbbf24;
-              font-weight: 900;
-              padding: 3px 14px;
-              border-radius: 8px;
-              font-size: 13px;
-              letter-spacing: 1px;
-            }
-            .info-value-gate {
-              color: #38bdf8;
-              font-weight: 800;
-              font-size: 13.5px;
-            }
-
-            /* Bottom Date/Time Row */
-            .ticket-bottom-row {
-              display: flex;
-              align-items: center;
-              gap: 8px;
-              font-size: 11.5px;
-              color: #cbd5e1;
-              font-weight: 700;
-              margin-top: 2px;
-            }
-            .ticket-bottom-row svg {
-              width: 15px;
-              height: 15px;
-              stroke: #22d3ee;
-              flex-shrink: 0;
-            }
-
-            /* Left QR Box */
-            .ticket-qr-box {
-              background-color: #ffffff;
-              border-radius: 20px;
-              padding: 14px;
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              justify-content: center;
-              box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
-              flex-shrink: 0;
-            }
-            .ticket-qr-box svg {
-              display: block;
-              width: 120px;
-              height: 120px;
-            }
-            .ticket-qr-token {
-              font-family: monospace;
-              font-size: 10px;
-              font-weight: 900;
-              color: #0f172a;
-              margin-top: 8px;
-              letter-spacing: -0.2px;
-            }
-
-            /* Footer Instructions */
-            .instructions-box {
-              width: 100%;
-              margin-top: 28px;
-              background: #f8fafc;
-              border: 1.5px dashed #cbd5e1;
-              border-radius: 16px;
-              padding: 14px 20px;
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
-              font-size: 11.5px;
-              color: #475569;
-              font-weight: 600;
-            }
-            .instructions-box strong {
-              color: #0f172a;
-              font-weight: 800;
             }
           </style>
         </head>
         <body>
-          <div class="page-container">
-            <!-- Official Header -->
-            <div class="official-header">
-              <div class="moe-logo-box">
-                <img src="saudi_moe_logo.svg" alt="شعار وزارة التعليم" />
-              </div>
-              <div class="title-block">
-                <h1>المملكة العربية السعودية • وزارة التعليم</h1>
-                <p>الإدارة العامة للتعليم - تذكرة الحضور الرسمية المعتمدة للمسرح</p>
-              </div>
-              <div style="font-size: 10px; color: #64748b; font-family: monospace; text-align: left;">
-                <div>التاريخ: ${new Date().toLocaleDateString('ar-SA')}</div>
-                <div style="color: #10b981; font-weight: bold;">الحالة: فعالة ومؤكدة ✓</div>
-              </div>
-            </div>
-
-            <!-- THE APPROVED TICKET CARD -->
-            <div class="ticket-card">
-              <div class="ticket-card-stub"></div>
-
-              <!-- Right Details -->
-              <div class="ticket-details">
-                <div class="ticket-top-row">
-                  <div class="ticket-category">${category}</div>
-                  <div class="ticket-token-pill">${token}</div>
-                </div>
-
-                <div class="ticket-title">${title}</div>
-
-                <div class="ticket-info-box">
-                  <div class="info-row">
-                    <span class="info-label">اسم الضيف:</span>
-                    <span class="info-value-name">${guestName}</span>
-                  </div>
-                  <div class="info-row">
-                    <span class="info-label">المقعد المخصص:</span>
-                    <span class="info-value-seat">${seatCode}</span>
-                  </div>
-                  <div class="info-row">
-                    <span class="info-label">بوابة الدخول:</span>
-                    <span class="info-value-gate">${gateText}</span>
-                  </div>
-                </div>
-
-                <div class="ticket-bottom-row">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                  </svg>
-                  <span>${dateText}</span>
-                </div>
-              </div>
-
-              <!-- Left QR Code Container -->
-              <div class="ticket-qr-box">
-                ${qrSvg}
-                <div class="ticket-qr-token">${token}</div>
-              </div>
-            </div>
-
-            <!-- Verification & Instructions -->
-            <div class="instructions-box">
-              <div>
-                <strong>تعليمات الدخول:</strong> يرجى إبراز هذه التذكرة أو رمز الاستجابة السريعة (QR) عند البوابة رقم 3 للمنظمين لتسهيل التوجيه لمقعدكم الكريم.
-              </div>
-              <div style="font-family: monospace; font-weight: 800; color: #0284c7; white-space: nowrap; margin-right: 14px;">
-                TKT-VERIFIED-SA
-              </div>
-            </div>
+          <div style="width: 100%; max-width: 860px; margin: 0 auto;">
+            ${targetElement.outerHTML}
           </div>
         </body>
         </html>
@@ -563,7 +273,7 @@ export default function BeneficiaryApp() {
           console.error('Print frame error:', printErr);
           window.print();
         }
-      }, 400);
+      }, 500);
 
     } catch (err) {
       console.error('Print error:', err);
@@ -1026,6 +736,14 @@ export default function BeneficiaryApp() {
                     <span>{isCopied ? 'تم النسخ بنجاح!' : 'إضافة للمحفظة'}</span>
                   </button>
                 </div>
+
+                <button
+                  onClick={() => setShowOfficialTicketModal(true)}
+                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-500/15 via-blue-500/15 to-teal-500/15 hover:from-cyan-500/25 hover:to-teal-500/25 border border-cyan-400/40 text-cyan-300 font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-sm active:scale-95 cursor-pointer"
+                >
+                  <Ticket className="w-4 h-4 text-cyan-400" />
+                  <span>معاينة التذكرة المعتمدة الرسمية (النسخة المطبوعة) 🎫</span>
+                </button>
 
                 <button
                   onClick={() => setShowFullCardModal(true)}
@@ -1840,6 +1558,86 @@ export default function BeneficiaryApp() {
           </div>
         </div>
       )}
+
+      {/* ============================================================
+          OFFICIAL APPROVED TICKET PREVIEW MODAL (ASEER THEATER)
+          ============================================================ */}
+      {showOfficialTicketModal && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-fade-in">
+          <div className="relative w-full max-w-5xl rounded-3xl bg-[#0B1528] border border-cyan-500/40 p-4 sm:p-6 shadow-2xl space-y-4 my-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2">
+                <Ticket className="w-5 h-5 text-cyan-400" />
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-white">التذكرة الرسمية المعتمدة لحضور الفعالية</h3>
+                  <p className="text-[11px] text-slate-400">النسخة الرسمية المعتمدة للطباعة والتصدير كصورة</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleSaveTicket}
+                  disabled={isSavingTicket}
+                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:brightness-110 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer disabled:opacity-50"
+                  title="حفظ التذكرة كصورة (PNG)"
+                >
+                  <Download className={`w-4 h-4 ${isSavingTicket ? 'animate-bounce' : ''}`} />
+                  <span className="hidden sm:inline">حفظ كصورة (PNG)</span>
+                </button>
+
+                <button
+                  onClick={handlePrintTicket}
+                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:brightness-110 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
+                  title="طباعة التذكرة"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span className="hidden sm:inline">طباعة التذكرة</span>
+                </button>
+
+                <button
+                  onClick={() => setShowOfficialTicketModal(false)}
+                  className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Card Display */}
+            <div className="p-2 sm:p-4 rounded-2xl bg-[#060D1A] border border-white/5 overflow-x-auto flex justify-center">
+              <AseerOfficialTicketCard 
+                seat={currentTicketSeat} 
+                eventDetails={eventDetails} 
+              />
+            </div>
+
+            {/* Modal Footer Notes */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400 border-t border-white/10 pt-3">
+              <div className="flex items-center gap-2 text-cyan-300 font-bold">
+                <span>✓ جاهزة للطباعة والتصدير بجودة فائقة 4K</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowOfficialTicketModal(false)}
+                  className="px-5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-xs"
+                >
+                  إغلاق
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Off-screen Official Ticket Card for instant 4K PNG export & pristine printing */}
+      <div style={{ position: 'fixed', left: '-9999px', top: '0', zIndex: -100, width: '860px' }}>
+        <AseerOfficialTicketCard 
+          ref={officialTicketCardRef} 
+          seat={currentTicketSeat} 
+          eventDetails={eventDetails} 
+        />
+      </div>
 
     </div>
   );
