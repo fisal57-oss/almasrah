@@ -12,7 +12,7 @@ export default function BookingFormModal({ isOpen, onClose }) {
 
   if (!isOpen) return null;
 
-  const BOOKING_FORM_URL = 'https://fisal57-oss.github.io/itgan/booking_form_digital.html';
+  const BOOKING_FORM_URL = './booking_form_digital.html';
 
   const handleRefresh = () => {
     if (iframeRef.current) {

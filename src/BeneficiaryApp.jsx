@@ -63,6 +63,10 @@ export default function BeneficiaryApp() {
   const [isCopied, setIsCopied] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showFullCardModal, setShowFullCardModal] = useState(false);
+  const [showGateInfoModal, setShowGateInfoModal] = useState(false);
+  const [showEventInfoModal, setShowEventInfoModal] = useState(false);
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [showSupportModal, setShowSupportModal] = useState(false);
   const [searchError, setSearchError] = useState('');
 
   // Initial data loading
@@ -174,9 +178,13 @@ export default function BeneficiaryApp() {
       {/* Top Header Bar */}
       <header className="bg-[#071124]/95 border-b border-white/10 sticky top-0 z-40 backdrop-blur-xl px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between shadow-2xl">
         
-        {/* Left: User Profile & Notification */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2.5 p-1.5 pl-3 rounded-2xl bg-white/[0.04] border border-white/10 hover:border-cyan-500/30 transition-all cursor-pointer">
+        {/* Left: User Profile & Notification & Portal Links */}
+        <div className="flex items-center gap-2.5">
+          <div 
+            onClick={() => alert(`👤 بيانات المستفيد:\nالاسم: ${displayGuestName}\nالمقعد: ${displaySeatCode}\nالرمز: ${displayToken}`)}
+            className="flex items-center gap-2 p-1.5 pl-3 rounded-2xl bg-white/[0.04] border border-white/10 hover:border-cyan-500/30 transition-all cursor-pointer"
+            title="بيانات المستفيد"
+          >
             <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-black text-xs text-slate-950">
               {displayGuestName.charAt(0)}
             </div>
@@ -186,11 +194,32 @@ export default function BeneficiaryApp() {
             </div>
           </div>
 
-          <div className="relative p-2 rounded-xl bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] cursor-pointer transition-all">
+          <div 
+            onClick={() => setShowNotificationsModal(true)}
+            className="relative p-2 rounded-xl bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] cursor-pointer transition-all"
+            title="مركز الإشعارات (3 جديدة)"
+          >
             <Bell className="w-4 h-4 text-slate-300" />
             <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white font-black text-[9px] flex items-center justify-center border-2 border-[#071124]">
               3
             </span>
+          </div>
+
+          <div className="hidden sm:flex items-center gap-1.5 mr-1">
+            <button
+              onClick={() => window.open('staff.html', '_blank')}
+              className="px-2.5 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-[11px] font-bold text-purple-300 transition-all flex items-center gap-1"
+              title="الانتقال إلى بوابة المنظمين"
+            >
+              <span>بوابة المنظمين ↗</span>
+            </button>
+            <button
+              onClick={() => window.open('index.html', '_blank')}
+              className="px-2.5 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-[11px] font-bold text-cyan-300 transition-all flex items-center gap-1"
+              title="الانتقال إلى لوحة الإدارة"
+            >
+              <span>لوحة الإدارة ↗</span>
+            </button>
           </div>
         </div>
 
@@ -200,7 +229,13 @@ export default function BeneficiaryApp() {
             <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="ابحث عن الفعاليات أو المسرح أو القاعات..."
+              value={phoneQuery || tokenQuery}
+              onChange={(e) => {
+                setTokenQuery(e.target.value);
+                setPhoneQuery(e.target.value);
+              }}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(e); }}
+              placeholder="ابحث عن التذكرة أو الفعالية برقم الجوال أو الرمز..."
               className="w-full bg-white/[0.04] border border-white/10 focus:border-cyan-400/50 rounded-2xl pr-10 pl-4 py-2 text-xs text-white placeholder-slate-400 outline-none transition-all"
             />
           </div>
@@ -244,8 +279,20 @@ export default function BeneficiaryApp() {
                 <button
                   key={item.id}
                   onClick={() => {
-                    if (item.isAction) {
+                    if (item.id === 'tickets') {
+                      setShowFullCardModal(true);
+                    } else if (item.id === 'bookings' || item.id === 'request-hall' || item.id === 'theaters') {
                       setShowBookingModal(true);
+                    } else if (item.id === 'support') {
+                      setShowSupportModal(true);
+                    } else if (item.id === 'notifications') {
+                      setShowNotificationsModal(true);
+                    } else if (item.id === 'favorites') {
+                      alert('🌟 تم حفظ الفعالية ضمن قائمة المفضلة لديك بنجاح!');
+                    } else if (item.id === 'account') {
+                      alert(`👤 بيانات المستفيد:\nالاسم: ${displayGuestName}\nالمقعد: ${displaySeatCode}\nالرمز: ${displayToken}`);
+                    } else if (item.id === 'settings') {
+                      alert('⚙️ الإعدادات:\n• لغة الواجهة: العربية\n• المظهر: الوضع الليلي الفاخر\n• التنبيهات: مفعلة 🟢');
                     } else {
                       setActiveNav(item.id);
                     }
@@ -498,38 +545,50 @@ export default function BeneficiaryApp() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             
             {/* Card 1: Gate of Entry */}
-            <div className="rounded-2xl border border-white/10 bg-[#0B1528] p-4 flex items-center gap-3.5 shadow-xl hover:border-cyan-500/40 transition-all">
-              <div className="w-11 h-11 rounded-xl bg-cyan-500/15 border border-cyan-400/30 flex items-center justify-center text-cyan-400 shrink-0">
+            <div 
+              onClick={() => setShowGateInfoModal(true)}
+              className="rounded-2xl border border-white/10 hover:border-cyan-400/50 bg-[#0B1528] p-4 flex items-center gap-3.5 shadow-xl hover:scale-[1.02] cursor-pointer transition-all group"
+              title="انقر لعرض تفاصيل البوابة والوصول"
+            >
+              <div className="w-11 h-11 rounded-xl bg-cyan-500/15 border border-cyan-400/30 flex items-center justify-center text-cyan-400 group-hover:scale-110 transition-transform shrink-0">
                 <DoorClosed className="w-5 h-5" />
               </div>
               <div className="space-y-0.5">
                 <div className="text-[10px] text-slate-400 font-bold uppercase">بوابة الدخول</div>
-                <div className="text-sm font-black text-white">البوابة 3</div>
-                <div className="text-[10px] text-cyan-300">المدخل الرئيسي</div>
+                <div className="text-sm font-black text-white group-hover:text-cyan-300 transition-colors">البوابة 3</div>
+                <div className="text-[10px] text-cyan-300">المدخل الرئيسي • إرشادات الوصول ↗</div>
               </div>
             </div>
 
             {/* Card 2: Seat Details */}
-            <div className="rounded-2xl border border-white/10 bg-[#0B1528] p-4 flex items-center gap-3.5 shadow-xl hover:border-cyan-500/40 transition-all">
-              <div className="w-11 h-11 rounded-xl bg-blue-500/15 border border-blue-400/30 flex items-center justify-center text-blue-400 shrink-0">
+            <div 
+              onClick={() => setShowFullCardModal(true)}
+              className="rounded-2xl border border-white/10 hover:border-amber-400/50 bg-[#0B1528] p-4 flex items-center gap-3.5 shadow-xl hover:scale-[1.02] cursor-pointer transition-all group"
+              title="انقر لفتح التذكرة الرقمية بالكامل"
+            >
+              <div className="w-11 h-11 rounded-xl bg-blue-500/15 border border-blue-400/30 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform shrink-0">
                 <Armchair className="w-5 h-5" />
               </div>
               <div className="space-y-0.5">
                 <div className="text-[10px] text-slate-400 font-bold uppercase">تفاصيل المقعد</div>
-                <div className="text-sm font-black text-amber-300">{displaySeatCode}</div>
-                <div className="text-[10px] text-slate-400">الصف {displayRow} - مقعد {displayNumber}</div>
+                <div className="text-sm font-black text-amber-300 group-hover:text-amber-200 transition-colors">{displaySeatCode}</div>
+                <div className="text-[10px] text-slate-400">الصف {displayRow} - مقعد {displayNumber} • عرض التذكرة ↗</div>
               </div>
             </div>
 
             {/* Card 3: Event Info */}
-            <div className="rounded-2xl border border-white/10 bg-[#0B1528] p-4 flex items-center gap-3.5 shadow-xl hover:border-cyan-500/40 transition-all">
-              <div className="w-11 h-11 rounded-xl bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center text-emerald-400 shrink-0">
+            <div 
+              onClick={() => setShowEventInfoModal(true)}
+              className="rounded-2xl border border-white/10 hover:border-emerald-400/50 bg-[#0B1528] p-4 flex items-center gap-3.5 shadow-xl hover:scale-[1.02] cursor-pointer transition-all group"
+              title="انقر لعرض تفاصيل الفعالية"
+            >
+              <div className="w-11 h-11 rounded-xl bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform shrink-0">
                 <Calendar className="w-5 h-5" />
               </div>
               <div className="space-y-0.5">
                 <div className="text-[10px] text-slate-400 font-bold uppercase">معلومات الفعالية</div>
-                <div className="text-xs font-black text-white truncate max-w-[140px]">{eventDetails.title || 'حفل التكريم والافتتاح'}</div>
-                <div className="text-[10px] text-slate-400">{eventDetails.date || 'الجمعة 25 أكتوبر 2026'}</div>
+                <div className="text-xs font-black text-white truncate max-w-[140px] group-hover:text-emerald-300 transition-colors">{eventDetails.title || 'حفل التكريم والافتتاح'}</div>
+                <div className="text-[10px] text-slate-400">{eventDetails.date || 'الجمعة 25 أكتوبر 2026'} • تفاصيل ↗</div>
               </div>
             </div>
 
@@ -581,6 +640,235 @@ export default function BeneficiaryApp() {
           eventDetails={eventDetails}
           onClose={() => setShowFullCardModal(false)}
         />
+      )}
+
+      {/* Gate 3 Directions Modal */}
+      {showGateInfoModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowGateInfoModal(false); }}
+        >
+          <div className="bg-[#0B1528] border border-cyan-500/30 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 text-right">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-cyan-500/20 border border-cyan-400/30 flex items-center justify-center text-cyan-300">
+                  <DoorClosed className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white">إرشادات الوصول - البوابة 3</h3>
+                  <p className="text-[11px] text-cyan-400">المدخل الرئيسي للقاعة الكبرى</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowGateInfoModal(false)}
+                className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs text-slate-300 leading-relaxed">
+              <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5 space-y-1">
+                <span className="font-bold text-white block">📍 موقع البوابة:</span>
+                <p>الواجهة الغربية لمبنى مسرح الإدارة العامة للتعليم - بجوار بهو الضيوف الرئيسي.</p>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5 space-y-1">
+                <span className="font-bold text-white block">🚗 مواقف السيارات:</span>
+                <p>مواقف الساحة الغربية ومواقف الضيوف مظللة ومزودة بإرشادات ومسارات مشاة آمنة.</p>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5 space-y-1">
+                <span className="font-bold text-white block">⏰ أوقات الدخول:</span>
+                <p>تفتح الأبواب قبل الفعالية بساعة (07:00 مساءً). يرجى إبراز رمز الـ QR عند المدخل.</p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                alert('تم فتح تطبيق الخرائط لتوجيهك إلى مسرح تعليم عسير.');
+                setShowGateInfoModal(false);
+              }}
+              className="w-full py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-xs transition-all shadow-lg active:scale-95"
+            >
+              فتح الموقع في خرائط Google ↗
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Event Details Modal */}
+      {showEventInfoModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowEventInfoModal(false); }}
+        >
+          <div className="bg-[#0B1528] border border-emerald-500/30 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 text-right">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300">
+                  <Calendar className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white">تفاصيل الفعالية الكاملة</h3>
+                  <p className="text-[11px] text-emerald-400">{eventDetails.category || 'حفل سنوي رسمي'}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowEventInfoModal(false)}
+                className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-2.5 text-xs text-slate-300">
+              <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5">
+                <span className="text-slate-400 block text-[10px]">عنوان الفعالية</span>
+                <span className="font-bold text-white text-sm mt-0.5 block">{eventDetails.title || 'حفل التكريم والافتتاح'}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5">
+                  <span className="text-slate-400 block text-[10px]">التاريخ</span>
+                  <span className="font-bold text-white mt-0.5 block">{eventDetails.date || 'الجمعة 25 أكتوبر 2026'}</span>
+                </div>
+                <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5">
+                  <span className="text-slate-400 block text-[10px]">الوقت</span>
+                  <span className="font-bold text-cyan-300 mt-0.5 block">{eventDetails.time || '08:00 مساءً'}</span>
+                </div>
+              </div>
+              <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5">
+                <span className="text-slate-400 block text-[10px]">المقر والمكان</span>
+                <span className="font-bold text-white mt-0.5 block">{eventDetails.venue || 'المسرح الرئيسي - القاعة الكبرى (746 مقعد)'}</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                setShowEventInfoModal(false);
+                setShowFullCardModal(true);
+              }}
+              className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 font-black text-xs transition-all shadow-lg active:scale-95"
+            >
+              عرض تذكرتي الرقمية المرتبطة 🎟️
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Notifications Modal */}
+      {showNotificationsModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowNotificationsModal(false); }}
+        >
+          <div className="bg-[#0B1528] border border-white/10 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 text-right">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-rose-500/20 border border-rose-400/30 flex items-center justify-center text-rose-400">
+                  <Bell className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white">مركز الإشعارات</h3>
+                  <p className="text-[11px] text-slate-400">آخر التحديثات والتنبيهات</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowNotificationsModal(false)}
+                className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-2.5 text-xs">
+              <div className="p-3 rounded-2xl bg-white/[0.03] border border-cyan-500/20 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-white">تأكيد حجز المقعد</span>
+                  <span className="text-[10px] text-cyan-400 font-mono">منذ 10 د</span>
+                </div>
+                <p className="text-slate-300">تم اعتماد حجز مقعدك بنجاح في حفل التكريم والافتتاح.</p>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-white">تذكير فتح الأبواب</span>
+                  <span className="text-[10px] text-slate-400 font-mono">منذ ساعتين</span>
+                </div>
+                <p className="text-slate-300">تفتح أبواب القاعة في تمام 07:00 مساءً عبر البوابة 3.</p>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-white">مرحباً بك في المنظومة</span>
+                  <span className="text-[10px] text-slate-400 font-mono">أمس</span>
+                </div>
+                <p className="text-slate-300">بوابة المستفيد تتيح لك استعراض التذاكر وطلب حجز القاعات بسهولة.</p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowNotificationsModal(false)}
+              className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition-all"
+            >
+              إغلاق
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Support & Help Modal */}
+      {showSupportModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowSupportModal(false); }}
+        >
+          <div className="bg-[#0B1528] border border-cyan-500/30 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 text-right">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-cyan-500/20 border border-cyan-400/30 flex items-center justify-center text-cyan-300">
+                  <HelpCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white">الدعم الفني والمساعدة</h3>
+                  <p className="text-[11px] text-cyan-400">فريق الدعم متواجد لخدمتكم 24/7</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowSupportModal(false)}
+                className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs text-slate-300">
+              <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5 space-y-1">
+                <span className="text-slate-400 block text-[10px]">الرقم الموحد للدعم الفني</span>
+                <span className="font-black text-cyan-300 font-mono text-sm">9200-00-123</span>
+              </div>
+              <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5 space-y-1">
+                <span className="text-slate-400 block text-[10px]">الدعم الميداني داخل المسرح</span>
+                <span className="font-bold text-white">منصة الاستقبال عند البوابة 1 والبوابة 3</span>
+              </div>
+              <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5 space-y-1">
+                <span className="text-slate-400 block text-[10px]">البريد الإلكتروني المعتمد</span>
+                <span className="font-mono text-cyan-300">support@aseer-theaters.sa</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                alert('سيتم تحويلك إلى محادثة الدعم الفني عبر واتساب.');
+                setShowSupportModal(false);
+              }}
+              className="w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
+            >
+              <span>محادثة الدعم عبر واتساب</span>
+              <span>💬</span>
+            </button>
+          </div>
+        </div>
       )}
 
     </div>

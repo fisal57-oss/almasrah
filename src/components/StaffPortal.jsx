@@ -98,7 +98,6 @@ export default function StaffPortal() {
   const [showPrintAllModal, setShowPrintAllModal] = useState(false);
   const [showPrintLabelsModal, setShowPrintLabelsModal] = useState(false);
 
-  // Gate statuses
   const [gatesState, setGatesState] = useState([
     { id: 1, name: 'البوابة 1 - الرئيسية', status: 'open' },
     { id: 2, name: 'البوابة 2 - الضيوف', status: 'open' },
@@ -106,6 +105,15 @@ export default function StaffPortal() {
     { id: 4, name: 'البوابة 4 - الإعلام', status: 'closed' },
     { id: 5, name: 'البوابة 5 - الخدمة', status: 'open' }
   ]);
+
+  const toggleGateStatus = (gateId) => {
+    setGatesState(prev => prev.map(g => {
+      if (g.id === gateId) {
+        return { ...g, status: g.status === 'open' ? 'closed' : 'open' };
+      }
+      return g;
+    }));
+  };
 
   useEffect(() => {
     refreshData();
@@ -672,10 +680,12 @@ export default function StaffPortal() {
                 {gatesState.map((gate) => (
                   <div 
                     key={gate.id}
-                    className="p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-between text-xs"
+                    onClick={() => toggleGateStatus(gate.id)}
+                    className="p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/10 flex items-center justify-between text-xs cursor-pointer transition-all active:scale-98"
+                    title="انقر لتغيير حالة البوابة"
                   >
                     <span className="font-bold text-slate-200 text-[11px]">{gate.name}</span>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition-all ${
                       gate.status === 'open' 
                         ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' 
                         : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'

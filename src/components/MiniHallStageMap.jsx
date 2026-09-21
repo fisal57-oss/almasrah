@@ -1,13 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 export default function MiniHallStageMap({ 
   selectedSeat = null, 
   userSeatCode = 'F-12',
-  interactive = false,
+  interactive = true,
   onSeatClick = null,
   compact = false,
   showLegend = true
 }) {
+  const [clickedSeat, setClickedSeat] = useState(null);
+
+  const handleSelectSeat = (seatInfo) => {
+    setClickedSeat(seatInfo);
+    if (onSeatClick) onSeatClick(seatInfo);
+  };
   // Generate visual curved seat grid matching the screenshots
   // Left block (purple/blue), Center block (cyan/gold), Right block (purple/blue)
   const leftRows = [
@@ -61,14 +67,15 @@ export default function MiniHallStageMap({
                 return (
                   <div
                     key={`l-${rIdx}-${cIdx}`}
-                    className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-[2px] transition-transform hover:scale-125 cursor-pointer ${
-                      isPurple 
-                        ? 'bg-[#8b5cf6] shadow-[0_0_5px_rgba(139,92,246,0.4)]' 
-                        : 'bg-[#3b82f6]'
-                    }`}
-                    title={`قطاع اليسار - صف ${rIdx + 1}`}
-                  />
-                );
+                      onClick={() => handleSelectSeat({ sector: 'اليسار', row: rIdx + 1, col: cIdx + 1, status: isPurple ? 'محجوز' : 'متاح', color: isPurple ? '#8b5cf6' : '#3b82f6' })}
+                      className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-[2px] transition-all hover:scale-150 cursor-pointer ${
+                        isPurple 
+                          ? 'bg-[#8b5cf6] shadow-[0_0_5px_rgba(139,92,246,0.4)]' 
+                          : 'bg-[#3b82f6]'
+                      }`}
+                      title={`قطاع اليسار - صف ${rIdx + 1} مقعد ${cIdx + 1}`}
+                    />
+                  );
               })}
             </div>
           ))}
@@ -84,6 +91,7 @@ export default function MiniHallStageMap({
                   return (
                     <div
                       key={`c-${rIdx}-${cIdx}`}
+                      onClick={() => handleSelectSeat({ sector: 'الرئيسية (VIP)', row: rIdx + 1, col: cIdx + 1, code: userSeatCode || 'F-12', status: 'مقعدي المخصص ★', color: '#fbbf24' })}
                       className="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-[3px] bg-amber-400 border-2 border-white shadow-[0_0_12px_rgba(251,191,36,0.9)] animate-pulse flex items-center justify-center text-[7px] text-slate-950 font-black cursor-pointer scale-110"
                       title={`مقعدك المخصص: ${userSeatCode || 'F-12'}`}
                     >
@@ -95,8 +103,9 @@ export default function MiniHallStageMap({
                   return (
                     <div
                       key={`c-${rIdx}-${cIdx}`}
-                      className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-[2px] bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.5)] cursor-pointer hover:scale-125 transition-transform"
-                      title={`كبار الشخصيات VIP - صف ${rIdx + 1}`}
+                      onClick={() => handleSelectSeat({ sector: 'الرئيسية (VIP)', row: rIdx + 1, col: cIdx + 1, status: 'كبار الشخصيات VIP', color: '#f59e0b' })}
+                      className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-[2px] bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.5)] cursor-pointer hover:scale-150 transition-all"
+                      title={`كبار الشخصيات VIP - صف ${rIdx + 1} مقعد ${cIdx + 1}`}
                     />
                   );
                 }
@@ -104,12 +113,13 @@ export default function MiniHallStageMap({
                 return (
                   <div
                     key={`c-${rIdx}-${cIdx}`}
-                    className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-[2px] transition-transform hover:scale-125 cursor-pointer ${
+                    onClick={() => handleSelectSeat({ sector: 'القاعة الرئيسية', row: rIdx + 1, col: cIdx + 1, status: isCyan ? 'متاح' : 'محجوز', color: isCyan ? '#00d2ff' : '#1e40af' })}
+                    className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-[2px] transition-all hover:scale-150 cursor-pointer ${
                       isCyan 
                         ? 'bg-[#00d2ff] shadow-[0_0_5px_rgba(0,210,255,0.4)]' 
                         : 'bg-[#1e40af]'
                     }`}
-                    title={`القاعة الرئيسية - مقعد`}
+                    title={`القاعة الرئيسية - صف ${rIdx + 1} مقعد ${cIdx + 1}`}
                   />
                 );
               })}
@@ -127,12 +137,13 @@ export default function MiniHallStageMap({
                 return (
                   <div
                     key={`r-${rIdx}-${cIdx}`}
-                    className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-[2px] transition-transform hover:scale-125 cursor-pointer ${
+                    onClick={() => handleSelectSeat({ sector: 'اليمين', row: rIdx + 1, col: cIdx + 1, status: isPurple ? 'محجوز' : 'متاح', color: isPurple ? '#8b5cf6' : '#00d2ff' })}
+                    className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-[2px] transition-all hover:scale-150 cursor-pointer ${
                       isPurple 
                         ? 'bg-[#8b5cf6] shadow-[0_0_5px_rgba(139,92,246,0.4)]' 
                         : 'bg-[#00d2ff]'
                     }`}
-                    title={`قطاع اليمين - صف ${rIdx + 1}`}
+                    title={`قطاع اليمين - صف ${rIdx + 1} مقعد ${cIdx + 1}`}
                   />
                 );
               })}
@@ -144,6 +155,18 @@ export default function MiniHallStageMap({
 
       {/* Rear Label */}
       <div className="text-[9px] font-bold text-slate-500 mt-2">الخلف</div>
+
+      {/* Clicked Seat Details Notification */}
+      {clickedSeat && (
+        <div className="mt-2.5 px-3 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-400/30 text-xs flex items-center gap-2 animate-fade-in text-cyan-200">
+          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: clickedSeat.color }} />
+          <span className="font-bold">{clickedSeat.sector}</span>
+          <span>•</span>
+          <span>صف {clickedSeat.row} - مقعد {clickedSeat.col}</span>
+          <span>•</span>
+          <span className="font-bold text-amber-300">{clickedSeat.code ? clickedSeat.code : clickedSeat.status}</span>
+        </div>
+      )}
 
       {/* Legend */}
       {showLegend && (
