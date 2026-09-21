@@ -21,9 +21,11 @@ import {
   ChevronLeft,
   Calendar,
   CheckCircle2,
-  Sliders
+  Sliders,
+  X
 } from 'lucide-react';
 import MiniHallStageMap from './MiniHallStageMap';
+import TheaterMap from './TheaterMap';
 import { getSeats, getEventDetails, formatArabicSeatCode } from '../utils/storage';
 import { exportSeatsToExcel } from '../utils/excelUtils';
 
@@ -32,6 +34,7 @@ export default function ManagerPortal() {
   const [eventDetails, setEventDetails] = useState(getEventDetails());
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showTheaterMapModal, setShowTheaterMapModal] = useState(false);
   const [timeStr, setTimeStr] = useState('');
   const [dateStr, setDateStr] = useState('');
   const [lastRefreshedAt, setLastRefreshedAt] = useState('الآن');
@@ -354,19 +357,39 @@ export default function ManagerPortal() {
                   <Armchair className="w-4 h-4 text-cyan-400" />
                   <span>رادار مقاعد المسرح الرئيسي</span>
                 </h3>
-                <span className="text-xs text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/30 font-bold">
-                  مباشر
-                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowTheaterMapModal(true)}
+                    className="px-2.5 py-1 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/30 text-cyan-300 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 shadow-sm cursor-pointer"
+                    title="فتح خريطة المسرح التفاعلية بالكامل"
+                  >
+                    <Maximize2 className="w-3.5 h-3.5" />
+                    <span>فتح الخريطة الكاملة</span>
+                  </button>
+                  <span className="text-xs text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/30 font-bold">
+                    مباشر
+                  </span>
+                </div>
               </div>
 
-              <div className="bg-[#060D1A]/90 border border-white/10 rounded-2xl p-4 shadow-inner">
+              <div 
+                onClick={() => setShowTheaterMapModal(true)}
+                className="bg-[#060D1A]/90 border border-white/10 rounded-2xl p-4 shadow-inner cursor-pointer group hover:border-cyan-500/40 transition-all"
+                title="انقر لفتح خريطة المسرح التفاعلية الكاملة"
+              >
                 <MiniHallStageMap compact={false} showLegend={true} />
+                <div className="mt-2 text-center">
+                  <span className="text-[11px] text-cyan-400/80 group-hover:text-cyan-300 group-hover:underline transition-colors flex items-center justify-center gap-1 font-medium">
+                    <span>انقر لتكبير واستعراض خريطة المسرح الكاملة وتوزيع المقاعد</span>
+                    <span>↗</span>
+                  </span>
+                </div>
               </div>
             </div>
 
             <div className="pt-2 text-center">
               <div className="text-[11px] text-slate-400">
-                انقر على أي مقعد في الرادار لاستعراض بيانات الشغل والفئة لحظياً
+                انقر على أي مقعد في الرادار أو افتح الخريطة الكاملة للاستعراض المفصل
               </div>
             </div>
           </div>
@@ -522,6 +545,70 @@ export default function ManagerPortal() {
         </div>
 
       </main>
+
+      {/* Interactive Full Theater Map Modal for Manager */}
+      {showTheaterMapModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md animate-fade-in"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowTheaterMapModal(false); }}
+        >
+          <div className="bg-[#071124] border border-cyan-500/40 rounded-3xl w-full max-w-7xl max-h-[94vh] shadow-2xl flex flex-col overflow-hidden text-right">
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 border-b border-white/10 bg-[#0B1528] flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/15 border border-amber-400/30 flex items-center justify-center text-amber-400 shrink-0">
+                  <Crown className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                    <span>خريطة مقاعد المسرح التفاعلية (استعراض الإدارة)</span>
+                    <span className="text-xs font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2.5 py-0.5 rounded-full">
+                      746 مقعداً • متابعة مباشرة
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    رؤية بانورامية تفصيلية لكافة الأدوار (الأرضي والشرفة) والقطاعات وتوزيع الحضور والـ VIP
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowTheaterMapModal(false)}
+                  className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-white transition-all text-xs font-bold flex items-center gap-1"
+                >
+                  <X className="w-5 h-5" />
+                  <span className="hidden sm:inline">إغلاق الخريطة</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body: Full Theater Map */}
+            <div className="p-3 sm:p-6 overflow-y-auto flex-1 custom-scrollbar">
+              <TheaterMap
+                seats={seats}
+                onSelectSeat={(seat) => {}}
+                isBeneficiaryView={true}
+              />
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-3 sm:p-4 border-t border-white/10 bg-[#0B1528] flex items-center justify-between flex-wrap gap-3 text-xs text-slate-400">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>وضع الرصد الميداني: تتبع فوري لحالات الشغل والحضور دون إمكانية التعديل غير المقصود</span>
+              </div>
+              <button
+                onClick={() => setShowTheaterMapModal(false)}
+                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-all"
+              >
+                العودة لشاشة المتابعة ✕
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );

@@ -33,11 +33,13 @@ import {
   ChevronRight,
   Maximize2,
   Flame,
-  ArrowLeft
+  ArrowLeft,
+  X
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import confetti from 'canvas-confetti';
 import MiniHallStageMap from './components/MiniHallStageMap';
+import TheaterMap from './components/TheaterMap';
 import BookingFormModal from './components/BookingFormModal';
 import InvitationCard from './components/InvitationCard';
 import { 
@@ -63,6 +65,7 @@ export default function BeneficiaryApp() {
   const [isCopied, setIsCopied] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showFullCardModal, setShowFullCardModal] = useState(false);
+  const [showTheaterMapModal, setShowTheaterMapModal] = useState(false);
   const [showGateInfoModal, setShowGateInfoModal] = useState(false);
   const [showEventInfoModal, setShowEventInfoModal] = useState(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
@@ -289,7 +292,9 @@ export default function BeneficiaryApp() {
                   onClick={() => {
                     if (item.id === 'tickets') {
                       setShowFullCardModal(true);
-                    } else if (item.id === 'bookings' || item.id === 'request-hall' || item.id === 'theaters') {
+                    } else if (item.id === 'theaters') {
+                      setShowTheaterMapModal(true);
+                    } else if (item.id === 'bookings' || item.id === 'request-hall') {
                       setShowBookingModal(true);
                     } else if (item.id === 'support') {
                       setShowSupportModal(true);
@@ -527,23 +532,35 @@ export default function BeneficiaryApp() {
                   <Compass className="w-4 h-4 text-cyan-400" />
                   <span>موقعي في القاعة</span>
                 </h3>
-                <button 
-                  onClick={() => setShowFullCardModal(true)}
-                  className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all text-xs flex items-center gap-1 font-bold"
-                  title="تكبير المخطط"
-                >
-                  <Maximize2 className="w-3.5 h-3.5" />
-                  <span>تكبير</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => setShowTheaterMapModal(true)}
+                    className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/40 transition-all text-xs flex items-center gap-1.5 font-bold shadow-lg shadow-cyan-500/10 active:scale-95 cursor-pointer"
+                    title="تكبير وفتح خريطة المسرح التفاعلية بالكامل"
+                  >
+                    <Maximize2 className="w-3.5 h-3.5" />
+                    <span>فتح خريطة المسرح</span>
+                  </button>
+                </div>
               </div>
 
               {/* Mini Curved Stage Map Visualization */}
-              <div className="py-2">
+              <div 
+                onClick={() => setShowTheaterMapModal(true)}
+                className="py-2 cursor-pointer group transition-all"
+                title="انقر لتكبير وفتح خريطة المسرح التفاعلية"
+              >
                 <MiniHallStageMap 
                   selectedSeat={currentTicketSeat}
                   userSeatCode={displaySeatCode}
                   showLegend={true}
                 />
+                <div className="mt-2 text-center">
+                  <span className="text-[11px] text-cyan-400/80 group-hover:text-cyan-300 group-hover:underline transition-colors flex items-center justify-center gap-1 font-medium">
+                    <span>انقر على الخريطة لتكبير المسرح واستعراض المقاعد والقطاعات بالكامل</span>
+                    <span>↗</span>
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -875,6 +892,84 @@ export default function BeneficiaryApp() {
               <span>محادثة الدعم عبر واتساب</span>
               <span>💬</span>
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Interactive Full Theater Map Modal */}
+      {showTheaterMapModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md animate-fade-in"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowTheaterMapModal(false); }}
+        >
+          <div className="bg-[#071124] border border-cyan-500/40 rounded-3xl w-full max-w-7xl max-h-[94vh] shadow-2xl flex flex-col overflow-hidden text-right">
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 border-b border-white/10 bg-[#0B1528] flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-cyan-500/15 border border-cyan-400/30 flex items-center justify-center text-cyan-400 shrink-0">
+                  <Compass className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                    <span>خريطة مقاعد المسرح التفاعلية</span>
+                    <span className="text-xs font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-500/30 px-2.5 py-0.5 rounded-full">
+                      القاعة الكبرى (746 مقعداً)
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    استكشف موقع مقعدك، المداخل، والقطاعات بالنسبة لمنصة المسرح
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {currentTicketSeat && (
+                  <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-400/30 text-amber-300 text-xs font-bold">
+                    <span>مقعدك المخصص:</span>
+                    <span className="font-black underline">{displaySeatCode}</span>
+                  </div>
+                )}
+                <button
+                  onClick={() => setShowTheaterMapModal(false)}
+                  className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-white transition-all text-xs font-bold flex items-center gap-1"
+                >
+                  <X className="w-5 h-5" />
+                  <span className="hidden sm:inline">إغلاق</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body: Full Theater Map */}
+            <div className="p-3 sm:p-6 overflow-y-auto flex-1 custom-scrollbar">
+              <TheaterMap
+                seats={seats}
+                onSelectSeat={(seat) => {
+                  setCurrentTicketSeat(seat);
+                }}
+                highlightSeatId={currentTicketSeat?.id}
+                isBeneficiaryView={true}
+              />
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-3 sm:p-4 border-t border-white/10 bg-[#0B1528] flex items-center justify-between flex-wrap gap-3 text-xs text-slate-400">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                <span>المقعد المحاط بهالة صفراء هو مقعدك المحدد لحضور الحفل</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setShowTheaterMapModal(false);
+                    setShowFullCardModal(true);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-black text-xs hover:opacity-90 transition-all shadow-md active:scale-95"
+                >
+                  معاينة بطاقة التذكرة 🎟️
+                </button>
+              </div>
+            </div>
+
           </div>
         </div>
       )}
