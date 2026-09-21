@@ -207,6 +207,14 @@ export default function BeneficiaryApp() {
 
           <div className="hidden sm:flex items-center gap-1.5 mr-1">
             <button
+              onClick={() => window.open('manager.html', '_blank')}
+              className="px-2.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-[11px] font-bold text-amber-300 transition-all flex items-center gap-1"
+              title="الانتقال إلى بوابة المتابعة التنفيذية للمدير"
+            >
+              <Crown className="w-3 h-3 text-amber-400" />
+              <span>بوابة المدير ↗</span>
+            </button>
+            <button
               onClick={() => window.open('staff.html', '_blank')}
               className="px-2.5 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-[11px] font-bold text-purple-300 transition-all flex items-center gap-1"
               title="الانتقال إلى بوابة المنظمين"

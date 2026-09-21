@@ -10,6 +10,7 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'index.html'),
         admin: resolve(__dirname, 'admin.html'),
+        manager: resolve(__dirname, 'manager.html'),
         beneficiary: resolve(__dirname, 'beneficiary.html'),
         staff: resolve(__dirname, 'staff.html')
       }

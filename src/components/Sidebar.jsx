@@ -152,6 +152,15 @@ export default function Sidebar({
       title: 'البوابات الإلكترونية السريعة',
       items: [
         { 
+          id: 'manager-portal', 
+          label: 'بوابة المتابعة للمدير', 
+          icon: Crown, 
+          onClick: () => window.open('manager.html', '_blank'),
+          isExternal: true,
+          badge: 'مباشر',
+          badgeType: 'cyan'
+        },
+        { 
           id: 'staff-portal', 
           label: 'بوابة المنظمين والموظفين', 
           icon: ShieldCheck, 
