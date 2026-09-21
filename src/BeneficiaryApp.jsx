@@ -266,11 +266,11 @@ export default function BeneficiaryApp() {
               {eventDetails.orgName || 'الإدارة العامة للتعليم بمنطقة عسير'}
             </div>
           </div>
-          <div className="h-10 px-2.5 py-1 bg-white rounded-xl flex items-center justify-center shadow-md border border-white/20 shrink-0">
+          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-[#0B1528] border border-cyan-500/20 hover:border-cyan-400/40 p-1.5 flex items-center justify-center shadow-lg shadow-cyan-950/40 shrink-0 transition-all">
             <img 
-              src="ministry_logo.png" 
-              alt="شعار وزارة التعليم" 
-              className="h-7 w-auto object-contain"
+              src="saudi_moe_logo.svg" 
+              alt="وزارة التعليم - Ministry of Education" 
+              className="w-full h-full object-contain filter drop-shadow-[0_2px_8px_rgba(59,131,183,0.35)]"
             />
           </div>
         </div>
