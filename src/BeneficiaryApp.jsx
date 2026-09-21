@@ -70,6 +70,11 @@ export default function BeneficiaryApp() {
   const [showEventInfoModal, setShowEventInfoModal] = useState(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [showSupportModal, setShowSupportModal] = useState(false);
+  const [showMyBookingsModal, setShowMyBookingsModal] = useState(false);
+  const [showUpcomingModal, setShowUpcomingModal] = useState(false);
+  const [showFavoritesModal, setShowFavoritesModal] = useState(false);
+  const [showAccountModal, setShowAccountModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [searchError, setSearchError] = useState('');
 
   // Initial data loading
@@ -184,9 +189,9 @@ export default function BeneficiaryApp() {
         {/* Left: User Profile & Notification & Portal Links */}
         <div className="flex items-center gap-2.5">
           <div 
-            onClick={() => alert(`👤 بيانات المستفيد:\nالاسم: ${displayGuestName}\nالمقعد: ${displaySeatCode}\nالرمز: ${displayToken}`)}
+            onClick={() => setShowAccountModal(true)}
             className="flex items-center gap-2 p-1.5 pl-3 rounded-2xl bg-white/[0.04] border border-white/10 hover:border-cyan-500/30 transition-all cursor-pointer"
-            title="بيانات المستفيد"
+            title="بيانات حساب المستفيد"
           >
             <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-black text-xs text-slate-950">
               {displayGuestName.charAt(0)}
@@ -290,24 +295,29 @@ export default function BeneficiaryApp() {
                 <button
                   key={item.id}
                   onClick={() => {
-                    if (item.id === 'tickets') {
+                    setActiveNav(item.id);
+                    if (item.id === 'home') {
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    } else if (item.id === 'tickets') {
                       setShowFullCardModal(true);
+                    } else if (item.id === 'bookings') {
+                      setShowMyBookingsModal(true);
+                    } else if (item.id === 'request-hall') {
+                      setShowBookingModal(true);
+                    } else if (item.id === 'upcoming') {
+                      setShowUpcomingModal(true);
                     } else if (item.id === 'theaters') {
                       setShowTheaterMapModal(true);
-                    } else if (item.id === 'bookings' || item.id === 'request-hall') {
-                      setShowBookingModal(true);
+                    } else if (item.id === 'favorites') {
+                      setShowFavoritesModal(true);
                     } else if (item.id === 'support') {
                       setShowSupportModal(true);
                     } else if (item.id === 'notifications') {
                       setShowNotificationsModal(true);
-                    } else if (item.id === 'favorites') {
-                      alert('🌟 تم حفظ الفعالية ضمن قائمة المفضلة لديك بنجاح!');
                     } else if (item.id === 'account') {
-                      alert(`👤 بيانات المستفيد:\nالاسم: ${displayGuestName}\nالمقعد: ${displaySeatCode}\nالرمز: ${displayToken}`);
+                      setShowAccountModal(true);
                     } else if (item.id === 'settings') {
-                      alert('⚙️ الإعدادات:\n• لغة الواجهة: العربية\n• المظهر: الوضع الليلي الفاخر\n• التنبيهات: مفعلة 🟢');
-                    } else {
-                      setActiveNav(item.id);
+                      setShowSettingsModal(true);
                     }
                   }}
                   className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs transition-all duration-150 group text-right ${
@@ -970,6 +980,361 @@ export default function BeneficiaryApp() {
               </div>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* 1. My Bookings Modal (حجوزاتي) */}
+      {showMyBookingsModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowMyBookingsModal(false); }}
+        >
+          <div className="bg-[#071124] border border-cyan-500/30 rounded-3xl p-6 max-w-xl w-full shadow-2xl space-y-4 text-right">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-400">
+                  <Calendar className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white">سجل حجوزاتي وتذاكري</h3>
+                  <p className="text-xs text-slate-400">متابعة الحجوزات المؤكدة وطلبات القاعات</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowMyBookingsModal(false)}
+                className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar pr-1">
+              {/* Booking 1: Current Event */}
+              <div className="p-4 rounded-2xl bg-white/[0.03] border border-cyan-500/30 space-y-2 hover:border-cyan-400/60 transition-all">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-cyan-300">تذكرة مقعد حضور</span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[10px] font-bold">
+                    مؤكد ومسجل 🟢
+                  </span>
+                </div>
+                <div className="text-sm font-bold text-white">{eventDetails.title || 'حفل التكريم والافتتاح'}</div>
+                <div className="text-xs text-slate-400 flex items-center gap-3">
+                  <span>🪑 المقعد: <strong className="text-white">{displaySeatCode}</strong></span>
+                  <span>🚪 المدخل: <strong className="text-white">البوابة 3</strong></span>
+                </div>
+                <div className="pt-2 flex items-center gap-2 border-t border-white/5">
+                  <button
+                    onClick={() => {
+                      setShowMyBookingsModal(false);
+                      setShowFullCardModal(true);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-cyan-500/20 text-cyan-300 text-xs font-bold hover:bg-cyan-500/30 transition-all"
+                  >
+                    عرض بطاقة الدعوة 🎟️
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowMyBookingsModal(false);
+                      setShowGateInfoModal(true);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-white/5 text-slate-300 text-xs font-bold hover:bg-white/10 transition-all"
+                  >
+                    إرشادات الوصول 📍
+                  </button>
+                </div>
+              </div>
+
+              {/* Booking 2: Hall Request */}
+              <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-amber-300">طلب حجز قاعة اجتماعات</span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-bold">
+                    قيد المراجعة 🟡
+                  </span>
+                </div>
+                <div className="text-sm font-bold text-white">ورشة عمل التطوير القيادي</div>
+                <div className="text-xs text-slate-400">القاعة الكبرى • التاريخ: الخميس القادم • سعة 120 مقعداً</div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                setShowMyBookingsModal(false);
+                setShowBookingModal(true);
+              }}
+              className="w-full py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-xs transition-all shadow-lg active:scale-95"
+            >
+              تقديم طلب حجز قاعة أو مسرح جديد ➕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Upcoming Events Modal (الفعاليات القادمة) */}
+      {showUpcomingModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowUpcomingModal(false); }}
+        >
+          <div className="bg-[#071124] border border-cyan-500/30 rounded-3xl p-6 max-w-xl w-full shadow-2xl space-y-4 text-right">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-400/30 flex items-center justify-center text-purple-400">
+                  <Calendar className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white">الفعاليات والمناسبات القادمة</h3>
+                  <p className="text-xs text-slate-400">أجندة فعاليات مسارح تعليم عسير المعتمدة</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowUpcomingModal(false)}
+                className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar pr-1">
+              <div className="p-4 rounded-2xl bg-white/[0.03] border border-cyan-500/30 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-full">الفعالية الحالية</span>
+                  <span className="text-xs text-slate-400">اليوم • 08:00 م</span>
+                </div>
+                <div className="text-sm font-black text-white">{eventDetails.title || 'حفل التكريم والافتتاح'}</div>
+                <div className="text-xs text-slate-400">المسرح الرئيسي بالإدارة • البوابة 3 • حضور رسمي</div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">تكريم وتميز</span>
+                  <span className="text-xs text-slate-400">الخميس 1448/04/10</span>
+                </div>
+                <div className="text-sm font-black text-white">حفل سفراء التفوق والموهبة والإبداع</div>
+                <div className="text-xs text-slate-400">مسرح الإدارة العامة • متاح 45 مقعداً للحضور</div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">ملتقى سنوي</span>
+                  <span className="text-xs text-slate-400">الثلاثاء 1448/04/22</span>
+                </div>
+                <div className="text-sm font-black text-white">ملتقى القيادات التعليمية والإشرافية</div>
+                <div className="text-xs text-slate-400">القاعة الكبرى • ورش تدريبية وجلسات حوارية</div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                setShowUpcomingModal(false);
+                setShowEventInfoModal(true);
+              }}
+              className="w-full py-3 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition-all"
+            >
+              عرض تفاصيل الفعالية الحالية بالتفصيل ℹ️
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Favorites Modal (المفضلة) */}
+      {showFavoritesModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowFavoritesModal(false); }}
+        >
+          <div className="bg-[#071124] border border-rose-500/30 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 text-right">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-400/30 flex items-center justify-center text-rose-400">
+                  <Heart className="w-5 h-5 fill-rose-500" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white">قائمة المفضلة</h3>
+                  <p className="text-xs text-slate-400">القاعات والفعاليات المحفوظة لديك</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowFavoritesModal(false)}
+                className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-2.5 text-xs text-slate-300">
+              <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-between">
+                <div>
+                  <div className="font-bold text-white text-sm">المسرح الرئيسي (القاعة الكبرى)</div>
+                  <div className="text-[11px] text-slate-400 mt-0.5">سعة 746 مقعداً • شاشات وأنظمة صوتية متطورة</div>
+                </div>
+                <span className="text-amber-400 text-sm">⭐</span>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-between">
+                <div>
+                  <div className="font-bold text-white text-sm">{eventDetails.title || 'حفل التكريم والافتتاح'}</div>
+                  <div className="text-[11px] text-cyan-300 mt-0.5">تذكرتك الحالية: {displaySeatCode}</div>
+                </div>
+                <span className="text-rose-400 text-sm">❤️</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                alert('🌟 تم تحديث المفضلة بنجاح.');
+                setShowFavoritesModal(false);
+              }}
+              className="w-full py-3 rounded-2xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 font-bold text-xs transition-all"
+            >
+              حفظ وإغلاق المفضلة ✓
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 4. My Account Modal (حسابي) */}
+      {showAccountModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowAccountModal(false); }}
+        >
+          <div className="bg-[#071124] border border-cyan-500/30 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 text-right">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-black text-slate-950 text-base shadow-lg shadow-cyan-500/20">
+                  {displayGuestName.charAt(0)}
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white">{displayGuestName}</h3>
+                  <span className="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full font-bold">
+                    مستفيد رسمي معتمد 🟢
+                  </span>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowAccountModal(false)}
+                className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-2.5 text-xs text-slate-300">
+              <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-between">
+                <span className="text-slate-400">المقعد المخصص:</span>
+                <span className="font-black text-cyan-300 font-mono text-sm">{displaySeatCode}</span>
+              </div>
+              <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-between">
+                <span className="text-slate-400">رمز التذكرة:</span>
+                <span className="font-mono text-amber-300 font-bold">{displayToken}</span>
+              </div>
+              <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-between">
+                <span className="text-slate-400">بوابة الدخول:</span>
+                <span className="font-bold text-white">البوابة 3 (المدخل الرئيسي)</span>
+              </div>
+              <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-between">
+                <span className="text-slate-400">الجهة المنظمة:</span>
+                <span className="font-bold text-white">تعليم عسير</span>
+              </div>
+            </div>
+
+            <div className="space-y-2 pt-1">
+              <button
+                onClick={() => {
+                  setShowAccountModal(false);
+                  setShowFullCardModal(true);
+                }}
+                className="w-full py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-black text-xs hover:opacity-95 transition-all shadow-md active:scale-95"
+              >
+                عرض بطاقة التذكرة الكاملة 🎟️
+              </button>
+              <button
+                onClick={() => {
+                  setCurrentTicketSeat(null);
+                  setPhoneQuery('');
+                  setTokenQuery('');
+                  setShowAccountModal(false);
+                  alert('تم تسجيل الخروج وإعادة تعيين التذكرة بنجاح.');
+                }}
+                className="w-full py-2.5 rounded-2xl bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 border border-white/10 text-xs font-bold transition-all"
+              >
+                تسجيل الخروج والبحث عن تذكرة أخرى 🚪
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. Settings Modal (الإعدادات) */}
+      {showSettingsModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowSettingsModal(false); }}
+        >
+          <div className="bg-[#071124] border border-white/15 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 text-right">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-slate-500/20 border border-slate-400/30 flex items-center justify-center text-slate-300">
+                  <Settings className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white">إعدادات البوابة</h3>
+                  <p className="text-xs text-slate-400">تخصيص مظهر وتفضيلات الاستخدام</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowSettingsModal(false)}
+                className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-2.5 text-xs text-slate-300">
+              <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-between">
+                <div>
+                  <div className="font-bold text-white">المظهر (Dark Elegance)</div>
+                  <div className="text-[11px] text-slate-400">الوضع الليلي الفاخر المخصص للمسارح</div>
+                </div>
+                <span className="text-cyan-400 font-bold bg-cyan-500/15 px-2.5 py-0.5 rounded-full border border-cyan-400/30">مفعّل 🟢</span>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-between">
+                <div>
+                  <div className="font-bold text-white">التنبيهات التفاعلية</div>
+                  <div className="text-[11px] text-slate-400">إشعار مواعيد الدخول وحالة المقعد</div>
+                </div>
+                <span className="text-emerald-400 font-bold bg-emerald-500/15 px-2.5 py-0.5 rounded-full border border-emerald-400/30">مفعّل 🟢</span>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-between">
+                <div>
+                  <div className="font-bold text-white">المؤثرات الصوتية</div>
+                  <div className="text-[11px] text-slate-400">أصوات التفاعل والترحيب</div>
+                </div>
+                <span className="text-emerald-400 font-bold bg-emerald-500/15 px-2.5 py-0.5 rounded-full border border-emerald-400/30">مفعّل 🟢</span>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-between">
+                <div>
+                  <div className="font-bold text-white">اللغة</div>
+                  <div className="text-[11px] text-slate-400">العربية (المملكة العربية السعودية)</div>
+                </div>
+                <span className="text-white font-bold">العربية 🇸🇦</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                alert('💾 تم حفظ كافة الإعدادات وتحديث الجلسة بنجاح.');
+                setShowSettingsModal(false);
+              }}
+              className="w-full py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-black text-xs hover:opacity-95 transition-all shadow-md active:scale-95"
+            >
+              حفظ التفضيلات ✓
+            </button>
           </div>
         </div>
       )}
