@@ -112,8 +112,12 @@ export default function ManagerPortal() {
         
         {/* Right: Executive Branding & Director Title */}
         <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-400 via-amber-500 to-yellow-600 flex items-center justify-center shadow-lg shadow-amber-500/20 text-slate-950 font-black shrink-0 border border-white/20">
-            <Crown className="w-6 h-6 text-slate-950" />
+          <div className="h-11 px-3 py-1 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-black/25 border border-white/20 shrink-0">
+            <img 
+              src="ministry_logo.png" 
+              alt="شعار وزارة التعليم" 
+              className="h-8 w-auto object-contain"
+            />
           </div>
           <div className="text-right">
             <div className="flex items-center gap-2">

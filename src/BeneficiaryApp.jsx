@@ -263,15 +263,15 @@ export default function BeneficiaryApp() {
               <span>بوابة المسرح والقاعات</span>
             </div>
             <div className="text-[10px] text-cyan-400 font-bold tracking-wider">
-              اكتشف .. احجز .. استمتع
+              {eventDetails.orgName || 'الإدارة العامة للتعليم بمنطقة عسير'}
             </div>
           </div>
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/25 border border-white/15">
-            <div className="flex items-end gap-0.5">
-              <span className="w-1 h-3.5 bg-white rounded-full"></span>
-              <span className="w-1 h-5 bg-cyan-200 rounded-full"></span>
-              <span className="w-1 h-2.5 bg-white rounded-full"></span>
-            </div>
+          <div className="h-10 px-2.5 py-1 bg-white rounded-xl flex items-center justify-center shadow-md border border-white/20 shrink-0">
+            <img 
+              src="ministry_logo.png" 
+              alt="شعار وزارة التعليم" 
+              className="h-7 w-auto object-contain"
+            />
           </div>
         </div>
       </header>
