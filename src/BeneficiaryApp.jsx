@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, 
   Ticket, 
@@ -42,6 +42,7 @@ import MiniHallStageMap from './components/MiniHallStageMap';
 import TheaterMap from './components/TheaterMap';
 import BookingFormModal from './components/BookingFormModal';
 import InvitationCard from './components/InvitationCard';
+import { exportElementToPng } from './utils/exportImage';
 import { 
   getSeats, 
   getEventDetails, 
@@ -144,6 +145,40 @@ export default function BeneficiaryApp() {
     } else {
       setSearchError('لم يتم العثور على تذكرة مطابقة، يرجى التحقق من الرقم والبحث مجدداً.');
     }
+  };
+
+  const ticketCardRef = useRef(null);
+  const [isSavingTicket, setIsSavingTicket] = useState(false);
+  const [saveTicketSuccess, setSaveTicketSuccess] = useState(false);
+
+  const handleSaveTicket = async () => {
+    if (!ticketCardRef.current) return;
+    setIsSavingTicket(true);
+    try {
+      const code = currentTicketSeat ? formatArabicSeatCode(currentTicketSeat) : 'تذكرة';
+      const name = currentTicketSeat?.guest?.name || 'مستفيد';
+      const cleanName = name.replace(/[\s/\\:*?"<>|]/g, '_');
+      const fileName = `تذكرة_مسرح_${code}_${cleanName}.png`;
+
+      await exportElementToPng(ticketCardRef.current, fileName, {
+        pixelRatio: 4,
+        backgroundColor: '#071124'
+      });
+      setSaveTicketSuccess(true);
+      try {
+        confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
+      } catch (e) {}
+      setTimeout(() => setSaveTicketSuccess(false), 3500);
+    } catch (err) {
+      console.error('Error saving ticket:', err);
+      alert('حدث خطأ أثناء حفظ التذكرة. يرجى استخدام زر الطباعة للحفظ كملف PDF أو أخذ لقطة شاشة.');
+    } finally {
+      setIsSavingTicket(false);
+    }
+  };
+
+  const handlePrintTicket = () => {
+    window.print();
   };
 
   const handleAddToWallet = () => {
@@ -474,36 +509,80 @@ export default function BeneficiaryApp() {
             {/* Digital Ticket Card (Left 5 Cols) */}
             <div className="lg:col-span-5 rounded-3xl border border-white/10 bg-[#0B1528] p-5 sm:p-6 shadow-2xl flex flex-col justify-between space-y-4">
               
-              {/* Header with Active badge */}
+              {/* Header with Active badge & Quick Actions */}
               <div className="flex items-center justify-between border-b border-white/10 pb-3">
                 <div className="flex items-center gap-2">
                   <Ticket className="w-4 h-4 text-cyan-400" />
                   <span className="text-sm font-black text-white">تذكرتي الرقمية</span>
                 </div>
-                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                  <span>فعالة</span>
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>فعالة</span>
+                  </span>
+                  <button
+                    onClick={handleSaveTicket}
+                    disabled={isSavingTicket}
+                    className="p-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/30 text-cyan-300 transition-all text-xs font-bold flex items-center gap-1 active:scale-95"
+                    title="حفظ التذكرة كصورة (PNG)"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">حفظ</span>
+                  </button>
+                  <button
+                    onClick={handlePrintTicket}
+                    className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-all text-xs font-bold active:scale-95"
+                    title="طباعة التذكرة"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
 
-              {/* Ticket Body with Event & QR */}
-              <div className="flex flex-col sm:flex-row items-center gap-5 bg-gradient-to-br from-white/[0.03] to-cyan-500/[0.04] border border-white/10 rounded-2xl p-4 relative overflow-hidden">
-                {/* Left tear strip effect */}
-                <div className="hidden sm:block absolute right-0 top-0 bottom-0 w-2 border-r-2 border-dashed border-white/20" />
+              {/* Ticket Body with Event, Guest & QR (ticketCardRef attached for high-res PNG export) */}
+              <div 
+                ref={ticketCardRef}
+                className="flex flex-col sm:flex-row items-center gap-4 bg-gradient-to-br from-[#0c182c] via-[#091322] to-[#070e1a] border border-cyan-500/30 rounded-2xl p-4 relative overflow-hidden shadow-inner"
+              >
+                {/* Visual Watermark & Decorative Glow */}
+                <div className="absolute -top-12 -right-12 w-28 h-28 bg-cyan-500/10 rounded-full blur-xl pointer-events-none" />
+                <div className="hidden sm:block absolute right-0 top-0 bottom-0 w-2 border-r-2 border-dashed border-cyan-500/20" />
 
-                {/* Event text */}
+                {/* Event & Guest info text */}
                 <div className="flex-1 space-y-2 text-right">
-                  <div className="text-[10px] text-cyan-400 font-bold uppercase tracking-wider">
-                    {eventDetails.category || 'حفل رسمي'}
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-cyan-400 font-bold uppercase tracking-wider">
+                      {eventDetails.category || 'حفل رسمي'}
+                    </span>
+                    <span className="text-[9px] font-mono text-slate-400 bg-white/5 px-2 py-0.5 rounded-md border border-white/10">
+                      {displayToken}
+                    </span>
                   </div>
+
                   <h4 className="text-sm sm:text-base font-black text-white leading-snug">
                     {eventDetails.title || 'حفل التكريم والافتتاح'}
                   </h4>
-                  <div className="text-[11px] text-slate-300 font-medium">
-                    {eventDetails.venue || 'المسرح الرئيسي - القاعة الكبرى'}
+
+                  {/* Guest Name & Seat Highlight Badge */}
+                  <div className="p-2 rounded-xl bg-white/[0.04] border border-white/10 space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-400 font-medium">اسم الضيف:</span>
+                      <strong className="text-white font-bold">{displayGuestName}</strong>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-400 font-medium">المقعد المخصص:</span>
+                      <span className="font-black text-amber-300 bg-amber-500/15 border border-amber-400/30 px-2 py-0.5 rounded-md text-[11px]">
+                        {displaySeatCode}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-400 font-medium">بوابة الدخول:</span>
+                      <span className="font-bold text-cyan-300 text-[11px]">البوابة 3 (المدخل الرئيسي)</span>
+                    </div>
                   </div>
-                  <div className="text-[11px] text-slate-400 flex items-center gap-1.5 font-bold pt-1">
-                    <Calendar className="w-3.5 h-3.5 text-cyan-400" />
+
+                  <div className="text-[10px] text-slate-400 flex items-center gap-1.5 font-bold pt-0.5">
+                    <Calendar className="w-3 h-3 text-cyan-400 shrink-0" />
                     <span>{eventDetails.date || 'الجمعة 25 أكتوبر 2026'}</span>
                     <span>•</span>
                     <span>{eventDetails.time || '08:00 مساءً'}</span>
@@ -511,27 +590,62 @@ export default function BeneficiaryApp() {
                 </div>
 
                 {/* QR Code Container */}
-                <div className="flex flex-col items-center justify-center p-3 bg-white rounded-2xl shadow-lg shrink-0">
+                <div className="flex flex-col items-center justify-center p-2.5 bg-white rounded-2xl shadow-xl shrink-0 border border-slate-200">
                   <QRCodeSVG 
                     value={displayToken} 
-                    size={110} 
+                    size={105} 
                     level="M" 
                     includeMargin={false}
                   />
-                  <div className="text-[9px] font-mono font-bold text-slate-900 mt-1">
+                  <div className="text-[9px] font-mono font-black text-slate-900 mt-1">
                     {displayToken}
                   </div>
                 </div>
               </div>
 
-              {/* Action: Add to Wallet */}
-              <button
-                onClick={handleAddToWallet}
-                className="w-full py-3 rounded-2xl bg-[#121E36] hover:bg-[#182848] border border-amber-400/40 text-amber-300 hover:text-amber-200 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md active:scale-95"
-              >
-                <span>💳</span>
-                <span>{isCopied ? 'تم نسخ التذكرة للحافظة بنجاح!' : 'إضافة إلى المحفظة (Apple/Google)'}</span>
-              </button>
+              {/* Action Buttons: Save Ticket + Print + Add to Wallet */}
+              <div className="space-y-2">
+                <button
+                  onClick={handleSaveTicket}
+                  disabled={isSavingTicket}
+                  className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-black text-xs flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-95 cursor-pointer disabled:opacity-50"
+                >
+                  <Download className={`w-4 h-4 ${isSavingTicket ? 'animate-bounce' : ''}`} />
+                  <span>
+                    {isSavingTicket 
+                      ? 'جارٍ تصدير وحفظ التذكرة...' 
+                      : saveTicketSuccess 
+                        ? '✅ تم حفظ التذكرة في جهازك بنجاح!' 
+                        : 'حفظ التذكرة كصورة في الجهاز (PNG) 📥'
+                    }
+                  </span>
+                </button>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={handlePrintTicket}
+                    className="py-2.5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-slate-200 hover:text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                  >
+                    <Printer className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>طباعة التذكرة 🖨️</span>
+                  </button>
+
+                  <button
+                    onClick={handleAddToWallet}
+                    className="py-2.5 rounded-2xl bg-[#121E36] hover:bg-[#182848] border border-amber-400/40 text-amber-300 hover:text-amber-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
+                  >
+                    <span>💳</span>
+                    <span>{isCopied ? 'تم النسخ بنجاح!' : 'إضافة للمحفظة'}</span>
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => setShowFullCardModal(true)}
+                  className="w-full py-2 rounded-xl bg-white/[0.02] hover:bg-cyan-500/10 border border-white/5 text-slate-400 hover:text-cyan-300 text-[11px] font-bold transition-all text-center"
+                >
+                  عرض بطاقة الدعوة الرسمية الفاخرة (3D) ↗
+                </button>
+              </div>
 
             </div>
 
