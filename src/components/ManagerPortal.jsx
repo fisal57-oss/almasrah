@@ -170,14 +170,6 @@ export default function ManagerPortal() {
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
             <span className="hidden lg:inline">شاشة العرض</span>
           </button>
-
-          {/* Full Control Panel Shortcut */}
-          <button
-            onClick={() => window.open('index.html', '_blank')}
-            className="px-3.5 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-200 font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95"
-          >
-            <span>لوحة التحكم الكاملة ↗</span>
-          </button>
         </div>
 
       </header>
@@ -503,12 +495,17 @@ export default function ManagerPortal() {
               </button>
 
               <button
-                onClick={() => window.open('index.html', '_blank')}
-                className="p-4 rounded-2xl bg-white/[0.03] hover:bg-blue-500/10 border border-white/10 hover:border-blue-500/30 text-right transition-all group active:scale-95"
+                onClick={() => {
+                  const currentSeats = getSeats();
+                  setSeats(currentSeats);
+                  setEventDetails(getEventDetails());
+                  setLastRefreshedAt(new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+                }}
+                className="p-4 rounded-2xl bg-white/[0.03] hover:bg-cyan-500/10 border border-white/10 hover:border-cyan-500/30 text-right transition-all group active:scale-95"
               >
-                <Sliders className="w-5 h-5 text-blue-400 mb-2 group-hover:scale-110 transition-transform" />
-                <div className="font-black text-white">لوحة التحكم الكاملة</div>
-                <div className="text-[10px] text-slate-400 mt-0.5">إدارة وتعديل المقاعد</div>
+                <RefreshCw className="w-5 h-5 text-cyan-400 mb-2 group-hover:rotate-180 transition-transform duration-500" />
+                <div className="font-black text-white">تحديث فوري للبيانات</div>
+                <div className="text-[10px] text-slate-400 mt-0.5">مزامنة فورية للرادار</div>
               </button>
 
               <button
