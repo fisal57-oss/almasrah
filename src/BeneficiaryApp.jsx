@@ -115,6 +115,19 @@ export default function BeneficiaryApp() {
     loadData();
   }, [initialQuery, initialSeatId]);
 
+  // Listen for booking submission from BookingFormModal iframe
+  useEffect(() => {
+    const handleMsg = (e) => {
+      if (e.data && e.data.type === 'BOOKING_SUBMITTED') {
+        try {
+          confetti({ particleCount: 70, spread: 75, origin: { y: 0.5 } });
+        } catch (err) {}
+      }
+    };
+    window.addEventListener('message', handleMsg);
+    return () => window.removeEventListener('message', handleMsg);
+  }, []);
+
   // Handle Search for ticket
   const handleSearch = (e) => {
     if (e) e.preventDefault();

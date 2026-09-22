@@ -645,6 +645,11 @@
                 </div>
             </div>
 
+            <button type="button" id="submit-direct-btn" class="btn-submit" disabled onclick="submitDirectBooking()" style="background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%); font-size: 1.15rem; padding: 18px 20px; margin-bottom: 12px; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.35); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%;">
+                <i class="fas fa-paper-plane"></i>
+                إرسال طلب الحجز الآن
+            </button>
+
             <button type="button" id="submit-btn" class="btn-submit" disabled onclick="exportToJSON()">
                 <i class="fas fa-file-export"></i>
                 تصدير وإرسال ملف البوكينج (JSON)
@@ -673,11 +678,160 @@
         }
         function toggleSubmit() {
             const check = document.getElementById('agree-check');
+            const directBtn = document.getElementById('submit-direct-btn');
             const btn = document.getElementById('submit-btn');
             const waBtn = document.getElementById('whatsapp-submit-btn');
+            if (directBtn) directBtn.disabled = !check.checked;
             if (btn) btn.disabled = !check.checked;
             if (waBtn) waBtn.disabled = !check.checked;
         }
+
+        function submitDirectBooking() {
+            const form = document.getElementById('booking-form-official');
+            const formData = new FormData(form);
+            const agreeCheck = document.getElementById('agree-check');
+
+            if (!agreeCheck.checked) {
+                agreeCheck.checked = true;
+                toggleSubmit();
+            }
+
+            const entityName = (formData.get('entity-name') || '').trim();
+            const eventTitle = (formData.get('event-title') || '').trim();
+            const coordName = (formData.get('coord-name') || '').trim();
+            const coordMobile = (formData.get('coord-mobile') || '').trim();
+            const date = formData.get('date') || '';
+            const endDate = formData.get('end-date') || date;
+            const daysCount = formData.get('days-count') || 1;
+            const startTime = formData.get('start-time') || '';
+            const period = formData.get('period') || 'morning';
+
+            if (!eventTitle) {
+                alert('⚠️ يرجى إدخال مسمى الفعالية');
+                const inp = document.querySelector('input[name="event-title"]');
+                if (inp) { inp.scrollIntoView({ behavior: 'smooth', block: 'center' }); inp.focus(); }
+                return;
+            }
+            if (!entityName) {
+                alert('⚠️ يرجى إدخال اسم الجهة الطالبة');
+                const inp = document.querySelector('input[name="entity-name"]');
+                if (inp) { inp.scrollIntoView({ behavior: 'smooth', block: 'center' }); inp.focus(); }
+                return;
+            }
+            if (!coordName) {
+                alert('⚠️ يرجى إدخال اسم مسؤول التنسيق');
+                const inp = document.querySelector('input[name="coord-name"]');
+                if (inp) { inp.scrollIntoView({ behavior: 'smooth', block: 'center' }); inp.focus(); }
+                return;
+            }
+            if (!coordMobile) {
+                alert('⚠️ يرجى إدخال رقم جوال المنسق');
+                const inp = document.querySelector('input[name="coord-mobile"]');
+                if (inp) { inp.scrollIntoView({ behavior: 'smooth', block: 'center' }); inp.focus(); }
+                return;
+            }
+            if (!date) {
+                alert('⚠️ يرجى تحديد تاريخ بداية الفعالية');
+                const inp = document.getElementById('digital-start-date');
+                if (inp) { inp.scrollIntoView({ behavior: 'smooth', block: 'center' }); inp.focus(); }
+                return;
+            }
+
+            const venueEls = Array.from(document.querySelectorAll('input[name="venue"]:checked'));
+            const venueNames = venueEls.map(v => v.parentElement.textContent.trim());
+            const needs = Array.from(document.querySelectorAll('input[name="needs"]:checked')).map(cb => cb.parentElement.textContent.trim());
+
+            const bookingId = 'HALL-' + Math.floor(1000 + Math.random() * 9000);
+            const newBooking = {
+                id: bookingId,
+                entityType: formData.get('entity-type'),
+                entityName: entityName,
+                coordName: coordName,
+                coordMobile: coordMobile,
+                venueNames: venueNames,
+                venueName: venueNames.length > 0 ? venueNames.join('، ') : 'المسرح الرئيسي',
+                date: date,
+                endDate: endDate,
+                daysCount: daysCount,
+                startTime: startTime,
+                duration: formData.get('duration') || '3',
+                period: period === 'morning' ? 'صباحاً' : 'مساءً',
+                eventTitle: eventTitle,
+                vipGuest: formData.get('vip-guest') || '',
+                activities: formData.get('activities') || '',
+                audienceCount: formData.get('audience-count') || '0',
+                audienceGender: formData.get('audience-gender') === 'boys' ? 'بنين' : (formData.get('audience-gender') === 'girls' ? 'بنات' : 'عام'),
+                needs: needs,
+                status: 'pending',
+                createdAt: new Date().toISOString()
+            };
+
+            // Save to localStorage
+            try {
+                const STORAGE_KEY = 'theater_hall_bookings_v1';
+                const current = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+                current.unshift(newBooking);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
+            } catch(e) {
+                console.error('Error saving booking:', e);
+            }
+
+            // Post message to parent window
+            try {
+                window.parent.postMessage({ type: 'BOOKING_SUBMITTED', booking: newBooking }, '*');
+            } catch(e) {}
+
+            // Show Confirmation Modal
+            showBookingConfirmationModal(newBooking);
+        }
+
+        function showBookingConfirmationModal(booking) {
+            let modal = document.getElementById('booking-confirmation-modal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'booking-confirmation-modal';
+                modal.style.cssText = 'position: fixed; inset: 0; z-index: 99999; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; padding: 20px;';
+                document.body.appendChild(modal);
+            }
+
+            modal.innerHTML = `
+                <div style="background: #ffffff; border-radius: 28px; max-width: 520px; width: 100%; padding: 32px; text-align: center; box-shadow: 0 25px 60px rgba(0,0,0,0.3); border: 2px solid #10b981; direction: rtl; font-family: 'Readex Pro', sans-serif;">
+                    <div style="width: 70px; height: 70px; border-radius: 50%; background: #d1fae5; color: #059669; display: flex; align-items: center; justify-content: center; font-size: 32px; margin: 0 auto 16px;">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <h2 style="font-size: 1.4rem; font-weight: 800; color: #0f172a; margin-bottom: 6px;">تم إرسال طلب الحجز بنجاح!</h2>
+                    <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 20px;">تم تسجيل طلبكم رسمياً بنظام إدارة مسارح وقاعات تعليم عسير.</p>
+                    
+                    <div style="background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 18px; padding: 16px; margin-bottom: 24px; text-align: right; font-size: 0.88rem; line-height: 1.9;">
+                        <div><strong style="color: #0f172a;">رقم الطلب:</strong> <span style="font-family: monospace; font-weight: 800; color: #4f46e5; background: #e0e7ff; padding: 2px 8px; border-radius: 6px;">\${booking.id}</span></div>
+                        <div><strong style="color: #0f172a;">الفعالية:</strong> \${booking.eventTitle}</div>
+                        <div><strong style="color: #0f172a;">الجهة:</strong> \${booking.entityName}</div>
+                        <div><strong style="color: #0f172a;">المقر:</strong> \${booking.venueName}</div>
+                        <div><strong style="color: #0f172a;">التاريخ:</strong> \${booking.date} (\${booking.startTime} \${booking.period})</div>
+                        <div><strong style="color: #0f172a;">حالة الطلب:</strong> <span style="color: #d97706; font-weight: 700;">قيد المراجعة والاعتماد 🟡</span></div>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <button onclick="sendViaWhatsAppDirect()" style="width: 100%; padding: 14px; border-radius: 14px; background: linear-gradient(135deg, #25D366, #128C7E); color: white; border: none; font-weight: 700; font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                            <i class="fab fa-whatsapp" style="font-size: 1.2rem;"></i>
+                            إرسال نسخة مباشرة للمنسق عبر الواتساب
+                        </button>
+                        
+                        <button onclick="document.getElementById('booking-confirmation-modal').style.display = 'none'" style="width: 100%; padding: 12px; border-radius: 14px; background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.9rem; cursor: pointer;">
+                            إغلاق نافذة التأكيد
+                        </button>
+                    </div>
+                </div>
+            `;
+            modal.style.display = 'flex';
+        }
+
+        // Listen for parent messages (e.g. from header button)
+        window.addEventListener('message', function(e) {
+            if (e.data && (e.data.type === 'SUBMIT_FORM' || e.data.type === 'SUBMIT_BOOKING')) {
+                submitDirectBooking();
+            }
+        });
 
         function calcDigitalDays() {
             const startInput = document.getElementById('digital-start-date');

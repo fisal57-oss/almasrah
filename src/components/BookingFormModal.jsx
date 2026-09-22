@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { X, ExternalLink, Maximize2, Minimize2, RefreshCw, Building2 } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { X, ExternalLink, Maximize2, Minimize2, RefreshCw, Building2, Send } from 'lucide-react';
 
 /**
  * BookingFormModal
@@ -9,6 +9,16 @@ export default function BookingFormModal({ isOpen, onClose }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const iframeRef = useRef(null);
+
+  useEffect(() => {
+    const handleMsg = (e) => {
+      if (e.data && e.data.type === 'BOOKING_SUBMITTED') {
+        // Optional notification or action
+      }
+    };
+    window.addEventListener('message', handleMsg);
+    return () => window.removeEventListener('message', handleMsg);
+  }, []);
 
   if (!isOpen) return null;
 
@@ -23,6 +33,17 @@ export default function BookingFormModal({ isOpen, onClose }) {
 
   const handleOpenExternal = () => {
     window.open(BOOKING_FORM_URL, '_blank');
+  };
+
+  const handleSubmit = () => {
+    if (iframeRef.current && iframeRef.current.contentWindow) {
+      iframeRef.current.contentWindow.postMessage({ type: 'SUBMIT_FORM' }, '*');
+      try {
+        if (typeof iframeRef.current.contentWindow.submitDirectBooking === 'function') {
+          iframeRef.current.contentWindow.submitDirectBooking();
+        }
+      } catch (e) {}
+    }
   };
 
   return (
@@ -53,6 +74,16 @@ export default function BookingFormModal({ isOpen, onClose }) {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Direct Submit Button in Header */}
+            <button
+              onClick={handleSubmit}
+              title="إرسال طلب الحجز الآن"
+              className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md shadow-emerald-500/25 active:scale-95 transition-all cursor-pointer mr-1"
+            >
+              <Send className="w-3.5 h-3.5" />
+              <span>إرسال الطلب</span>
+            </button>
+
             {/* Refresh */}
             <button
               onClick={handleRefresh}
