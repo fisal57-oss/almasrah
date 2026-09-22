@@ -9,8 +9,7 @@ import {
   Sparkles,
   Search,
   Printer,
-  Mail,
-  Building2
+  Mail
 } from 'lucide-react';
 
 export default function Navbar({ 
@@ -152,15 +151,6 @@ export default function Navbar({
               <Printer className="w-4 h-4" />
               <span>طباعة ترقيم المسرح</span>
             </button>
-
-            <a
-              href="./itqan/index.html"
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black bg-cyan-500/25 hover:bg-cyan-400 hover:text-slate-950 text-cyan-200 border border-cyan-400/50 transition-all shadow-md backdrop-blur-md"
-              title="الانتقال إلى نظام إتقان"
-            >
-              <Building2 className="w-4 h-4 text-cyan-300" />
-              <span>نظام إتقان 🏢</span>
-            </a>
           </nav>
 
         </div>

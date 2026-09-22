@@ -264,8 +264,6 @@ export default function App() {
               onNavigateToList={() => setCurrentTab('list')}
               onNavigateToScanner={() => setCurrentTab('scanner')}
               onNavigateToInvitations={() => setCurrentTab('invitations')}
-              onNavigateToItqan={() => setCurrentTab('itqan')}
-              onNavigateToBookingForm={() => setCurrentTab('booking-form')}
               onOpenPrintLabels={() => setShowPrintLabelsModal(true)}
               onOpenSeatManager={() => setShowSeatManagerModal(true)}
               onOpenPrintAllTickets={() => setShowAllTicketsPrintModal(true)}
@@ -329,98 +327,6 @@ export default function App() {
               onSeedDemoData={handleSeedDemoData}
               onImportBackup={handleImportBackup}
             />
-          )}
-
-          {/* Tab 5: Integrated Itqan Views (Seamless, Native-feel, Single Unified Platform) */}
-          {(currentTab === 'itqan' || currentTab.startsWith('itqan-')) && (() => {
-            const itqanViewMap = {
-              'itqan': 'dashboard',
-              'itqan-rooms': 'rooms',
-              'itqan-calendar': 'calendar',
-              'itqan-bookings': 'bookings-list',
-              'itqan-blacklist': 'blacklist',
-              'itqan-equipment': 'equipment',
-              'itqan-reports': 'reports'
-            };
-            const targetView = itqanViewMap[currentTab] || 'dashboard';
-
-            const titleMap = {
-              'rooms': 'صفحة القاعات والمقرات',
-              'calendar': 'التقويم وجدولة الفعاليات',
-              'bookings-list': 'إدارة الحجوزات والطلبات',
-              'blacklist': 'القائمة السوداء للجهات والمنسقين',
-              'equipment': 'إدارة المعدات والعهدة',
-              'reports': 'التقارير التحليلية والإحصاءات',
-              'dashboard': 'لوحة متابعة القاعات والفعاليات'
-            };
-
-            const iconMap = {
-              'rooms': '🏢',
-              'calendar': '📅',
-              'bookings-list': '📋',
-              'blacklist': '🚫',
-              'equipment': '🔧',
-              'reports': '📊',
-              'dashboard': '🏛️'
-            };
-
-            return (
-              <div className="w-full h-[calc(100vh-120px)] min-h-[820px] rounded-3xl overflow-hidden border border-white/15 shadow-2xl bg-[#060D1A] relative">
-                <iframe
-                  key={targetView}
-                  id="itqan-embed-frame"
-                  src={`./itqan/index.html?embed=clean&view=${targetView}`}
-                  title="نظام إتقان لإدارة القاعات والمهام"
-                  className="w-full h-full border-0 block"
-                  allow="camera; clipboard-read; clipboard-write; fullscreen"
-                />
-              </div>
-            );
-          })()}
-
-          {/* Tab 6: Embedded Digital Booking Form */}
-          {currentTab === 'booking-form' && (
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xl">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-400/30 flex items-center justify-center font-black">
-                    📝
-                  </div>
-                  <div>
-                    <h2 className="text-base font-black text-white">استمارة حجز القاعات والمسارح الإلكترونية</h2>
-                    <p className="text-xs text-slate-400">تقديم طلبات الحجز المعتمدة لمسارح وقاعات الإدارة العامة للتعليم</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      const frame = document.getElementById('booking-form-embed-frame');
-                      if (frame) frame.src = frame.src;
-                    }}
-                    className="px-3 py-2 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 text-white border border-white/20 transition-all flex items-center gap-1.5"
-                    title="تحديث النموذج"
-                  >
-                    <span>تحديث</span>
-                  </button>
-                  <button
-                    onClick={() => window.open('booking_form_digital.html', '_blank')}
-                    className="px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 font-black shadow-lg transition-all flex items-center gap-1.5"
-                  >
-                    <span>فتح كنافذة مستقلة ↗</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="w-full h-[calc(100vh-210px)] min-h-[750px] rounded-3xl overflow-hidden border border-white/15 shadow-2xl bg-slate-50 relative">
-                <iframe
-                  id="booking-form-embed-frame"
-                  src="./booking_form_digital.html"
-                  title="استمارة حجز القاعات والمسارح الرقمية"
-                  className="w-full h-full border-0 block"
-                  allow="camera; clipboard-read; clipboard-write; fullscreen"
-                />
-              </div>
-            </div>
           )}
 
         </main>

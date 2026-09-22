@@ -86,46 +86,6 @@ export default function Sidebar({
       ]
     },
     {
-      title: 'إدارة القاعات والفعاليات',
-      items: [
-        { 
-          id: 'booking-form', 
-          label: 'استمارة حجز القاعات', 
-          icon: FileSpreadsheet
-        },
-        { 
-          id: 'itqan-rooms', 
-          label: 'القاعات والمقرات المتاحة', 
-          icon: DoorClosed
-        },
-        { 
-          id: 'itqan-calendar', 
-          label: 'التقويم وجدولة الفعاليات', 
-          icon: Calendar
-        },
-        { 
-          id: 'itqan-bookings', 
-          label: 'سجل الحجوزات والطلبات', 
-          icon: Layers
-        },
-        { 
-          id: 'itqan-blacklist', 
-          label: 'القائمة السوداء للمحظورين', 
-          icon: Ban
-        },
-        { 
-          id: 'itqan-equipment', 
-          label: 'المعدات والعهدة التشغيلية', 
-          icon: Wrench
-        },
-        { 
-          id: 'itqan-reports', 
-          label: 'التقارير التحليلية والإحصاء', 
-          icon: BarChart3
-        }
-      ]
-    },
-    {
       title: 'أدوات المقاعد والطباعة',
       items: [
         { 

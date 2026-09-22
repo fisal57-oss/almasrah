@@ -7,7 +7,6 @@ import {
   Armchair, 
   PlusCircle, 
   Share2, 
-  FileText, 
   Wrench, 
   Sparkles, 
   Crown, 
@@ -41,8 +40,6 @@ export default function DashboardOverview({
   onNavigateToList, 
   onNavigateToScanner, 
   onNavigateToInvitations, 
-  onNavigateToItqan, 
-  onNavigateToBookingForm, 
   onOpenPrintLabels, 
   onOpenSeatManager, 
   onOpenPrintAllTickets 
@@ -524,24 +521,7 @@ export default function DashboardOverview({
               <div className="text-xs font-black text-white">مركز الدعوات</div>
               <div className="text-[10px] text-slate-400 mt-0.5">بطاقات الـ QR</div>
             </button>
-
-            <button
-              onClick={onNavigateToBookingForm}
-              className="p-3.5 rounded-2xl bg-white/[0.03] hover:bg-emerald-500/10 border border-white/10 hover:border-emerald-500/30 text-right transition-all group active:scale-95"
-            >
-              <FileText className="w-5 h-5 text-emerald-400 mb-2 group-hover:scale-110 transition-transform" />
-              <div className="text-xs font-black text-white">طلب حجز قاعة</div>
-              <div className="text-[10px] text-slate-400 mt-0.5">استمارة الحجز</div>
-            </button>
           </div>
-
-          <button
-            onClick={onNavigateToItqan}
-            className="w-full py-2.5 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border border-blue-400/30 text-xs font-bold transition-all flex items-center justify-center gap-2"
-          >
-            <Building2 className="w-3.5 h-3.5" />
-            <span>نظام إتقان لإدارة القاعات والمسارح 🏢</span>
-          </button>
         </div>
 
       </div>

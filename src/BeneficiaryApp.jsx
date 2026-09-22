@@ -24,7 +24,6 @@ import {
   Copy,
   ExternalLink,
   ChevronLeft,
-  Building2,
   Bell,
   Heart,
   HelpCircle,
@@ -40,7 +39,6 @@ import { QRCodeSVG } from 'qrcode.react';
 import confetti from 'canvas-confetti';
 import MiniHallStageMap from './components/MiniHallStageMap';
 import TheaterMap from './components/TheaterMap';
-import BookingFormModal from './components/BookingFormModal';
 import InvitationCard from './components/InvitationCard';
 import AseerOfficialTicketCard from './components/AseerOfficialTicketCard';
 import { exportElementToPng } from './utils/exportImage';
@@ -65,7 +63,6 @@ export default function BeneficiaryApp() {
   const [tokenQuery, setTokenQuery] = useState(initialQuery);
   const [currentTicketSeat, setCurrentTicketSeat] = useState(null);
   const [isCopied, setIsCopied] = useState(false);
-  const [showBookingModal, setShowBookingModal] = useState(false);
   const [showFullCardModal, setShowFullCardModal] = useState(false);
   const [showOfficialTicketModal, setShowOfficialTicketModal] = useState(false);
   const officialTicketCardRef = useRef(null);
@@ -114,19 +111,6 @@ export default function BeneficiaryApp() {
     }
     loadData();
   }, [initialQuery, initialSeatId]);
-
-  // Listen for booking submission from BookingFormModal iframe
-  useEffect(() => {
-    const handleMsg = (e) => {
-      if (e.data && e.data.type === 'BOOKING_SUBMITTED') {
-        try {
-          confetti({ particleCount: 70, spread: 75, origin: { y: 0.5 } });
-        } catch (err) {}
-      }
-    };
-    window.addEventListener('message', handleMsg);
-    return () => window.removeEventListener('message', handleMsg);
-  }, []);
 
   // Handle Search for ticket
   const handleSearch = (e) => {
@@ -312,7 +296,6 @@ export default function BeneficiaryApp() {
     { id: 'home', label: 'الصفحة الرئيسية', icon: Compass },
     { id: 'tickets', label: 'تذاكري', icon: Ticket },
     { id: 'bookings', label: 'حجوزاتي', icon: Calendar },
-    { id: 'request-hall', label: 'طلب حجز قاعة أو مسرح', icon: Building2, isAction: true },
     { id: 'upcoming', label: 'الفعاليات القادمة', icon: Calendar },
     { id: 'theaters', label: 'المسرح والقاعات', icon: DoorClosed },
     { id: 'favorites', label: 'المفضلة', icon: Heart },
@@ -450,8 +433,6 @@ export default function BeneficiaryApp() {
                       setShowFullCardModal(true);
                     } else if (item.id === 'bookings') {
                       setShowMyBookingsModal(true);
-                    } else if (item.id === 'request-hall') {
-                      setShowBookingModal(true);
                     } else if (item.id === 'upcoming') {
                       setShowUpcomingModal(true);
                     } else if (item.id === 'theaters') {
@@ -495,7 +476,7 @@ export default function BeneficiaryApp() {
 
           {/* Bottom Card: "عالم من الفنون بانتظارك" */}
           <div 
-            onClick={() => setShowBookingModal(true)}
+            onClick={() => setShowUpcomingModal(true)}
             className="mt-6 rounded-2xl border border-amber-500/30 bg-gradient-to-br from-[#12192c] to-[#0a1122] p-3.5 relative overflow-hidden group cursor-pointer hover:border-amber-400/60 transition-all shadow-xl"
           >
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10 pointer-events-none" />
@@ -809,8 +790,8 @@ export default function BeneficiaryApp() {
 
           </div>
 
-          {/* Row 3: 4 Horizontal Summary & Action Cards (Matching Image 1) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Row 3: 3 Horizontal Summary & Action Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             
             {/* Card 1: Gate of Entry */}
             <div 
@@ -860,46 +841,11 @@ export default function BeneficiaryApp() {
               </div>
             </div>
 
-            {/* Card 4: Hall & Theater Booking Request Action (Purple glow button) */}
-            <div 
-              onClick={() => setShowBookingModal(true)}
-              className="rounded-2xl border border-purple-500/40 bg-gradient-to-br from-purple-900/30 via-[#181132] to-[#0d0920] p-4 flex items-center justify-between shadow-xl cursor-pointer hover:border-purple-400/70 hover:scale-[1.02] transition-all group"
-            >
-              <div className="space-y-0.5">
-                <div className="text-xs font-black text-purple-200 group-hover:text-purple-100">طلب حجز قاعة أو مسرح</div>
-                <div className="text-[10px] text-purple-300/80">لتنظيم فعاليتك القادمة</div>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-400/40 flex items-center justify-center text-purple-300 group-hover:scale-110 transition-transform">
-                <Building2 className="w-5 h-5" />
-              </div>
-            </div>
-
-          </div>
-
-          {/* Row 4: Bottom Banner: Explore Theaters and Halls */}
-          <div className="rounded-3xl border border-white/10 bg-gradient-to-r from-[#0d1f3d]/90 via-[#0a1830] to-[#071124] p-5 sm:p-6 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="space-y-1 text-right">
-              <h3 className="text-base sm:text-lg font-black text-white">مسارح وقاعات استثنائية</h3>
-              <p className="text-xs text-slate-300">لأفكار أكبر وتجارب لا تُنسى في الإدارة العامة للتعليم بمنطقة عسير</p>
-            </div>
-            <button
-              onClick={() => setShowBookingModal(true)}
-              className="px-6 py-3 rounded-2xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-200 font-bold text-xs flex items-center gap-2 transition-all active:scale-95 shadow-md shrink-0"
-            >
-              <span>تصفح القاعات المتاحة</span>
-              <ChevronLeft className="w-4 h-4" />
-            </button>
           </div>
 
         </main>
 
       </div>
-
-      {/* Booking Form Modal */}
-      <BookingFormModal 
-        isOpen={showBookingModal}
-        onClose={() => setShowBookingModal(false)}
-      />
 
       {/* Full Ticket Modal */}
       {showFullCardModal && currentTicketSeat && (
@@ -1290,16 +1236,6 @@ export default function BeneficiaryApp() {
                 <div className="text-xs text-slate-400">القاعة الكبرى • التاريخ: الخميس القادم • سعة 120 مقعداً</div>
               </div>
             </div>
-
-            <button
-              onClick={() => {
-                setShowMyBookingsModal(false);
-                setShowBookingModal(true);
-              }}
-              className="w-full py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-xs transition-all shadow-lg active:scale-95"
-            >
-              تقديم طلب حجز قاعة أو مسرح جديد ➕
-            </button>
           </div>
         </div>
       )}

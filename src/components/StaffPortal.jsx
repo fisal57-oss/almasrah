@@ -66,7 +66,6 @@ import StaffLogin from './StaffLogin';
 import AllTicketsPrintModal from './AllTicketsPrintModal';
 import BatchSeatCardsPrintModal from './BatchSeatCardsPrintModal';
 import SeatLabelsPrintModal from './SeatLabelsPrintModal';
-import BookingFormModal from './BookingFormModal';
 
 export default function StaffPortal() {
   const [staffUser, setStaffUser] = useState(() => {
@@ -86,7 +85,6 @@ export default function StaffPortal() {
   const [eventDetails, setEventDetails] = useState(getEventDetails());
   const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'scanner', 'checkin', 'search', 'map', 'vip', 'notes', 'reports'
   const [showCameraScanner, setShowCameraScanner] = useState(false);
-  const [showBookingModal, setShowBookingModal] = useState(false);
   const [showTheaterMapModal, setShowTheaterMapModal] = useState(false);
   
   // Scanner state

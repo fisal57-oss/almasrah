@@ -18,8 +18,7 @@ import {
   Phone, 
   ArrowRight,
   Globe,
-  Rocket,
-  Building2
+  Rocket
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import html2canvas from 'html2canvas';
@@ -27,7 +26,6 @@ import TheaterMap from './TheaterMap';
 import InvitationCard from './InvitationCard';
 import ElectronicInvitationModal from './ElectronicInvitationModal';
 import SeatCardModal from './SeatCardModal';
-import BookingFormModal from './BookingFormModal';
 import BeneficiaryServicesGrid from './BeneficiaryServicesGrid';
 import { formatArabicSeatCode } from '../utils/storage';
 
@@ -41,8 +39,6 @@ export default function BeneficiaryPortal({
   const [showFullCardModal, setShowFullCardModal] = useState(false);
   const [showInvitationModal, setShowInvitationModal] = useState(false);
   const [showSeatCardModal, setShowSeatCardModal] = useState(false);
-  const [showVenueModal, setShowVenueModal] = useState(false);
-  const [selectedVenueIdForModal, setSelectedVenueIdForModal] = useState(null);
 
   // Filter booked seats only for guest lookup
   const bookedSeats = seats.filter(s => s.guest && s.status !== 'available');
@@ -88,15 +84,6 @@ export default function BeneficiaryPortal({
 
         {/* Actions Group */}
         <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={() => setShowVenueModal(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500/20 via-yellow-400/20 to-amber-500/20 hover:from-amber-500/30 hover:to-yellow-400/30 text-amber-300 border border-amber-400/40 text-xs font-bold transition-all shadow-sm active:scale-95"
-          >
-            <Building2 className="w-3.5 h-3.5 text-amber-400" />
-            <span>حجز القاعات والمسارح</span>
-            <span className="text-[9px] bg-amber-400 text-slate-950 font-black px-1.5 py-0.5 rounded-full hidden sm:inline-block">جديد</span>
-          </button>
-
           {/* Switch to Admin Mode if requested */}
           {onSwitchToAdmin && (
             <button
@@ -115,10 +102,6 @@ export default function BeneficiaryPortal({
 
         {/* Interactive Services & Halls Icon Grid */}
         <BeneficiaryServicesGrid
-          onOpenVenueModal={(venueId) => {
-            setSelectedVenueIdForModal(venueId || null);
-            setShowVenueModal(true);
-          }}
           activeTab={null}
           onSelectTab={(tab) => {
             if (tab === 'find') {
@@ -354,12 +337,6 @@ export default function BeneficiaryPortal({
           }}
         />
       )}
-
-      {/* Hall & Theater Booking Form Modal */}
-      <BookingFormModal
-        isOpen={showVenueModal}
-        onClose={() => setShowVenueModal(false)}
-      />
 
     </div>
   );
