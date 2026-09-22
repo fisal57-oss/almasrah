@@ -133,6 +133,15 @@ export default function Sidebar({
           icon: Users, 
           onClick: onOpenBeneficiaryPortal,
           isExternal: true
+        },
+        { 
+          id: 'itqan-portal', 
+          label: 'بوابة نظام إتقان (مستقلة)', 
+          icon: Building2, 
+          onClick: () => window.open('itqan.html', '_blank'),
+          isExternal: true,
+          badge: 'مستقلة ↗',
+          badgeType: 'purple'
         }
       ]
     }

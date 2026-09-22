@@ -12,7 +12,8 @@ export default defineConfig({
         admin: resolve(__dirname, 'admin.html'),
         manager: resolve(__dirname, 'manager.html'),
         beneficiary: resolve(__dirname, 'beneficiary.html'),
-        staff: resolve(__dirname, 'staff.html')
+        staff: resolve(__dirname, 'staff.html'),
+        itqan: resolve(__dirname, 'itqan.html')
       }
     }
   },

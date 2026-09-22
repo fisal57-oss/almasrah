@@ -367,6 +367,13 @@ export default function BeneficiaryApp() {
             >
               <span>لوحة الإدارة ↗</span>
             </button>
+            <button
+              onClick={() => window.open('itqan.html', '_blank')}
+              className="px-2.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-[11px] font-bold text-amber-300 transition-all flex items-center gap-1"
+              title="الانتقال إلى بوابة نظام إتقان المستقلة"
+            >
+              <span>بوابة إتقان ↗</span>
+            </button>
           </div>
         </div>
 

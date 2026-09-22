@@ -45,6 +45,7 @@ import {
   FileText,
   BarChart3,
   Maximize2,
+  Building2,
   X
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -204,7 +205,8 @@ export default function StaffPortal() {
     { id: 'vip', label: 'الضيوف المهمون', icon: Star },
     { id: 'notes', label: 'ملاحظات سريعة', icon: FileText },
     { id: 'reports', label: 'تقارير الدخول', icon: BarChart3 },
-    { id: 'settings', label: 'الإعدادات', icon: Settings }
+    { id: 'settings', label: 'الإعدادات', icon: Settings },
+    { id: 'itqan', label: 'بوابة إتقان (مستقلة) ↗', icon: Building2, onClick: () => window.open('itqan.html', '_blank') }
   ];
 
   return (

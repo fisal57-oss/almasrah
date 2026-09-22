@@ -22,6 +22,7 @@ import {
   Calendar,
   CheckCircle2,
   Sliders,
+  Building2,
   X
 } from 'lucide-react';
 import MiniHallStageMap from './MiniHallStageMap';
@@ -176,6 +177,16 @@ export default function ManagerPortal() {
           >
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
             <span className="hidden lg:inline">شاشة العرض</span>
+          </button>
+
+          {/* Standalone Itqan Portal Button */}
+          <button
+            onClick={() => window.open('itqan.html', '_blank')}
+            className="px-3 py-2 rounded-xl bg-purple-600/20 hover:bg-purple-600/35 border border-purple-400/40 text-purple-200 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
+            title="فتح بوابة نظام إتقان المستقلة"
+          >
+            <Building2 className="w-4 h-4 text-purple-400" />
+            <span className="hidden sm:inline">بوابة إتقان ↗</span>
           </button>
         </div>
 
