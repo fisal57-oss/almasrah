@@ -8,7 +8,15 @@ echo        🚀 أداة رفع وتحديث المشروع على GitHub 🚀
 echo =================================================================
 echo.
 
-:: Check if Git is installed
+:: Check if Git is installed (or locate it inside GitHub Desktop)
+where git >nul 2>&1
+if %errorlevel% neq 0 (
+    for /d %%D in ("%LOCALAPPDATA%\GitHubDesktop\app-*") do (
+        if exist "%%D\resources\app\git\cmd\git.exe" (
+            set "PATH=%%D\resources\app\git\cmd;%PATH%"
+        )
+    )
+)
 where git >nul 2>&1
 if %errorlevel% neq 0 (
     echo [X] خطأ: برنامج Git غير مثبت على جهازك!

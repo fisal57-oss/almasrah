@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import MiniHallStageMap from './MiniHallStageMap';
 import { exportSeatsToExcel } from '../utils/excelUtils';
+import { PUBLIC_BENEFICIARY_URL } from '../utils/storage';
 
 export default function DashboardOverview({ 
   stats = {}, 
@@ -92,10 +93,10 @@ export default function DashboardOverview({
   ];
 
   const handleShareLink = () => {
-    const shareUrl = window.location.origin + window.location.pathname.replace('index.html', '') + 'beneficiary.html';
+    const shareUrl = PUBLIC_BENEFICIARY_URL;
     if (navigator.clipboard) {
       navigator.clipboard.writeText(shareUrl);
-      alert('تم نسخ رابط بوابة المستفيد والضيوف بنجاح!');
+      alert(`تم نسخ رابط بوابة المستفيد والضيوف بنجاح!\n${shareUrl}`);
     } else {
       alert(`الرابط: ${shareUrl}`);
     }

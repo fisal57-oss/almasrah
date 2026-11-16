@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { Printer, X } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import { buildInvitationQrUrl, PUBLIC_BENEFICIARY_URL } from '../utils/storage';
 
 export default function SeatLabelsPrintModal({ seats, eventDetails, onClose }) {
   const [selectedLevel, setSelectedLevel] = useState('all');
@@ -15,7 +16,7 @@ export default function SeatLabelsPrintModal({ seats, eventDetails, onClose }) {
     return true;
   });
 
-  const baseUrl = window.location.origin + window.location.pathname;
+  const baseUrl = PUBLIC_BENEFICIARY_URL;
 
   const handlePrint = () => {
     setIsPrinting(true);
@@ -39,7 +40,7 @@ export default function SeatLabelsPrintModal({ seats, eventDetails, onClose }) {
             </div>
           </td>`;
         } else {
-          const qrText = `${baseUrl}?invitation=${seat.guest?.token || seat.id}`;
+          const qrText = buildInvitationQrUrl(seat, baseUrl);
           const qrSvgStr = renderToStaticMarkup(
             <QRCodeSVG value={qrText} size={55} level="L" fgColor="#000000" bgColor="#ffffff" />
           );

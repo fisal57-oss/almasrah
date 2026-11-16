@@ -47,15 +47,30 @@ import {
   getEventDetails, 
   formatArabicSeatCode, 
   fetchSeatsAsync, 
-  fetchEventDetailsAsync 
+  fetchEventDetailsAsync,
+  seedSampleDataIfEmpty,
+  buildInvitationQrUrl,
+  PUBLIC_BENEFICIARY_URL
 } from './utils/storage';
 
 export default function BeneficiaryApp() {
   const searchParams = new URLSearchParams(window.location.search);
   const initialQuery = searchParams.get('q') || searchParams.get('token') || searchParams.get('invitation') || '';
-  const initialSeatId = searchParams.get('seat') || '';
+  const initialSeatId = searchParams.get('seatId') || '';
+  const urlRow = searchParams.get('row') || '';
+  const urlSeatNum = searchParams.get('seat') || '';
+  const urlLevel = searchParams.get('level') || 'G';
+  const urlSector = searchParams.get('sec') || searchParams.get('sector') || '';
+  const urlGate = searchParams.get('gate') || '';
+  const urlName = searchParams.get('name') || '';
+  const urlRole = searchParams.get('role') || '';
+  const urlCat = searchParams.get('cat') || '';
+  const urlPhone = searchParams.get('phone') || '';
 
-  const [seats, setSeats] = useState(getSeats());
+  const [seats, setSeats] = useState(() => {
+    seedSampleDataIfEmpty();
+    return getSeats();
+  });
   const [eventDetails, setEventDetails] = useState(getEventDetails());
   const [activeNav, setActiveNav] = useState('home'); // 'home', 'tickets', 'bookings', 'halls', 'favorites', 'settings'
   const [searchMode, setSearchMode] = useState('phone'); // 'phone', 'token'
@@ -63,6 +78,7 @@ export default function BeneficiaryApp() {
   const [tokenQuery, setTokenQuery] = useState(initialQuery);
   const [currentTicketSeat, setCurrentTicketSeat] = useState(null);
   const [isCopied, setIsCopied] = useState(false);
+  const [copiedPortalUrl, setCopiedPortalUrl] = useState(false);
   const [showFullCardModal, setShowFullCardModal] = useState(false);
   const [showOfficialTicketModal, setShowOfficialTicketModal] = useState(false);
   const officialTicketCardRef = useRef(null);
@@ -81,36 +97,94 @@ export default function BeneficiaryApp() {
   // Initial data loading
   useEffect(() => {
     async function loadData() {
+      seedSampleDataIfEmpty();
       const [latestSeats, latestEvent] = await Promise.all([
         fetchSeatsAsync(),
         fetchEventDetailsAsync()
       ]);
-      const currentSeats = latestSeats || getSeats();
-      setSeats(currentSeats);
+      let currentSeats = [...(latestSeats || getSeats())];
       if (latestEvent) setEventDetails(latestEvent);
 
-      // Auto-select initial ticket if provided in URL
-      if (initialSeatId) {
-        const found = currentSeats.find(s => s.id.toLowerCase() === initialSeatId.toLowerCase());
-        if (found) setCurrentTicketSeat(found);
-      } else if (initialQuery) {
+      // Construct or match seat from URL parameters (self-contained QR / invitation link)
+      const derivedSeatId = initialSeatId || (
+        urlRow && urlSeatNum
+          ? `${urlLevel}-${urlRow.toUpperCase()}-${String(parseInt(urlSeatNum, 10)).padStart(2, '0')}`
+          : (urlSeatNum.includes('-') ? urlSeatNum : '')
+      );
+
+      let matchedSeat = null;
+
+      if (derivedSeatId) {
+        matchedSeat = currentSeats.find(s => s.id.toLowerCase() === derivedSeatId.toLowerCase());
+      }
+
+      if (!matchedSeat && initialQuery) {
         const q = initialQuery.toLowerCase();
-        const found = currentSeats.find(s => 
+        matchedSeat = currentSeats.find(s =>
           s.guest && (
             (s.guest.token && s.guest.token.toLowerCase() === q) ||
             (s.guest.phone && s.guest.phone.includes(q)) ||
             (s.guest.name && s.guest.name.toLowerCase().includes(q))
           )
         );
-        if (found) setCurrentTicketSeat(found);
+      }
+
+      // If URL carries self-contained guest info (from QR scan or WhatsApp link on mobile), hydrate seat
+      if (matchedSeat && (urlName || initialQuery) && !matchedSeat.guest) {
+        const hydratedSeat = {
+          ...matchedSeat,
+          status: 'reserved',
+          sector: urlSector || matchedSeat.sector,
+          gate: urlGate || matchedSeat.gate,
+          guest: {
+            name: urlName || 'ضيف مكرّم',
+            jobTitle: urlRole || '',
+            category: urlCat || 'دعوة رسمية',
+            phone: urlPhone || '',
+            token: initialQuery || matchedSeat.id,
+            bookedAt: new Date().toISOString()
+          }
+        };
+        currentSeats = currentSeats.map(s => s.id === hydratedSeat.id ? hydratedSeat : s);
+        matchedSeat = hydratedSeat;
+      } else if (!matchedSeat && (urlName || (urlRow && urlSeatNum))) {
+        const paddedNum = String(parseInt(urlSeatNum || '1', 10)).padStart(2, '0');
+        const rowCode = (urlRow || 'A').toUpperCase();
+        const levelCode = urlLevel || 'G';
+        matchedSeat = {
+          id: `${levelCode}-${rowCode}-${paddedNum}`,
+          level: levelCode,
+          levelName: levelCode === 'G' ? 'الدور الأرضي' : 'الدور الثاني - البلكونة',
+          row: rowCode,
+          number: paddedNum,
+          rawNumber: parseInt(paddedNum, 10),
+          sector: urlSector || 'الوسط',
+          sectorKey: 'center',
+          gate: urlGate || 'البوابة 3',
+          status: 'reserved',
+          guest: {
+            name: urlName || 'ضيف مكرّم',
+            jobTitle: urlRole || '',
+            category: urlCat || 'دعوة رسمية',
+            phone: urlPhone || '',
+            token: initialQuery || `INV-${rowCode}${paddedNum}`,
+            bookedAt: new Date().toISOString()
+          }
+        };
+      }
+
+      setSeats(currentSeats);
+
+      if (matchedSeat) {
+        setCurrentTicketSeat(matchedSeat);
       } else {
         // Default to first reserved seat as preview demo
-        const firstReserved = currentSeats.find(s => s.status === 'reserved' && s.guest);
+        const firstReserved = currentSeats.find(s => s.status !== 'available' && s.guest);
         if (firstReserved) setCurrentTicketSeat(firstReserved);
       }
     }
     loadData();
-  }, [initialQuery, initialSeatId]);
+  }, [initialQuery, initialSeatId, urlRow, urlSeatNum, urlLevel, urlSector, urlGate, urlName, urlRole, urlCat, urlPhone]);
 
   // Handle Search for ticket
   const handleSearch = (e) => {
@@ -280,15 +354,30 @@ export default function BeneficiaryApp() {
 
   const handleAddToWallet = () => {
     setIsCopied(true);
+    const ticketUrl = currentTicketSeat
+      ? buildInvitationQrUrl(currentTicketSeat, PUBLIC_BENEFICIARY_URL)
+      : PUBLIC_BENEFICIARY_URL;
     if (navigator.clipboard && currentTicketSeat) {
       const info = `🎟️ تذكرة حضور: ${eventDetails.title || 'حفل التكريم والافتتاح'}\n` +
                    `👤 الاسم: ${currentTicketSeat.guest?.name || 'ضيف مكرّم'}\n` +
                    `🪑 المقعد: ${formatArabicSeatCode(currentTicketSeat)}\n` +
                    `🚪 المدخل: البوابة 3 (المدخل الرئيسي)\n` +
-                   `🔑 رمز التذكرة: ${currentTicketSeat.guest?.token || 'TKT-2026-45872'}`;
+                   `🔑 رمز التذكرة: ${currentTicketSeat.guest?.token || 'TKT-2026-45872'}\n` +
+                   `🌐 رابط التذكرة المباشر:\n${ticketUrl}`;
       navigator.clipboard.writeText(info);
     }
     setTimeout(() => setIsCopied(false), 2500);
+  };
+
+  const handleCopyPortalLink = () => {
+    const ticketUrl = currentTicketSeat
+      ? buildInvitationQrUrl(currentTicketSeat, PUBLIC_BENEFICIARY_URL)
+      : PUBLIC_BENEFICIARY_URL;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(ticketUrl);
+    }
+    setCopiedPortalUrl(true);
+    setTimeout(() => setCopiedPortalUrl(false), 2500);
   };
 
   // Nav Items definition matching Image 1
@@ -310,6 +399,9 @@ export default function BeneficiaryApp() {
   const displayRow = currentTicketSeat ? currentTicketSeat.row : 'F';
   const displayNumber = currentTicketSeat ? currentTicketSeat.number : '12';
   const displayToken = currentTicketSeat?.guest?.token || 'TKT-2026-45872';
+  const displayQrUrl = currentTicketSeat
+    ? buildInvitationQrUrl(currentTicketSeat, PUBLIC_BENEFICIARY_URL)
+    : PUBLIC_BENEFICIARY_URL;
 
   return (
     <div className="min-h-screen bg-[#060D1A] text-white flex flex-col font-sans selection:bg-cyan-400 selection:text-slate-950" dir="rtl">
@@ -373,6 +465,14 @@ export default function BeneficiaryApp() {
               title="الانتقال إلى بوابة نظام إتقان المستقلة"
             >
               <span>بوابة إتقان ↗</span>
+            </button>
+            <button
+              onClick={handleCopyPortalLink}
+              className="px-2.5 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-400/35 text-[11px] font-bold text-emerald-300 transition-all flex items-center gap-1"
+              title={PUBLIC_BENEFICIARY_URL}
+            >
+              <Share2 className="w-3 h-3 text-emerald-400" />
+              <span>{copiedPortalUrl ? 'تم نسخ الرابط ✓' : 'رابط البوابة الرسمي'}</span>
             </button>
           </div>
         </div>
@@ -691,7 +791,7 @@ export default function BeneficiaryApp() {
                 {/* QR Code Container (Left side in RTL) */}
                 <div className="flex flex-col items-center justify-center p-3 bg-white rounded-2xl shadow-xl shrink-0 border border-slate-200">
                   <QRCodeSVG 
-                    value={displayToken} 
+                    value={displayQrUrl} 
                     size={110} 
                     level="M" 
                     includeMargin={false}

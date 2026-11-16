@@ -25,7 +25,7 @@ import {
 import { exportElementToPng } from '../utils/exportImage';
 import TheaterMap from './TheaterMap';
 import SeatCardModal from './SeatCardModal';
-import { formatArabicSeatCode } from '../utils/storage';
+import { formatArabicSeatCode, buildInvitationQrUrl, PUBLIC_BENEFICIARY_URL } from '../utils/storage';
 import ModernAttendanceCard from './ModernAttendanceCard';
 import { generateIcsCalendarFile, getGoogleCalendarUrl, getGoogleMapsUrl } from '../utils/calendarUtils';
 
@@ -252,15 +252,7 @@ export default function GuestTicketView({
 
 
 
-  const baseUrl = window.location.origin + window.location.pathname;
-  const seatQrParams = new URLSearchParams({
-    ...(seat.guest?.token ? { invitation: seat.guest.token } : {}),
-    row:    seat.row     || '',
-    seat:   seat.number  ? String(seat.number) : '',
-    level:  seat.level   || '',
-    sector: seat.sector  || '',
-  });
-  const invitationUrl = `${baseUrl}?${seatQrParams.toString()}`;
+  const invitationUrl = buildInvitationQrUrl(seat, PUBLIC_BENEFICIARY_URL);
   const seatDisplay = `${seat.row}${parseInt(seat.number, 10)}`;
   const barcodeNumber = `20261007${seat.row}${String(seat.number).padStart(3, '0')}`;
 

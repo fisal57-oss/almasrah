@@ -20,17 +20,26 @@ export const DEFAULT_EVENT = {
   note: 'يرجى إبراز بطاقة الحضور عند مدخل المسرح للتحقق عبر الـ QR Code.'
 };
 
+export const PUBLIC_BASE_URL = 'https://fisal57-oss.github.io/almasrah/';
+export const PUBLIC_BENEFICIARY_URL = 'https://fisal57-oss.github.io/almasrah/beneficiary.html';
+
 /**
  * Build a self-contained QR code URL that guarantees instant ticket display
  * on any mobile phone camera scan without relying on local storage.
+ * Linked directly to the public GitHub Pages Beneficiary Portal:
+ * https://fisal57-oss.github.io/almasrah/beneficiary.html
  */
 export function buildInvitationQrUrl(seat, customBaseUrl = '') {
-  if (!seat) return customBaseUrl || '';
-  const origin = customBaseUrl || (typeof window !== 'undefined' ? (window.location.origin + window.location.pathname) : '');
+  const targetBaseUrl = (customBaseUrl && customBaseUrl.includes('fisal57-oss.github.io'))
+    ? customBaseUrl
+    : PUBLIC_BENEFICIARY_URL;
+
+  if (!seat) return targetBaseUrl;
   const params = new URLSearchParams();
 
   const token = seat.guest?.token || seat.id || 'INV';
   params.set('invitation', token);
+  if (seat.id) params.set('seatId', seat.id);
 
   if (seat.row) params.set('row', seat.row);
   if (seat.number) params.set('seat', String(parseInt(seat.number, 10)));
@@ -42,9 +51,10 @@ export function buildInvitationQrUrl(seat, customBaseUrl = '') {
     if (seat.guest.name) params.set('name', seat.guest.name);
     if (seat.guest.jobTitle) params.set('role', seat.guest.jobTitle);
     if (seat.guest.category) params.set('cat', seat.guest.category);
+    if (seat.guest.phone) params.set('phone', seat.guest.phone);
   }
 
-  return `${origin}?${params.toString()}`;
+  return `${targetBaseUrl}?${params.toString()}`;
 }
 
 const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
@@ -453,6 +463,7 @@ export function renumberAllSeats() {
  * synchronizing with database.json, otherwise fallback to localStorage.
  */
 export async function fetchSeatsAsync() {
+  seedSampleDataIfEmpty();
   try {
     const res = await fetch('/api/seats', { cache: 'no-store' });
     if (res.ok) {
@@ -463,8 +474,26 @@ export async function fetchSeatsAsync() {
       }
     }
   } catch (err) {
-    // API not running or unreachable, use localStorage silently
+    // API not running or unreachable
   }
+
+  try {
+    const dbRes = await fetch('./database.json', { cache: 'no-store' });
+    if (dbRes.ok) {
+      const dbData = await dbRes.json();
+      if (dbData && Array.isArray(dbData.seats) && dbData.seats.some(s => s.status !== 'available' && s.guest)) {
+        const localSeats = getSeats();
+        const hasLocalBookings = localSeats.some(s => s.status !== 'available' && s.guest);
+        if (!hasLocalBookings) {
+          saveSeats(dbData.seats);
+          return dbData.seats;
+        }
+      }
+    }
+  } catch (err) {
+    // Ignore static database.json errors
+  }
+
   return getSeats();
 }
 
