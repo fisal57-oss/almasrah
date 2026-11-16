@@ -27,6 +27,7 @@ import InvitationCard from './InvitationCard';
 import ElectronicInvitationModal from './ElectronicInvitationModal';
 import SeatCardModal from './SeatCardModal';
 import BeneficiaryServicesGrid from './BeneficiaryServicesGrid';
+import OfficialEventBookingModal from './OfficialEventBookingModal';
 import { formatArabicSeatCode } from '../utils/storage';
 
 export default function BeneficiaryPortal({ 
@@ -39,6 +40,7 @@ export default function BeneficiaryPortal({
   const [showFullCardModal, setShowFullCardModal] = useState(false);
   const [showInvitationModal, setShowInvitationModal] = useState(false);
   const [showSeatCardModal, setShowSeatCardModal] = useState(false);
+  const [showEventBookingModal, setShowEventBookingModal] = useState(false);
 
   // Filter booked seats only for guest lookup
   const bookedSeats = seats.filter(s => s.guest && s.status !== 'available');
@@ -103,6 +105,7 @@ export default function BeneficiaryPortal({
         {/* Interactive Services & Halls Icon Grid */}
         <BeneficiaryServicesGrid
           activeTab={null}
+          onOpenVenueModal={() => setShowEventBookingModal(true)}
           onSelectTab={(tab) => {
             if (tab === 'find') {
               const el = document.getElementById('ticketSearchInput');
@@ -114,6 +117,8 @@ export default function BeneficiaryPortal({
               // scroll to theater map
               const mapEl = document.querySelector('.theater-map-container, #theaterMapSection');
               if (mapEl) mapEl.scrollIntoView({ behavior: 'smooth' });
+            } else if (tab === 'request_event') {
+              setShowEventBookingModal(true);
             }
           }}
           onFocusSearch={() => {
@@ -337,6 +342,12 @@ export default function BeneficiaryPortal({
           }}
         />
       )}
+
+      {/* Official Event Booking Form Modal */}
+      <OfficialEventBookingModal
+        isOpen={showEventBookingModal}
+        onClose={() => setShowEventBookingModal(false)}
+      />
 
     </div>
   );

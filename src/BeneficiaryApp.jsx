@@ -41,6 +41,7 @@ import MiniHallStageMap from './components/MiniHallStageMap';
 import TheaterMap from './components/TheaterMap';
 import InvitationCard from './components/InvitationCard';
 import AseerOfficialTicketCard from './components/AseerOfficialTicketCard';
+import OfficialEventBookingModal from './components/OfficialEventBookingModal';
 import { exportElementToPng } from './utils/exportImage';
 import { 
   getSeats, 
@@ -50,7 +51,8 @@ import {
   fetchEventDetailsAsync,
   seedSampleDataIfEmpty,
   buildInvitationQrUrl,
-  PUBLIC_BENEFICIARY_URL
+  PUBLIC_BENEFICIARY_URL,
+  getHallBookings
 } from './utils/storage';
 
 export default function BeneficiaryApp() {
@@ -92,6 +94,8 @@ export default function BeneficiaryApp() {
   const [showFavoritesModal, setShowFavoritesModal] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showEventBookingFormModal, setShowEventBookingFormModal] = useState(false);
+  const [hallBookings, setHallBookings] = useState(() => getHallBookings());
   const [searchError, setSearchError] = useState('');
 
   // Initial data loading
@@ -380,10 +384,11 @@ export default function BeneficiaryApp() {
     setTimeout(() => setCopiedPortalUrl(false), 2500);
   };
 
-  // Nav Items definition matching Image 1
+  // Nav Items definition matching Image 1 + Event Booking Request Form option
   const navItems = [
     { id: 'home', label: 'الصفحة الرئيسية', icon: Compass },
     { id: 'tickets', label: 'تذاكري', icon: Ticket },
+    { id: 'request_event', label: 'نموذج طلب حجز فعالية', icon: Sparkles, badge: 'رسمي' },
     { id: 'bookings', label: 'حجوزاتي', icon: Calendar },
     { id: 'upcoming', label: 'الفعاليات القادمة', icon: Calendar },
     { id: 'theaters', label: 'المسرح والقاعات', icon: DoorClosed },
@@ -474,6 +479,14 @@ export default function BeneficiaryApp() {
               <Share2 className="w-3 h-3 text-emerald-400" />
               <span>{copiedPortalUrl ? 'تم نسخ الرابط ✓' : 'رابط البوابة الرسمي'}</span>
             </button>
+            <button
+              onClick={() => setShowEventBookingFormModal(true)}
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-500/25 to-purple-500/25 hover:from-indigo-500/40 hover:to-purple-500/40 border border-indigo-400/40 text-[11px] font-black text-indigo-200 transition-all flex items-center gap-1.5 shadow-md"
+              title="فتح نموذج طلب حجز فعالية رسمي"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-indigo-300" />
+              <span>نموذج طلب حجز فعالية</span>
+            </button>
           </div>
         </div>
 
@@ -538,6 +551,8 @@ export default function BeneficiaryApp() {
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     } else if (item.id === 'tickets') {
                       setShowFullCardModal(true);
+                    } else if (item.id === 'request_event') {
+                      setShowEventBookingFormModal(true);
                     } else if (item.id === 'bookings') {
                       setShowMyBookingsModal(true);
                     } else if (item.id === 'upcoming') {
@@ -897,8 +912,8 @@ export default function BeneficiaryApp() {
 
           </div>
 
-          {/* Row 3: 3 Horizontal Summary & Action Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Row 3: 4 Horizontal Summary & Action Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             
             {/* Card 1: Gate of Entry */}
             <div 
@@ -945,6 +960,22 @@ export default function BeneficiaryApp() {
                 <div className="text-[10px] text-slate-400 font-bold uppercase">معلومات الفعالية</div>
                 <div className="text-xs font-black text-white truncate max-w-[140px] group-hover:text-emerald-300 transition-colors">{eventDetails.title || 'حفل التكريم والافتتاح'}</div>
                 <div className="text-[10px] text-slate-400">{eventDetails.date || 'الجمعة 25 أكتوبر 2026'} • تفاصيل ↗</div>
+              </div>
+            </div>
+
+            {/* Card 4: Official Event Booking Form (نموذج طلب حجز فعالية) */}
+            <div 
+              onClick={() => setShowEventBookingFormModal(true)}
+              className="rounded-2xl border border-indigo-500/40 hover:border-indigo-400 bg-gradient-to-br from-[#121936] to-[#0B1528] p-4 flex items-center gap-3.5 shadow-xl hover:scale-[1.02] cursor-pointer transition-all group"
+              title="نموذج طلب حجز فعالية - يرجى ملء البيانات الرسمية المطلوبة بدقة"
+            >
+              <div className="w-11 h-11 rounded-xl bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center text-indigo-300 group-hover:scale-110 transition-transform shrink-0">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <div className="space-y-0.5">
+                <div className="text-[10px] text-indigo-300 font-bold uppercase">خدمة الجهات والمدارس</div>
+                <div className="text-sm font-black text-white group-hover:text-indigo-200 transition-colors">نموذج طلب حجز فعالية</div>
+                <div className="text-[10px] text-slate-400">ملء البيانات الرسمية المطلوبة بدقة ↗</div>
               </div>
             </div>
 
@@ -1331,6 +1362,22 @@ export default function BeneficiaryApp() {
                 </div>
               </div>
 
+              {/* Dynamic Saved Hall Requests */}
+              {hallBookings.map((req, idx) => (
+                <div key={req.id || idx} className="p-4 rounded-2xl bg-white/[0.03] border border-indigo-500/30 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-indigo-300">طلب حجز فعالية ({req.id})</span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-bold">
+                      {req.status === 'confirmed' ? 'مؤكد 🟢' : 'قيد الانتظار 🟡'}
+                    </span>
+                  </div>
+                  <div className="text-sm font-bold text-white">{req.eventTitle}</div>
+                  <div className="text-xs text-slate-400">
+                    {req.venueName} • التاريخ: {req.bookingDate} ({req.bookingDateHijri || ''}) • الجهة: {req.orgName}
+                  </div>
+                </div>
+              ))}
+
               {/* Booking 2: Hall Request */}
               <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 space-y-2">
                 <div className="flex items-center justify-between">
@@ -1342,6 +1389,19 @@ export default function BeneficiaryApp() {
                 <div className="text-sm font-bold text-white">ورشة عمل التطوير القيادي</div>
                 <div className="text-xs text-slate-400">القاعة الكبرى • التاريخ: الخميس القادم • سعة 120 مقعداً</div>
               </div>
+            </div>
+
+            <div className="pt-2 border-t border-white/10">
+              <button
+                onClick={() => {
+                  setShowMyBookingsModal(false);
+                  setShowEventBookingFormModal(true);
+                }}
+                className="w-full py-3 rounded-2xl bg-gradient-to-r from-indigo-500 via-blue-600 to-cyan-500 hover:brightness-110 text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>+ تقديم نموذج طلب حجز فعالية جديد</span>
+              </button>
             </div>
           </div>
         </div>
@@ -1685,6 +1745,13 @@ export default function BeneficiaryApp() {
           </div>
         </div>
       )}
+
+      {/* Official Event Booking Form Modal (نموذج طلب حجز فعالية) */}
+      <OfficialEventBookingModal
+        isOpen={showEventBookingFormModal}
+        onClose={() => setShowEventBookingFormModal(false)}
+        onBookingSaved={() => setHallBookings(getHallBookings())}
+      />
 
       {/* Off-screen Official Ticket Card for instant 4K PNG export & pristine printing */}
       <div style={{ position: 'fixed', left: '-9999px', top: '0', zIndex: -100, width: '860px' }}>

@@ -3,7 +3,8 @@ import {
   Ticket, 
   Armchair, 
   Info, 
-  ChevronLeft
+  ChevronLeft,
+  Sparkles
 } from 'lucide-react';
 
 export default function BeneficiaryServicesGrid({
@@ -33,8 +34,8 @@ export default function BeneficiaryServicesGrid({
         </span>
       </div>
 
-      {/* 3 Main Interactive Service Icon Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+      {/* 4 Main Interactive Service Icon Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* 1. استعلام تذكرتي والباركود */}
         <button
           type="button"
@@ -130,6 +131,41 @@ export default function BeneficiaryServicesGrid({
           </div>
           <div className="mt-3 pt-2.5 border-t border-white/5 flex items-center justify-between text-[10px] text-emerald-400 font-bold">
             <span>عرض الدليل 📋</span>
+            <ChevronLeft className="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform" />
+          </div>
+        </button>
+
+        {/* 4. نموذج طلب حجز فعالية */}
+        <button
+          type="button"
+          onClick={() => {
+            if (onOpenVenueModal) onOpenVenueModal();
+            else if (onSelectTab) onSelectTab('request_event');
+          }}
+          className={`glass-panel-luxury p-4 rounded-2xl border ${
+            activeTab === 'request_event'
+              ? 'border-indigo-400 bg-gradient-to-b from-indigo-500/25 via-slate-900/70 to-slate-950/90'
+              : 'border-indigo-500/40 hover:border-indigo-400 bg-gradient-to-b from-indigo-500/15 via-slate-900/70 to-slate-950/90 hover:from-indigo-500/25'
+          } transition-all text-right group shadow-lg hover:shadow-indigo-500/10 active:scale-95 flex flex-col justify-between cursor-pointer`}
+        >
+          <div className="flex items-start justify-between w-full mb-3">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-400 to-purple-500 flex items-center justify-center text-slate-950 font-black shadow-lg shadow-indigo-500/20 group-hover:scale-110 transition-transform">
+              <Sparkles className="w-6 h-6 text-slate-950" />
+            </div>
+            <span className="text-[9px] bg-indigo-400/20 text-indigo-300 border border-indigo-400/30 px-2 py-0.5 rounded-full font-bold">
+              خدمة الجهات
+            </span>
+          </div>
+          <div>
+            <h4 className="text-xs sm:text-sm font-black text-white group-hover:text-indigo-300 transition-colors">
+              نموذج طلب حجز فعالية
+            </h4>
+            <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">
+              يرجى ملء البيانات الرسمية المطلوبة بدقة لحجز المقر
+            </p>
+          </div>
+          <div className="mt-3 pt-2.5 border-t border-white/5 flex items-center justify-between text-[10px] text-indigo-300 font-bold">
+            <span>تقديم طلب حجز 🏛️</span>
             <ChevronLeft className="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform" />
           </div>
         </button>
